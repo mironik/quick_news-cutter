@@ -166,11 +166,6 @@ fn find_card_thumb_for_media_path(media_path: &Path) -> Option<PathBuf> {
     find_card_file_for_media_path(media_path, CARD_THUMB_EXTENSIONS)
 }
 
-/// THM/JPG uz MXF/proxy na kartici (ako nije već u metadata).
-pub fn find_card_thumb_near_media(meta: &Value) -> Option<PathBuf> {
-    find_card_file_near_media(meta, CARD_THUMB_EXTENSIONS)
-}
-
 fn find_card_file_near_media(meta: &Value, extensions: &[&str]) -> Option<PathBuf> {
     for key in [
         "original_path",
@@ -297,17 +292,6 @@ pub fn is_media_on_card_path(path: &Path, project_dir: &Path) -> bool {
     !media.starts_with(&project_dir)
 }
 
-pub fn is_media_on_card_meta(meta: &Value, project_dir: &Path) -> bool {
-    for key in ["original_path", "proxy_path", "source_path"] {
-        if let Some(p) = path_from_meta(meta, key) {
-            if is_media_on_card_path(&p, project_dir) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 /// Ako je browse npr. `G:\Clip`, a `Thmbnl` je na `G:\` — koristi roditelja za THM sken.
 pub fn resolve_card_media_root(scan_root: &Path) -> PathBuf {
     let scan_root = scan_root
@@ -331,16 +315,6 @@ pub fn resolve_card_media_root(scan_root: &Path) -> PathBuf {
         }
     }
     scan_root
-}
-
-/// THM/JPG na kartici — poster se samo kopira u ingest cache.
-pub fn card_poster_image_path(meta: &Value) -> Option<PathBuf> {
-    card_poster_image_path_with_root(meta, None)
-}
-
-/// Traži THM/JPG u metadata, uz medij, ili u stablu kartice (card_root).
-pub fn card_poster_image_path_with_root(meta: &Value, card_root: Option<&Path>) -> Option<PathBuf> {
-    find_card_poster_copy(meta, card_root).map(|(p, _)| p)
 }
 
 /// Ako nema THM/JPG: jedan frame iz videa (proxy na kartici → project proxy → MXF).
@@ -375,15 +349,6 @@ pub fn poster_source_key(meta: &Value) -> String {
         .map(|(p, _)| p.to_string_lossy().to_string())
         .or_else(|| card_thumb_path(meta).map(|p| p.to_string_lossy().to_string()))
         .unwrap_or_default()
-}
-
-pub fn is_image_thumb_source(path: &Path) -> bool {
-    matches!(
-        path.extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_ascii_lowercase()),
-        Some(ext) if ext == "thm" || ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "webp"
-    )
 }
 
 pub fn is_breaking_news(project: &Value) -> bool {
@@ -521,10 +486,6 @@ fn find_card_file_in_dir(dir: &Path, base_stem: &str, extensions: &[&str]) -> Op
         }
     }
     None
-}
-
-fn find_card_thumb_in_dir(dir: &Path, base_stem: &str) -> Option<PathBuf> {
-    find_card_file_in_dir(dir, base_stem, CARD_THUMB_EXTENSIONS)
 }
 
 pub struct MediaGroup {
@@ -780,7 +741,10 @@ mod tests {
             "proxy_path": proxy.to_string_lossy(),
         });
         assert_eq!(
-            card_poster_image_path(&meta).unwrap().file_name(),
+            find_card_poster_copy(&meta, None)
+                .map(|(p, _)| p)
+                .unwrap()
+                .file_name(),
             thm.file_name()
         );
 
@@ -824,18 +788,19 @@ mod tests {
         let proxy = touch(&dir, "Clip0001S03.MP4");
 
         let meta_only_mxf = json!({ "original_path": mxf.to_string_lossy() });
-        assert!(card_poster_image_path(&meta_only_mxf).is_none());
+        assert!(find_card_poster_copy(&meta_only_mxf, None).is_none());
         assert_eq!(poster_video_source_path(&meta_only_mxf).unwrap(), mxf);
 
         let meta_proxy = json!({
             "original_path": mxf.to_string_lossy(),
             "proxy_path": proxy.to_string_lossy(),
         });
-        assert!(card_poster_image_path(&meta_proxy).is_none());
+        assert!(find_card_poster_copy(&meta_proxy, None).is_none());
         assert_eq!(poster_video_source_path(&meta_proxy).unwrap(), proxy);
 
         let thm = touch(&dir, "Clip0001.thm");
-        assert!(card_poster_image_path(&meta_proxy)
+        assert!(find_card_poster_copy(&meta_proxy, None)
+            .map(|(p, _)| p)
             .and_then(|p| p
                 .file_name()
                 .map(|n| n.to_string_lossy().eq_ignore_ascii_case("Clip0001.thm")))
@@ -846,7 +811,8 @@ mod tests {
             "original_path": mxf.to_string_lossy(),
             "card_thumb_path": thm.to_string_lossy(),
         });
-        assert!(card_poster_image_path(&meta_with_thm)
+        assert!(find_card_poster_copy(&meta_with_thm, None)
+            .map(|(p, _)| p)
             .and_then(|p| p
                 .file_name()
                 .map(|n| n.to_string_lossy().eq_ignore_ascii_case("Clip0001.thm")))

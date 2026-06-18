@@ -4,9 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::media::{
-    group_media_files, is_card_thumb_file, is_media_file, resolve_card_media_root, MediaGroup,
-};
+use crate::media::{is_card_thumb_file, is_media_file, resolve_card_media_root};
 
 pub const DEFAULT_SCAN_DEPTH: u32 = 8;
 
@@ -27,10 +25,6 @@ pub fn scan_inventory(browse_root: &Path) -> ScanInventory {
         media_files: scan_media_files(browse_root, DEFAULT_SCAN_DEPTH),
         thumb_files,
     }
-}
-
-pub fn group_scanned(inventory: &ScanInventory) -> Vec<MediaGroup> {
-    group_media_files(&inventory.media_files, &inventory.thumb_files)
 }
 
 pub fn scan_media_files(root: &Path, max_depth: u32) -> Vec<PathBuf> {

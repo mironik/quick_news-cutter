@@ -36,6 +36,7 @@ struct ThumbQuery {
     seek: f64,
     #[serde(default)]
     frame_index: i64,
+    /// Accepted for API compatibility; thumbnails currently use fixed 112x64 sizing until resize support is implemented.
     #[serde(default)]
     w: u32,
 }
@@ -123,6 +124,7 @@ async fn api_thumbnail(
     if clip_id.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "clip_id je prazan".into()));
     }
+    let _requested_thumb_width = q.w;
     let seek = if q.seek > 0.0 { q.seek } else { 0.5 };
     if q.frame_index >= 0 {
         if let Some(path) = frame_path_for_index(&app.project.paths, &pid, clip_id, q.frame_index) {

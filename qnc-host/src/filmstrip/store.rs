@@ -148,43 +148,6 @@ fn write_frames(
     Ok(())
 }
 
-fn pct_encode(raw: &str) -> String {
-    let mut out = String::with_capacity(raw.len());
-    for b in raw.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            _ => {
-                out.push('%');
-                out.push_str(&format!("{:02X}", b));
-            }
-        }
-    }
-    out
-}
-
-fn thumb_url(project_id: &str, clip_id: &str, seek_sec: f64) -> String {
-    format!(
-        "/api/media-pool/thumbnail?clip_id={}&seek={:.3}&w=112&project_id={}",
-        pct_encode(clip_id),
-        seek_sec,
-        pct_encode(project_id),
-    )
-}
-
-pub fn enrich_frames_with_urls(project_id: &str, clip_id: &str, frames: &[Value]) -> Vec<Value> {
-    frames
-        .iter()
-        .map(|fr| {
-            let seek = fr.get("seek_sec").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let mut obj = fr.as_object().cloned().unwrap_or_default();
-            obj.insert("url".into(), json!(thumb_url(project_id, clip_id, seek)));
-            Value::Object(obj)
-        })
-        .collect()
-}
-
 pub fn mark_filmstrip(
     paths: &ProjectPaths,
     project_id: &str,
