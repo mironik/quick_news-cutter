@@ -40,6 +40,17 @@ If a value affects workflow and is not in SQLite, **it is not application state*
 | Map snapshot → `component.update(model)` | `fetch` / `QNC.api` for workflow reads that bypass declared snapshots (except one-off shell/system calls) |
 | Shell bus for **invalidation** (`project:changed`) | Direct calls/imports between plugins; exposing mutable globals (`QNC.mediaPool = pool`) |
 
+**media_pool orchestrator — technical handles vs workflow (strict):**
+
+| Allowed locally (not truth) | Forbidden locally (must be SQLite / API snapshot) |
+|------------------------------|-----------------------------------------------------|
+| Timer / poll handle ids | Transcript text, transcript status, ASR job state |
+| `AbortController` for canceling in-flight streams | Per-row status, selected clip ids, current clip id |
+| DOM / `<video>` element refs, listener cleanup hooks | Mark in/out, active virtual shot, filmstrip build status |
+| Live SSE dedup tokens, thumb cache-bust rev (render-only) | Any parallel JS object mirroring snapshot workflow fields |
+
+If transcript data or status exists, it must be read/written via Rust API → `qnc_project.db` (e.g. `clip_transcripts`), then reflected through `ctx.store.reload` — never retained as orchestrator workflow state.
+
 ### 2.3 Component JS
 
 | Allowed | Forbidden |
@@ -134,7 +145,7 @@ These violate this contract until migrated (see roadmap in audit / Phase 1–5):
 | Module enable | ~~`data/shell_module_state.json`~~ → **`project_store.db` `module_state`** (Phase 1 ✓) |
 | media_pool | ~~JS caches~~ → **Phase 5 ✓** workflow/selection/transcripts/virtual_shots in typed SQLite tables |
 | project tab | ~~Large `state` object cache~~ → **Phase 2 ✓** SDK snapshots (`project.index`, `project.templates`, `project.modules`, `project.ui`) |
-| design-tools | **`non_production: true`** — theme/lab in `data/design_overrides/*.json` (isolated add-on, not workflow) |
+| design-tools | ~~`data/design_overrides/*.json`~~ → **`app_settings` `design.*`** in `project_store.db` (non-production add-on) |
 | sdk_demo | ~~In-memory Rust map~~ → **Phase 4 ✓** `sdk_demo_state` in `qnc_project.db` (demo template only) |
 | Shell | ~~`QNC.activeProjectId` in JS~~ → **Phase 4 ✓** boot sync from `GET /api/projects`; projection only |
 | Keyboard shortcuts | ~~`localStorage`~~ → **Phase 4 ✓** `app_settings.keyboard_shortcuts_user` |
@@ -159,9 +170,9 @@ New features **must not** add rows to this gap list.
 |--------|-----------------|
 | **ingest** | **Reference** — workflow in SQLite; SDK snapshot + reload |
 | **sdk_demo** | Minimal SDK template — counter in `qnc_project.db` (`sdk_demo_state`); tab disabled by default |
-| **media_pool** | **SDK v1** — clips, workflow, virtual shots, transcripts in SQLite; ephemeral: player element, in-flight handles only |
+| **media_pool** | **SDK v1** — clips, workflow, virtual shots, transcripts in SQLite. Orchestrator JS: **technical handles only** (timers, `AbortController`, DOM/media refs, listener cleanup, in-flight dedup). **No local workflow:** transcript/ASR/row status, selection, marks, active shot, filmstrip status — DB/API snapshots only. |
 | **project** | **SDK v1** — index/templates/modules/ui via `ctx.store`; ephemeral runtime only (`openingId`, collab session handle) |
-| **design-tools** | **Non-production add-on** — JSON overrides only; not DB-first workflow |
+| **design-tools** | **Non-production add-on** — theme/lab prefs in `app_settings` (`design.*`); not core workflow |
 
 ---
 

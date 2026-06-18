@@ -9,7 +9,7 @@
 | **Source of truth** | **SQLite / API snapshots** — not component-local state, not helper JSON files, not orchestrator JS objects. See [architecture-db-first.md](architecture-db-first.md) |
 | **Reference implementation** | [`plugins/ingest/static/qnc-ingest.js`](../plugins/ingest/static/qnc-ingest.js) + [`plugins/ingest/plugin.json`](../plugins/ingest/plugin.json) |
 | **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, project DB-backed minimal SDK reference (`sdk_demo_state` in `qnc_project.db`); tab disabled by default (`enabled: false`). **How to clone:** [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) |
-| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle + DB workflow snapshot; remaining JS caches under audit (see architecture doc) |
+| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle + DB workflow snapshots; orchestrator may keep **technical handles only** (see [architecture-db-first.md](architecture-db-first.md) §2.2) |
 | **Not SDK yet** | `design-tools` — legacy orchestrators; do not migrate them in the same pass |
 | **SDK v1 (project)** | [`plugins/project`](../plugins/project/) — multi-snapshot orchestrator; collab session id is a technical handle only |
 
@@ -349,13 +349,15 @@ Migrate one plugin at a time. Legacy orchestrators without SDK continue to work.
 
 **DB-first rule:** SQLite / Rust API is the only source of truth. `ctx.store` is a short-lived cache of API snapshots. Plugin JS, component JS, DOM, and runtime JSON objects must not own workflow state.
 
-**Allowed locally (technical handles only):** poll timers, in-flight request dedup flags, live-stream session handles, DOM refs, player `currentTime` scrubber position. Recompute or reload from snapshots instead of retaining derived data (clip lists, selection, marks, transcripts, job status).
+**Allowed locally (technical handles only):** timer handles, `AbortController`, DOM/media element refs, listener cleanup, in-flight request dedup / live-stream session tokens.
+
+**Forbidden locally (workflow — DB/API only):** transcript results/status, ASR state, row status, selected/current clip, marks, active virtual shot, filmstrip status. Recompute or reload from snapshots; do not mirror these in parallel JS objects.
 
 | Plugin | SDK status |
 |--------|------------|
 | `ingest` | Full production reference |
-| `sdk_demo` | Minimal golden-path demo (project DB; enable via Modules API) |
-| `media_pool` | Partial — workflow in snapshot; JS render caches still being removed |
+| `sdk_demo` | Minimal golden-path demo — `sdk_demo_state` in `qnc_project.db` (project DB-backed; enable via Modules API) |
+| `media_pool` | SDK v1 — workflow via SQLite snapshots; technical handles only in orchestrator JS (see architecture doc) |
 | `project` | SDK v1 multi-snapshot orchestrator |
 | `design-tools` | Not SDK — standalone add-on (`non_production`) |
 

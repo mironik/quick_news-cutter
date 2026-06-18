@@ -266,7 +266,7 @@ Do not commit `data/project_store.db`, `data/projects.json`, or other runtime `d
 |------|-----------|
 | Minimal single-panel plugin | **sdk_demo** — copy this guide |
 | Production multi-panel tab | **ingest** — [`plugins/ingest`](../plugins/ingest/), [plugin-sdk-v1.md](plugin-sdk-v1.md) |
-| Partial SDK migration (known JS cache gaps) | **media_pool** — read only; do not copy as primary template yet |
+| Partial reference (do not copy cache patterns) | **media_pool** — DB/API workflow snapshots; orchestrator technical handles only ([architecture-db-first.md](architecture-db-first.md) §2.2) |
 | Component contracts | [developer-components.md](developer-components.md) |
 | Shell tabs / buses | [shell-spec-v1.md](shell-spec-v1.md) |
 
