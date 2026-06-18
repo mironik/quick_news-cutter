@@ -57,7 +57,7 @@ fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
         );
         ",
     )?;
-    let _ = migrate_thumb_columns(conn);
+    migrate_thumb_columns(conn)?;
     Ok(())
 }
 

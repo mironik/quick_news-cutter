@@ -162,7 +162,8 @@ try {
 
     Test-Get "$Base/app/components/registry.json" 'media-thumb' "GET registry (media-thumb)"
     Test-Get "$Base/app/components/registry.json" 'ingest-clip-grid' "GET registry (ingest-clip-grid)"
-    Test-Get "$Base/plugins/ingest/static/qnc-ingest.js" 'syncFromDb' "GET qnc-ingest.js orchestrator"
+    Test-Get "$Base/plugins/ingest/static/qnc-ingest.js" 'Plugin SDK v1 orchestrator' "GET qnc-ingest.js (SDK orchestrator)"
+    Test-Get "$Base/plugins/ingest/static/qnc-ingest.js" 'QNC\.createPluginApp' "GET qnc-ingest.js (createPluginApp)"
 
     $deleted = Test-PostJson "$Base/api/projects/delete" @{
         project_ids = @($newId)

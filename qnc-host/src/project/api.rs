@@ -253,6 +253,9 @@ async fn api_projects_from_template(
                 e.to_string()
             }
         })?;
+        if !body.session_id.is_empty() {
+            touch_collab_session(conn, &body.session_id).map_err(|e| e.to_string())?;
+        }
         let active = get_active_project_id(conn).map_err(|e| e.to_string())?;
         Ok(Json(json!({
             "status": "ok",
