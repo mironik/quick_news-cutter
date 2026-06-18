@@ -61,7 +61,7 @@ If a value affects workflow and is not in SQLite, **it is not application state*
 |---------------------------|-------------------------------|
 | `plugins/*/plugin.json` | ~~`data/shell_module_state.json`~~ (migrated Phase 1 → `project_store.db`) |
 | `app/components/registry.json`, `component.json` | `data/projects.json` as live mirror (export/migration only) |
-| `plugins/project/storage/system_seed.json` | `data/design_overrides/*.json` for lab/theme runtime |
+| `plugins/project/storage/system_seed.json` | ~~`data/design_overrides/*.json`~~ (migrated → `app_settings` `design.*`) |
 | `app/shell/keyboard-shortcuts.json` (defaults) | Any host-written JSON holding workflow state long-term |
 | Design-tools demo/build-profile JSON under `plugins/design-tools/` | Using demo JSON in production workflow paths |
 
@@ -99,8 +99,8 @@ onShow
 
 | Database | Scope | Owns |
 |----------|-------|------|
-| `data/project_store.db` | Global | Projects, active project, templates, collab users/sessions, project tab UI state (`app_settings`) |
-| `{project_dir}/qnc_project.db` | Per project | Project settings, workflow steps, **ingest** assets/meta, **media_pool** pool_clips & virtual_shots, **filmstrip** tables |
+| `data/project_store.db` | Global | Projects, active project, templates, collab users/sessions, project tab UI state, **design editor** state (`app_settings` `design.*`) |
+| `{project_dir}/qnc_project.db` | Per project | Project settings, workflow steps, **ingest** assets/meta, **media_pool** pool_clips, virtual_shots (typed columns), workflow + selection tables, **clip_transcripts** + segments, **filmstrip** tables |
 
 Modules enable flags live in **`project_store.db` → `module_state`** (Phase 1). Legacy `data/shell_module_state.json` is imported once on host start and renamed to `.migrated`.
 
@@ -132,7 +132,7 @@ These violate this contract until migrated (see roadmap in audit / Phase 1–5):
 | Area | Current | Target |
 |------|---------|--------|
 | Module enable | ~~`data/shell_module_state.json`~~ → **`project_store.db` `module_state`** (Phase 1 ✓) |
-| media_pool | ~~`pool.selected`, marks, player context~~ → **Phase 3 ✓** `media_pool_workflow` in `qnc_project.db` |
+| media_pool | ~~JS caches~~ → **Phase 5 ✓** workflow/selection/transcripts/virtual_shots in typed SQLite tables |
 | project tab | ~~Large `state` object cache~~ → **Phase 2 ✓** SDK snapshots (`project.index`, `project.templates`, `project.modules`, `project.ui`) |
 | design-tools | **`non_production: true`** — theme/lab in `data/design_overrides/*.json` (isolated add-on, not workflow) |
 | sdk_demo | ~~In-memory Rust map~~ → **Phase 4 ✓** `sdk_demo_state` in `qnc_project.db` (demo template only) |
@@ -159,7 +159,7 @@ New features **must not** add rows to this gap list.
 |--------|-----------------|
 | **ingest** | **Reference** — workflow in SQLite; SDK snapshot + reload |
 | **sdk_demo** | Minimal SDK template — counter in `qnc_project.db` (`sdk_demo_state`); tab disabled by default |
-| **media_pool** | **SDK v1** — clips + workflow in snapshot (`media_pool_workflow` table); ephemeral: transcripts cache, ASR rowNote, player element |
+| **media_pool** | **SDK v1** — clips, workflow, virtual shots, transcripts in SQLite; ephemeral: player element, in-flight handles only |
 | **project** | **SDK v1** — index/templates/modules/ui via `ctx.store`; ephemeral runtime only (`openingId`, collab session handle) |
 | **design-tools** | **Non-production add-on** — JSON overrides only; not DB-first workflow |
 

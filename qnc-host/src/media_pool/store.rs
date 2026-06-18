@@ -3,20 +3,14 @@ use serde_json::{json, Value};
 use crate::filmstrip::{get_filmstrip, list_frames_for_clip};
 use crate::project::db::{ensure_project_dirs, ProjectPaths};
 
-use super::db::{pool_summary, sync_pool_from_ingest_db};
+use super::db::{open_db, pool_summary, sync_pool_from_ingest_db};
 use super::ingest_db::read_imported_clips;
-
-fn clip_has_transcript(paths: &ProjectPaths, project_id: &str, clip_id: &str) -> bool {
-    let path = paths
-        .project_dir(project_id)
-        .join("transcripts")
-        .join(format!("{clip_id}.json"));
-    path.is_file()
-}
+use super::transcripts::clip_has_transcript;
 
 pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Value, String> {
     ensure_project_dirs(paths, project_id).map_err(|e| e.to_string())?;
     sync_pool_from_ingest_db(paths, project_id)?;
+    let conn = open_db(paths, project_id)?;
     let imported = read_imported_clips(paths, project_id)?;
     let mut clips: Vec<Value> = Vec::new();
     for row in imported {
@@ -34,7 +28,14 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
         let original_path = row.get("original_path").and_then(|v| v.as_str());
         let card_thumb_path = row.get("card_thumb_path").and_then(|v| v.as_str());
         let transferred = proxy_path.is_some();
-        let has_transcript = clip_has_transcript(paths, project_id, &clip_id);
+        let has_transcript = clip_has_transcript(&conn, &clip_id).unwrap_or(false);
+        let transcript_status: String = conn
+            .query_row(
+                "SELECT status FROM clip_transcripts WHERE clip_id = ?1",
+                rusqlite::params![clip_id],
+                |r| r.get(0),
+            )
+            .unwrap_or_else(|_| "none".to_string());
         let duration = row
             .get("duration_sec")
             .and_then(|v| v.as_f64())
@@ -51,6 +52,7 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
             "validated": transferred,
             "transferred": transferred,
             "has_transcript": has_transcript,
+            "transcript_status": transcript_status,
             "proxy_path": proxy_path,
             "thumb_path": thumb_path,
             "source_path": source_path,

@@ -486,8 +486,11 @@ window.QNC = window.QNC || {};
   }
 
   function transcriptStatus(c) {
-    if (c.has_transcript) return 'complete';
-    if (handles.transcribingClips.has(c.clip_id)) return 'pending';
+    if (c.has_transcript || c.transcript_status === 'complete') return 'complete';
+    if (c.transcript_status === 'failed') return 'failed';
+    if (handles.transcribingClips.has(c.clip_id) || c.transcript_status === 'pending') {
+      return 'pending';
+    }
     return 'none';
   }
 
@@ -870,6 +873,8 @@ window.QNC = window.QNC || {};
     const decoder = new TextDecoder();
     let buffer = '';
     let lastEvent = null;
+    const segments = [];
+    let text = '';
 
     while (true) {
       const { done, value } = await reader.read();
@@ -888,13 +893,35 @@ window.QNC = window.QNC || {};
         }
         lastEvent = ev;
         if (ev.type === 'segment' && ev.segment) {
+          segments.push(ev.segment);
+          text = text ? text + ' ' + (ev.segment.text || '') : ev.segment.text || '';
           appendTranscriptSegment(clipId, ev.segment);
         } else if (ev.type === 'error') {
           throw new Error(ev.error || 'Transkripcija nije uspjela');
         }
       }
     }
-    return lastEvent;
+    if (lastEvent?.type === 'complete' && lastEvent.transcript) {
+      return lastEvent;
+    }
+    return {
+      type: 'complete',
+      transcript: { text: text.trim(), segments },
+    };
+  }
+
+  async function persistTranscript(clipId, status, transcript) {
+    const activeCtx = sdkCtx;
+    if (!activeCtx?.action) {
+      throw new Error('[Media Pool] SDK nije spreman');
+    }
+    await activeCtx.action('transcript.save', {
+      project_id: poolProjectId(),
+      clip_id: clipId,
+      status: status || 'complete',
+      transcript: transcript || { text: '', segments: [] },
+    });
+    await activeCtx.store.reload('media_pool.clips');
   }
 
   async function loadTranscript(clipId) {
@@ -903,9 +930,9 @@ window.QNC = window.QNC || {};
     try {
       const d = await QNC.api(
         'GET',
-        '/api/ai-search/transcript/' +
+        '/api/media-pool/transcript?clip_id=' +
           encodeURIComponent(clipId) +
-          '?project_id=' +
+          '&project_id=' +
           encodeURIComponent(pid)
       );
       renderTranscriptPanel(d.transcript || null);
@@ -1412,15 +1439,19 @@ window.QNC = window.QNC || {};
           playClip(clip, 0, true).catch(() => {});
         }
         try {
+          await persistTranscript(id, 'pending', { text: '', segments: [] });
           const last = await transcribeClipStream(id, pid);
           if (last?.type === 'complete') {
+            await persistTranscript(id, 'complete', last.transcript || { text: '', segments: [] });
             finishLiveTranscript(id);
             ok++;
           } else {
+            await persistTranscript(id, 'failed', { text: '', segments: [] });
             finishLiveTranscript(id);
             fail++;
           }
         } catch (e) {
+          await persistTranscript(id, 'failed', { text: '', segments: [] }).catch(() => {});
           finishLiveTranscript(id);
           fail++;
           if (QNC.getActiveTab && QNC.getActiveTab() === 'pool') {

@@ -47,15 +47,15 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn api_design_status(State(state): State<AppState>) -> Json<Value> {
-    Json(design::design_status(&state.root))
+    Json(design::design_status(&state.root, &state.config))
 }
 
 async fn api_design_tokens(State(state): State<AppState>) -> Json<Value> {
-    Json(design::merged_tokens(&state.root))
+    Json(design::merged_tokens(&state.root, &state.config))
 }
 
 async fn api_design_themes(State(state): State<AppState>) -> Json<Value> {
-    Json(design::list_themes(&state.root))
+    Json(design::list_themes(&state.root, &state.config))
 }
 
 #[derive(serde::Deserialize)]
@@ -67,7 +67,7 @@ async fn api_design_create_theme(
     State(state): State<AppState>,
     Json(body): Json<CreateThemeBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    match design::create_theme(&state.root, &body.label) {
+    match design::create_theme(&state.root, &state.config, &body.label) {
         Ok(out) => Ok(Json(out)),
         Err(msg) => Err((StatusCode::BAD_REQUEST, msg)),
     }
@@ -77,7 +77,7 @@ async fn api_design_activate_theme(
     State(state): State<AppState>,
     Path(theme_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    match design::activate_theme(&state.root, &theme_id) {
+    match design::activate_theme(&state.root, &state.config, &theme_id) {
         Ok(out) => Ok(Json(out)),
         Err(msg) => Err((StatusCode::NOT_FOUND, msg)),
     }
@@ -92,14 +92,14 @@ async fn api_design_save_tokens(
     State(state): State<AppState>,
     Json(body): Json<TokenOverridesBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    match design::save_token_overrides(&state.root, &body.tokens) {
+    match design::save_token_overrides(&state.root, &state.config, &body.tokens) {
         Ok(out) => Ok(Json(out)),
         Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
     }
 }
 
 async fn api_design_timeline_lab(State(state): State<AppState>) -> Json<Value> {
-    Json(design::load_timeline_lab_prefs(&state.root))
+    Json(design::load_timeline_lab_prefs(&state.root, &state.config))
 }
 
 #[derive(serde::Deserialize)]
@@ -111,14 +111,17 @@ async fn api_design_save_timeline_lab(
     State(state): State<AppState>,
     Json(body): Json<TimelineLabBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    match design::save_timeline_lab_prefs(&state.root, body.prefs) {
+    match design::save_timeline_lab_prefs(&state.root, &state.config, body.prefs) {
         Ok(out) => Ok(Json(out)),
         Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
     }
 }
 
 async fn api_design_project_list_lab(State(state): State<AppState>) -> Json<Value> {
-    Json(design::load_project_list_lab_prefs(&state.root))
+    Json(design::load_project_list_lab_prefs(
+        &state.root,
+        &state.config,
+    ))
 }
 
 #[derive(serde::Deserialize)]
@@ -130,7 +133,7 @@ async fn api_design_save_project_list_lab(
     State(state): State<AppState>,
     Json(body): Json<ProjectListLabBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    match design::save_project_list_lab_prefs(&state.root, body.prefs) {
+    match design::save_project_list_lab_prefs(&state.root, &state.config, body.prefs) {
         Ok(out) => Ok(Json(out)),
         Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
     }
@@ -139,6 +142,7 @@ async fn api_design_save_project_list_lab(
 async fn api_design_project_template_settings_lab(State(state): State<AppState>) -> Json<Value> {
     Json(design::load_project_template_settings_lab_prefs(
         &state.root,
+        &state.config,
     ))
 }
 
@@ -151,14 +155,17 @@ async fn api_design_save_project_template_settings_lab(
     State(state): State<AppState>,
     Json(body): Json<ProjectTemplateSettingsLabBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    match design::save_project_template_settings_lab_prefs(&state.root, body.prefs) {
+    match design::save_project_template_settings_lab_prefs(&state.root, &state.config, body.prefs) {
         Ok(out) => Ok(Json(out)),
         Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
     }
 }
 
 async fn api_design_ingest_clip_grid_lab(State(state): State<AppState>) -> Json<Value> {
-    Json(design::load_ingest_clip_grid_lab_prefs(&state.root))
+    Json(design::load_ingest_clip_grid_lab_prefs(
+        &state.root,
+        &state.config,
+    ))
 }
 
 #[derive(serde::Deserialize)]
@@ -170,7 +177,7 @@ async fn api_design_save_ingest_clip_grid_lab(
     State(state): State<AppState>,
     Json(body): Json<IngestClipGridLabBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    match design::save_ingest_clip_grid_lab_prefs(&state.root, body.prefs) {
+    match design::save_ingest_clip_grid_lab_prefs(&state.root, &state.config, body.prefs) {
         Ok(out) => Ok(Json(out)),
         Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
     }

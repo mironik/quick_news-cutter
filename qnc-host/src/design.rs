@@ -1,12 +1,30 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use rusqlite::Connection;
 use serde_json::{json, Value};
 
-use crate::config::read_json;
+use crate::config::{read_json, AppConfig};
+use crate::design_db::{
+    self, active_theme_id as db_active_theme_id, lab_key, load_custom_theme_ids, load_json_setting,
+    save_custom_theme_ids, save_json_setting, set_active_theme_id, theme_doc_key, theme_exists,
+    DEFAULT_TOKENS_KEY,
+};
+use crate::project::db::{open_global, ProjectPaths};
 
 const VALID_MODES: [&str; 3] = ["open", "password", "off"];
 const DEFAULT_THEME_ID: &str = "default";
+
+fn with_design_store<T>(
+    root: &Path,
+    config: &AppConfig,
+    f: impl FnOnce(&Connection, &Path) -> Result<T, String>,
+) -> Result<T, String> {
+    let paths = ProjectPaths::from_root(root, config);
+    let conn = open_global(&paths).map_err(|e| e.to_string())?;
+    design_db::ensure_files_migrated(&conn, root)?;
+    f(&conn, root)
+}
 
 pub fn design_mode(root: &Path) -> String {
     if let Ok(env) = std::env::var("QNC_DESIGN_MODE") {
@@ -51,23 +69,25 @@ pub fn design_editor_capability(root: &Path) -> Value {
     })
 }
 
-pub fn design_status(root: &Path) -> Value {
+pub fn design_status(root: &Path, config: &AppConfig) -> Value {
     let cap = design_editor_capability(root);
+    let _ = with_design_store(root, config, |_, _| Ok(()));
     json!({
         "status": "ok",
         "available": cap.get("available").cloned().unwrap_or(json!(false)),
         "mode": cap.get("mode").cloned().unwrap_or(json!("off")),
         "authenticated": cap.get("authenticated").cloned().unwrap_or(json!(false)),
         "default_enabled": cap.get("default_enabled").cloned().unwrap_or(json!(false)),
+        "storage": "app_settings",
         "paths": {
             "tokens": "/plugins/design-tools/design/tokens.json",
-            "overrides": "/data/design_overrides/tokens.json",
-            "themes": "/data/design_overrides/themes/",
-            "active_theme": "/data/design_overrides/active_theme.json",
-            "timeline_lab": "/data/design_overrides/timeline-lab.json",
-            "project_list_lab": "/data/design_overrides/project-list-lab.json",
-            "project_template_settings_lab": "/data/design_overrides/project-template-settings-lab.json",
-            "ingest_clip_grid_lab": "/data/design_overrides/ingest-clip-grid-lab.json",
+            "overrides": "project_store.db/app_settings (design.*)",
+            "themes": "project_store.db/app_settings (design.theme.*)",
+            "active_theme": "project_store.db/app_settings (design.active_theme_id)",
+            "timeline_lab": "project_store.db/app_settings (design.lab.timeline)",
+            "project_list_lab": "project_store.db/app_settings (design.lab.project_list)",
+            "project_template_settings_lab": "project_store.db/app_settings (design.lab.project_template_settings)",
+            "ingest_clip_grid_lab": "project_store.db/app_settings (design.lab.ingest_clip_grid)",
         }
     })
 }
@@ -92,26 +112,6 @@ fn slug_theme_id(label: &str) -> String {
     }
 }
 
-fn overrides_dir(root: &Path) -> PathBuf {
-    root.join("data").join("design_overrides")
-}
-
-fn themes_dir(root: &Path) -> PathBuf {
-    overrides_dir(root).join("themes")
-}
-
-fn theme_path(root: &Path, theme_id: &str) -> PathBuf {
-    themes_dir(root).join(format!("{theme_id}.json"))
-}
-
-fn active_theme_path(root: &Path) -> PathBuf {
-    overrides_dir(root).join("active_theme.json")
-}
-
-fn legacy_overrides_path(root: &Path) -> PathBuf {
-    overrides_dir(root).join("tokens.json")
-}
-
 fn base_tokens_path(root: &Path) -> PathBuf {
     root.join("plugins")
         .join("design-tools")
@@ -119,17 +119,15 @@ fn base_tokens_path(root: &Path) -> PathBuf {
         .join("tokens.json")
 }
 
-pub fn active_theme_id(root: &Path) -> String {
-    let doc = read_json(&active_theme_path(root)).unwrap_or(json!({}));
-    doc.get("theme_id")
-        .and_then(|v| v.as_str())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| DEFAULT_THEME_ID.to_string())
+fn load_token_overrides(conn: &Connection) -> HashMap<String, String> {
+    let doc = load_json_setting(conn, DEFAULT_TOKENS_KEY)
+        .ok()
+        .flatten()
+        .unwrap_or(json!({}));
+    token_map_from_doc(&doc)
 }
 
-fn load_token_overrides(root: &Path) -> HashMap<String, String> {
-    let doc = read_json(&legacy_overrides_path(root)).unwrap_or(json!({}));
+fn token_map_from_doc(doc: &Value) -> HashMap<String, String> {
     let mut out = HashMap::new();
     if let Some(obj) = doc.get("tokens").and_then(|v| v.as_object()) {
         for (k, v) in obj {
@@ -143,10 +141,10 @@ fn load_token_overrides(root: &Path) -> HashMap<String, String> {
     out
 }
 
-fn load_theme_doc(root: &Path, theme_id: &str) -> Value {
+fn load_theme_doc(conn: &Connection, root: &Path, theme_id: &str) -> Value {
     if theme_id == DEFAULT_THEME_ID {
         let base = read_json(&base_tokens_path(root)).unwrap_or(json!({}));
-        let overrides = load_token_overrides(root);
+        let overrides = load_token_overrides(conn);
         return json!({
             "id": DEFAULT_THEME_ID,
             "label": base.get("label").cloned().unwrap_or(json!("QNC Default")),
@@ -154,180 +152,158 @@ fn load_theme_doc(root: &Path, theme_id: &str) -> Value {
             "tokens": overrides,
         });
     }
-    read_json(&theme_path(root, theme_id)).unwrap_or(json!({}))
+    load_json_setting(conn, &theme_doc_key(theme_id))
+        .ok()
+        .flatten()
+        .unwrap_or(json!({}))
 }
 
-fn theme_override_tokens(root: &Path, theme_id: &str) -> HashMap<String, String> {
+fn theme_override_tokens(
+    conn: &Connection,
+    root: &Path,
+    theme_id: &str,
+) -> HashMap<String, String> {
     if theme_id == DEFAULT_THEME_ID {
-        return load_token_overrides(root);
+        return load_token_overrides(conn);
     }
-    let doc = load_theme_doc(root, theme_id);
-    let mut out = HashMap::new();
-    if let Some(obj) = doc.get("tokens").and_then(|v| v.as_object()) {
-        for (k, v) in obj {
-            if k.starts_with("--") {
+    let doc = load_theme_doc(conn, root, theme_id);
+    token_map_from_doc(&json!({ "tokens": doc.get("tokens").cloned().unwrap_or(json!({})) }))
+}
+
+pub fn merged_tokens(root: &Path, config: &AppConfig) -> Value {
+    with_design_store(root, config, |conn, root| {
+        let base =
+            read_json(&base_tokens_path(root)).unwrap_or(json!({ "version": 1, "tokens": {} }));
+        let theme_id = db_active_theme_id(conn)?;
+        let overrides_map = theme_override_tokens(conn, root, &theme_id);
+        let mut tokens = HashMap::new();
+        if let Some(obj) = base.get("tokens").and_then(|v| v.as_object()) {
+            for (k, v) in obj {
                 if let Some(s) = v.as_str() {
-                    out.insert(k.clone(), s.to_string());
+                    tokens.insert(k.clone(), s.to_string());
                 }
             }
         }
-    }
-    out
-}
-
-pub fn merged_tokens(root: &Path) -> Value {
-    let base = read_json(&base_tokens_path(root)).unwrap_or(json!({ "version": 1, "tokens": {} }));
-    let theme_id = active_theme_id(root);
-    let overrides_map = theme_override_tokens(root, &theme_id);
-    let mut tokens = HashMap::new();
-    if let Some(obj) = base.get("tokens").and_then(|v| v.as_object()) {
-        for (k, v) in obj {
-            if let Some(s) = v.as_str() {
-                tokens.insert(k.clone(), s.to_string());
-            }
+        for (k, v) in &overrides_map {
+            tokens.insert(k.clone(), v.clone());
         }
-    }
-    for (k, v) in &overrides_map {
-        tokens.insert(k.clone(), v.clone());
-    }
-    let theme_doc = load_theme_doc(root, &theme_id);
-    let label = theme_doc
-        .get("label")
-        .and_then(|v| v.as_str())
-        .unwrap_or("QNC Default");
-    let overrides: Value = serde_json::to_value(&overrides_map).unwrap_or(json!({}));
-    json!({
-        "status": "ok",
-        "version": base.get("version").cloned().unwrap_or(json!(1)),
-        "label": label,
-        "theme_id": theme_id,
-        "tokens": tokens,
-        "overrides": overrides,
+        let theme_doc = load_theme_doc(conn, root, &theme_id);
+        let label = theme_doc
+            .get("label")
+            .and_then(|v| v.as_str())
+            .unwrap_or("QNC Default");
+        let overrides: Value = serde_json::to_value(&overrides_map).unwrap_or(json!({}));
+        Ok(json!({
+            "status": "ok",
+            "version": base.get("version").cloned().unwrap_or(json!(1)),
+            "label": label,
+            "theme_id": theme_id,
+            "tokens": tokens,
+            "overrides": overrides,
+        }))
     })
+    .unwrap_or_else(|_| json!({ "status": "error" }))
 }
 
-pub fn list_themes(root: &Path) -> Value {
-    let base = read_json(&base_tokens_path(root)).unwrap_or(json!({}));
-    let mut themes = vec![json!({
-        "id": DEFAULT_THEME_ID,
-        "label": base.get("label").cloned().unwrap_or(json!("QNC Default")),
-        "built_in": true,
-    })];
-    let dir = themes_dir(root);
-    if dir.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(&dir) {
-            let mut paths: Vec<PathBuf> = entries
-                .filter_map(|e| e.ok())
-                .map(|e| e.path())
-                .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("json"))
-                .collect();
-            paths.sort();
-            for path in paths {
-                let doc = read_json(&path).unwrap_or(json!({}));
-                let theme_id = doc
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| {
-                        path.file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("tema")
-                            .to_string()
-                    });
-                if theme_id == DEFAULT_THEME_ID {
-                    continue;
-                }
-                themes.push(json!({
-                    "id": theme_id,
-                    "label": doc.get("label").cloned().unwrap_or(json!(theme_id.clone())),
-                    "built_in": false,
-                }));
+pub fn list_themes(root: &Path, config: &AppConfig) -> Value {
+    with_design_store(root, config, |conn, root| {
+        let base = read_json(&base_tokens_path(root)).unwrap_or(json!({}));
+        let mut themes = vec![json!({
+            "id": DEFAULT_THEME_ID,
+            "label": base.get("label").cloned().unwrap_or(json!("QNC Default")),
+            "built_in": true,
+        })];
+        for theme_id in load_custom_theme_ids(conn)? {
+            if theme_id == DEFAULT_THEME_ID {
+                continue;
             }
+            let doc = load_theme_doc(conn, root, &theme_id);
+            themes.push(json!({
+                "id": theme_id,
+                "label": doc.get("label").cloned().unwrap_or(json!(theme_id)),
+                "built_in": false,
+            }));
         }
-    }
-    json!({
-        "status": "ok",
-        "active_id": active_theme_id(root),
-        "themes": themes,
+        Ok(json!({
+            "status": "ok",
+            "active_id": db_active_theme_id(conn)?,
+            "themes": themes,
+        }))
     })
+    .unwrap_or_else(|_| json!({ "status": "error", "themes": [] }))
 }
 
-pub fn activate_theme(root: &Path, theme_id: &str) -> Result<Value, String> {
+pub fn activate_theme(root: &Path, config: &AppConfig, theme_id: &str) -> Result<Value, String> {
     let target = if theme_id.trim().is_empty() {
         DEFAULT_THEME_ID.to_string()
     } else {
         theme_id.trim().to_string()
     };
-    if target != DEFAULT_THEME_ID && !theme_path(root, &target).is_file() {
-        return Err(format!("Tema '{target}' ne postoji."));
-    }
-    let path = active_theme_path(root);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    let doc = json!({ "theme_id": target });
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())? + "\n",
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(json!({ "status": "ok", "active_id": target }))
+    with_design_store(root, config, |conn, _| {
+        if target != DEFAULT_THEME_ID && !theme_exists(conn, &target)? {
+            return Err(format!("Tema '{target}' ne postoji."));
+        }
+        set_active_theme_id(conn, &target)?;
+        Ok(json!({ "status": "ok", "active_id": target }))
+    })
 }
 
-pub fn create_theme(root: &Path, label: &str) -> Result<Value, String> {
+pub fn create_theme(root: &Path, config: &AppConfig, label: &str) -> Result<Value, String> {
     let clean = label.trim();
     if clean.is_empty() {
         return Err("Naziv teme je obavezan.".into());
     }
-    let mut theme_id = slug_theme_id(clean);
-    let mut suffix = 2;
-    while theme_path(root, &theme_id).is_file() {
-        theme_id = format!("{}-{}", slug_theme_id(clean), suffix);
-        suffix += 1;
-    }
-    let merged = merged_tokens(root);
-    let base = read_json(&base_tokens_path(root)).unwrap_or(json!({}));
-    let base_tokens = base.get("tokens").and_then(|v| v.as_object());
-    let mut overrides = HashMap::new();
-    if let Some(obj) = merged.get("tokens").and_then(|v| v.as_object()) {
-        for (k, v) in obj {
-            if !k.starts_with("--") {
-                continue;
-            }
-            let val = v.as_str().unwrap_or("");
-            let base_val = base_tokens
-                .and_then(|b| b.get(k))
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            if val != base_val {
-                overrides.insert(k.clone(), val.to_string());
+    with_design_store(root, config, |conn, root| {
+        let mut theme_id = slug_theme_id(clean);
+        let mut suffix = 2;
+        while theme_exists(conn, &theme_id)? {
+            theme_id = format!("{}-{}", slug_theme_id(clean), suffix);
+            suffix += 1;
+        }
+        let merged = merged_tokens(root, config);
+        let base = read_json(&base_tokens_path(root)).unwrap_or(json!({}));
+        let base_tokens = base.get("tokens").and_then(|v| v.as_object());
+        let mut overrides = HashMap::new();
+        if let Some(obj) = merged.get("tokens").and_then(|v| v.as_object()) {
+            for (k, v) in obj {
+                if !k.starts_with("--") {
+                    continue;
+                }
+                let val = v.as_str().unwrap_or("");
+                let base_val = base_tokens
+                    .and_then(|b| b.get(k))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if val != base_val {
+                    overrides.insert(k.clone(), val.to_string());
+                }
             }
         }
-    }
-    let dir = themes_dir(root);
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let doc = json!({
-        "version": 1,
-        "id": theme_id,
-        "label": clean,
-        "tokens": overrides,
-    });
-    std::fs::write(
-        theme_path(root, &theme_id),
-        serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())? + "\n",
-    )
-    .map_err(|e| e.to_string())?;
-    activate_theme(root, &theme_id)?;
-    Ok(json!({
-        "status": "ok",
-        "id": theme_id,
-        "label": clean,
-        "active_id": theme_id,
-    }))
+        let doc = json!({
+            "version": 1,
+            "id": theme_id,
+            "label": clean,
+            "tokens": overrides,
+        });
+        save_json_setting(conn, &theme_doc_key(&theme_id), &doc)?;
+        let mut ids = load_custom_theme_ids(conn)?;
+        if !ids.iter().any(|id| id == &theme_id) {
+            ids.push(theme_id.clone());
+            save_custom_theme_ids(conn, &ids)?;
+        }
+        set_active_theme_id(conn, &theme_id)?;
+        Ok(json!({
+            "status": "ok",
+            "id": theme_id.clone(),
+            "label": clean,
+            "active_id": theme_id,
+        }))
+    })
 }
 
 pub fn save_token_overrides(
     root: &Path,
+    config: &AppConfig,
     tokens: &HashMap<String, String>,
 ) -> Result<Value, String> {
     let mode = design_mode(root);
@@ -337,49 +313,35 @@ pub fn save_token_overrides(
     if mode == "password" {
         return Err("Spremanje zahtijeva admin autentifikaciju (još nije implementirano).".into());
     }
-    let target = active_theme_id(root);
-    let clean: HashMap<String, String> = tokens
-        .iter()
-        .filter(|(k, _)| k.starts_with("--"))
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-    if target == DEFAULT_THEME_ID {
-        let out_path = legacy_overrides_path(root);
-        if let Some(parent) = out_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    with_design_store(root, config, |conn, root| {
+        let target = db_active_theme_id(conn)?;
+        let clean: HashMap<String, String> = tokens
+            .iter()
+            .filter(|(k, _)| k.starts_with("--"))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        if target == DEFAULT_THEME_ID {
+            let doc = json!({ "version": 1, "tokens": clean });
+            save_json_setting(conn, DEFAULT_TOKENS_KEY, &doc)?;
+            return Ok(json!({ "status": "ok", "theme_id": target, "tokens": clean }));
         }
-        let doc = json!({ "version": 1, "tokens": clean });
-        std::fs::write(
-            &out_path,
-            serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())? + "\n",
-        )
-        .map_err(|e| e.to_string())?;
-        return Ok(json!({ "status": "ok", "theme_id": target, "tokens": clean }));
-    }
-    let theme_doc = load_theme_doc(root, &target);
-    if theme_doc.get("id").is_none() {
-        return Err(format!("Tema '{target}' ne postoji."));
-    }
-    let label = theme_doc
-        .get("label")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&target);
-    let doc = json!({
-        "version": 1,
-        "id": target,
-        "label": label,
-        "tokens": clean,
-    });
-    std::fs::write(
-        theme_path(root, &target),
-        serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())? + "\n",
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(json!({ "status": "ok", "theme_id": target, "tokens": clean }))
-}
-
-fn timeline_lab_path(root: &Path) -> PathBuf {
-    overrides_dir(root).join("timeline-lab.json")
+        let theme_doc = load_theme_doc(conn, root, &target);
+        if theme_doc.get("id").is_none() {
+            return Err(format!("Tema '{target}' ne postoji."));
+        }
+        let label = theme_doc
+            .get("label")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&target);
+        let doc = json!({
+            "version": 1,
+            "id": target,
+            "label": label,
+            "tokens": clean,
+        });
+        save_json_setting(conn, &theme_doc_key(&target), &doc)?;
+        Ok(json!({ "status": "ok", "theme_id": target, "tokens": clean }))
+    })
 }
 
 fn default_timeline_lab_prefs() -> Value {
@@ -393,15 +355,23 @@ fn default_timeline_lab_prefs() -> Value {
     })
 }
 
-pub fn load_timeline_lab_prefs(root: &Path) -> Value {
-    let doc = read_json(&timeline_lab_path(root)).unwrap_or_else(default_timeline_lab_prefs);
-    json!({
-        "status": "ok",
-        "prefs": doc,
+pub fn load_timeline_lab_prefs(root: &Path, config: &AppConfig) -> Value {
+    with_design_store(root, config, |conn, _| {
+        let doc = load_json_setting(conn, &lab_key("timeline"))?
+            .unwrap_or_else(default_timeline_lab_prefs);
+        Ok(json!({
+            "status": "ok",
+            "prefs": doc,
+        }))
     })
+    .unwrap_or_else(|_| json!({ "status": "error" }))
 }
 
-pub fn save_timeline_lab_prefs(root: &Path, prefs: Value) -> Result<Value, String> {
+pub fn save_timeline_lab_prefs(
+    root: &Path,
+    config: &AppConfig,
+    prefs: Value,
+) -> Result<Value, String> {
     let mode = design_mode(root);
     if mode == "off" {
         return Err("Design editor je isključen.".into());
@@ -409,20 +379,10 @@ pub fn save_timeline_lab_prefs(root: &Path, prefs: Value) -> Result<Value, Strin
     if mode == "password" {
         return Err("Spremanje zahtijeva admin autentifikaciju (još nije implementirano).".into());
     }
-    let path = timeline_lab_path(root);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())? + "\n",
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(json!({ "status": "ok", "prefs": prefs }))
-}
-
-fn project_list_lab_path(root: &Path) -> PathBuf {
-    overrides_dir(root).join("project-list-lab.json")
+    with_design_store(root, config, |conn, _| {
+        save_json_setting(conn, &lab_key("timeline"), &prefs)?;
+        Ok(json!({ "status": "ok", "prefs": prefs }))
+    })
 }
 
 fn default_project_list_lab_prefs() -> Value {
@@ -434,16 +394,23 @@ fn default_project_list_lab_prefs() -> Value {
     })
 }
 
-pub fn load_project_list_lab_prefs(root: &Path) -> Value {
-    let doc =
-        read_json(&project_list_lab_path(root)).unwrap_or_else(default_project_list_lab_prefs);
-    json!({
-        "status": "ok",
-        "prefs": doc,
+pub fn load_project_list_lab_prefs(root: &Path, config: &AppConfig) -> Value {
+    with_design_store(root, config, |conn, _| {
+        let doc = load_json_setting(conn, &lab_key("project_list"))?
+            .unwrap_or_else(default_project_list_lab_prefs);
+        Ok(json!({
+            "status": "ok",
+            "prefs": doc,
+        }))
     })
+    .unwrap_or_else(|_| json!({ "status": "error" }))
 }
 
-pub fn save_project_list_lab_prefs(root: &Path, prefs: Value) -> Result<Value, String> {
+pub fn save_project_list_lab_prefs(
+    root: &Path,
+    config: &AppConfig,
+    prefs: Value,
+) -> Result<Value, String> {
     let mode = design_mode(root);
     if mode == "off" {
         return Err("Design editor je isključen.".into());
@@ -451,20 +418,10 @@ pub fn save_project_list_lab_prefs(root: &Path, prefs: Value) -> Result<Value, S
     if mode == "password" {
         return Err("Spremanje zahtijeva admin autentifikaciju (još nije implementirano).".into());
     }
-    let path = project_list_lab_path(root);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())? + "\n",
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(json!({ "status": "ok", "prefs": prefs }))
-}
-
-fn project_template_settings_lab_path(root: &Path) -> PathBuf {
-    overrides_dir(root).join("project-template-settings-lab.json")
+    with_design_store(root, config, |conn, _| {
+        save_json_setting(conn, &lab_key("project_list"), &prefs)?;
+        Ok(json!({ "status": "ok", "prefs": prefs }))
+    })
 }
 
 fn default_project_template_settings_lab_prefs() -> Value {
@@ -476,17 +433,21 @@ fn default_project_template_settings_lab_prefs() -> Value {
     })
 }
 
-pub fn load_project_template_settings_lab_prefs(root: &Path) -> Value {
-    let doc = read_json(&project_template_settings_lab_path(root))
-        .unwrap_or_else(default_project_template_settings_lab_prefs);
-    json!({
-        "status": "ok",
-        "prefs": doc,
+pub fn load_project_template_settings_lab_prefs(root: &Path, config: &AppConfig) -> Value {
+    with_design_store(root, config, |conn, _| {
+        let doc = load_json_setting(conn, &lab_key("project_template_settings"))?
+            .unwrap_or_else(default_project_template_settings_lab_prefs);
+        Ok(json!({
+            "status": "ok",
+            "prefs": doc,
+        }))
     })
+    .unwrap_or_else(|_| json!({ "status": "error" }))
 }
 
 pub fn save_project_template_settings_lab_prefs(
     root: &Path,
+    config: &AppConfig,
     prefs: Value,
 ) -> Result<Value, String> {
     let mode = design_mode(root);
@@ -496,20 +457,10 @@ pub fn save_project_template_settings_lab_prefs(
     if mode == "password" {
         return Err("Spremanje zahtijeva admin autentifikaciju (još nije implementirano).".into());
     }
-    let path = project_template_settings_lab_path(root);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())? + "\n",
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(json!({ "status": "ok", "prefs": prefs }))
-}
-
-fn ingest_clip_grid_lab_path(root: &Path) -> PathBuf {
-    overrides_dir(root).join("ingest-clip-grid-lab.json")
+    with_design_store(root, config, |conn, _| {
+        save_json_setting(conn, &lab_key("project_template_settings"), &prefs)?;
+        Ok(json!({ "status": "ok", "prefs": prefs }))
+    })
 }
 
 fn default_ingest_clip_grid_lab_prefs() -> Value {
@@ -521,19 +472,23 @@ fn default_ingest_clip_grid_lab_prefs() -> Value {
     })
 }
 
-pub fn load_ingest_clip_grid_lab_prefs(root: &Path) -> Value {
-    let primary = read_json(&ingest_clip_grid_lab_path(root));
-    let legacy = read_json(&overrides_dir(root).join("ingest-proxy-clip-grid-lab.json"));
-    let doc = primary
-        .or(legacy)
-        .unwrap_or_else(default_ingest_clip_grid_lab_prefs);
-    json!({
-        "status": "ok",
-        "prefs": doc,
+pub fn load_ingest_clip_grid_lab_prefs(root: &Path, config: &AppConfig) -> Value {
+    with_design_store(root, config, |conn, _| {
+        let doc = load_json_setting(conn, &lab_key("ingest_clip_grid"))?
+            .unwrap_or_else(default_ingest_clip_grid_lab_prefs);
+        Ok(json!({
+            "status": "ok",
+            "prefs": doc,
+        }))
     })
+    .unwrap_or_else(|_| json!({ "status": "error" }))
 }
 
-pub fn save_ingest_clip_grid_lab_prefs(root: &Path, prefs: Value) -> Result<Value, String> {
+pub fn save_ingest_clip_grid_lab_prefs(
+    root: &Path,
+    config: &AppConfig,
+    prefs: Value,
+) -> Result<Value, String> {
     let mode = design_mode(root);
     if mode == "off" {
         return Err("Design editor je isključen.".into());
@@ -541,14 +496,8 @@ pub fn save_ingest_clip_grid_lab_prefs(root: &Path, prefs: Value) -> Result<Valu
     if mode == "password" {
         return Err("Spremanje zahtijeva admin autentifikaciju (još nije implementirano).".into());
     }
-    let path = ingest_clip_grid_lab_path(root);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())? + "\n",
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(json!({ "status": "ok", "prefs": prefs }))
+    with_design_store(root, config, |conn, _| {
+        save_json_setting(conn, &lab_key("ingest_clip_grid"), &prefs)?;
+        Ok(json!({ "status": "ok", "prefs": prefs }))
+    })
 }

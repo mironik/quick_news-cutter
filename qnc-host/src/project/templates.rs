@@ -4,10 +4,10 @@ use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 
 use super::db::{
-    deep_merge, ensure_project_dirs_at, export_dir_from_settings, export_projects_json,
-    json_string, now_str, open_project, parse_json, project_dir_in_root,
-    project_root_from_settings, slug_id, ProjectPaths,
+    deep_merge, ensure_project_dirs_at, export_dir_from_settings, now_str, open_project,
+    project_dir_in_root, project_root_from_settings, slug_id, ProjectPaths,
 };
+use super::kv::{load_object, load_string_list, replace_object, replace_string_list};
 use super::store::{record_project_opened, set_active_project_id, upsert_project_meta};
 
 #[derive(serde::Deserialize)]
@@ -45,17 +45,25 @@ pub fn ensure_templates_seeded(
         conn.execute(
             "INSERT INTO source_templates
                 (source_template_id, name, description, source_kind, system, config_json, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6, ?6)
+             VALUES (?1, ?2, ?3, ?4, 1, '{}', ?5, ?5)
              ON CONFLICT(source_template_id) DO NOTHING",
             params![
                 id,
                 src.get("name").and_then(|v| v.as_str()).unwrap_or(id),
                 src.get("description").and_then(|v| v.as_str()).unwrap_or(""),
                 src.get("source_kind").and_then(|v| v.as_str()).unwrap_or("local"),
-                json_string(&config),
                 now,
             ],
         )?;
+        if conn.changes() > 0 {
+            replace_object(
+                conn,
+                "source_template_kv",
+                "source_template_id",
+                id,
+                &config,
+            )?;
+        }
     }
     for tpl in seed.project_templates {
         let id = tpl
@@ -73,88 +81,162 @@ pub fn ensure_templates_seeded(
         conn.execute(
             "INSERT INTO project_templates
                 (template_id, name, description, system, settings_json, source_template_ids_json, created_at, updated_at)
-             VALUES (?1, ?2, ?3, 1, ?4, ?5, ?6, ?6)
+             VALUES (?1, ?2, ?3, 1, '{}', '[]', ?4, ?4)
              ON CONFLICT(template_id) DO NOTHING",
             params![
                 id,
                 tpl.get("name").and_then(|v| v.as_str()).unwrap_or(id),
                 tpl.get("description").and_then(|v| v.as_str()).unwrap_or(""),
-                json_string(&settings),
-                json_string(&source_ids),
                 now,
             ],
         )?;
+        if conn.changes() > 0 {
+            replace_object(conn, "project_template_kv", "template_id", id, &settings)?;
+            let source_list: Vec<String> = source_ids
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default();
+            replace_string_list(
+                conn,
+                "project_template_sources",
+                "template_id",
+                id,
+                "source_template_id",
+                &source_list,
+            )?;
+        }
     }
     Ok(())
 }
 
-fn template_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
-    let settings_raw: String = row.get("settings_json")?;
-    let sources_raw: String = row.get("source_template_ids_json")?;
-    Ok(json!({
-        "template_id": row.get::<_, String>("template_id")?,
-        "name": row.get::<_, String>("name")?,
-        "description": row.get::<_, String>("description")?,
-        "system": row.get::<_, i64>("system")? != 0,
-        "settings": parse_json(&settings_raw, json!({})),
-        "source_template_ids": parse_json(&sources_raw, json!([])),
-        "created_by": row.get::<_, Option<String>>("created_by")?,
-        "updated_by": row.get::<_, Option<String>>("updated_by")?,
-        "created_at": row.get::<_, Option<String>>("created_at")?,
-        "updated_at": row.get::<_, Option<String>>("updated_at")?,
-    }))
-}
-
-fn source_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
-    let config_raw: String = row.get("config_json")?;
-    Ok(json!({
-        "source_template_id": row.get::<_, String>("source_template_id")?,
-        "name": row.get::<_, String>("name")?,
-        "description": row.get::<_, String>("description")?,
-        "source_kind": row.get::<_, String>("source_kind")?,
-        "system": row.get::<_, i64>("system")? != 0,
-        "config": parse_json(&config_raw, json!({})),
-    }))
-}
-
 pub fn list_source_templates(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
     let mut stmt = conn.prepare("SELECT * FROM source_templates ORDER BY name")?;
-    let rows = stmt.query_map([], source_row)?;
-    rows.collect()
+    let ids: Vec<String> = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    drop(stmt);
+    let mut out = Vec::new();
+    for source_template_id in ids {
+        let mut stmt =
+            conn.prepare("SELECT * FROM source_templates WHERE source_template_id = ?1")?;
+        let mut row = stmt.query_row(params![source_template_id], |row| {
+            Ok(json!({
+                "source_template_id": row.get::<_, String>(0)?,
+                "name": row.get::<_, String>(1)?,
+                "description": row.get::<_, String>(2)?,
+                "source_kind": row.get::<_, String>(3)?,
+                "system": row.get::<_, i64>(4)? != 0,
+            }))
+        })?;
+        let config = load_object(
+            conn,
+            "source_template_kv",
+            "source_template_id",
+            &source_template_id,
+        )?;
+        if let Some(obj) = row.as_object_mut() {
+            obj.insert("config".into(), config);
+        }
+        out.push(row);
+    }
+    Ok(out)
 }
 
 pub fn list_project_templates(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
-    let mut stmt = conn.prepare("SELECT * FROM project_templates ORDER BY system DESC, name")?;
-    let rows = stmt.query_map([], template_row)?;
-    rows.collect()
+    let mut stmt =
+        conn.prepare("SELECT template_id FROM project_templates ORDER BY system DESC, name")?;
+    let ids: Vec<String> = stmt
+        .query_map([], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    drop(stmt);
+    let mut out = Vec::new();
+    for template_id in ids {
+        if let Some(item) = get_project_template(conn, &template_id)? {
+            out.push(item);
+        }
+    }
+    Ok(out)
 }
 
 pub fn get_project_template(
     conn: &Connection,
     template_id: &str,
 ) -> rusqlite::Result<Option<Value>> {
-    let mut stmt = conn.prepare("SELECT * FROM project_templates WHERE template_id = ?1")?;
-    let mut rows = stmt.query_map(params![template_id.trim()], template_row)?;
-    rows.next().transpose()
+    let tid = template_id.trim();
+    let row = conn.query_row(
+        "SELECT template_id, name, description, system, created_by, updated_by, created_at, updated_at
+         FROM project_templates WHERE template_id = ?1",
+        params![tid],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)? != 0,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, Option<String>>(7)?,
+            ))
+        },
+    );
+    let Ok((
+        template_id,
+        name,
+        description,
+        system,
+        created_by,
+        updated_by,
+        created_at,
+        updated_at,
+    )) = row
+    else {
+        return Ok(None);
+    };
+    let settings = load_object(conn, "project_template_kv", "template_id", &template_id)?;
+    let source_ids = load_string_list(
+        conn,
+        "project_template_sources",
+        "template_id",
+        &template_id,
+        "source_template_id",
+    )?;
+    Ok(Some(json!({
+        "template_id": template_id,
+        "name": name,
+        "description": description,
+        "system": system,
+        "settings": settings,
+        "source_template_ids": source_ids,
+        "created_by": created_by,
+        "updated_by": updated_by,
+        "created_at": created_at,
+        "updated_at": updated_at,
+    })))
 }
 
 pub fn get_project_settings(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Value> {
     let pid = project_id.trim();
     let conn = open_project(paths, pid)?;
-    let row: Option<(String, String)> = conn
+    let row: Option<String> = conn
         .query_row(
-            "SELECT template_id, settings_json FROM project_settings WHERE project_id = ?1",
+            "SELECT template_id FROM project_settings WHERE project_id = ?1",
             params![pid],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| r.get(0),
         )
         .ok();
-    let Some((template_id, settings_raw)) = row else {
+    let Some(template_id) = row else {
         return Ok(json!({}));
     };
+    let settings = load_object(&conn, "project_settings_kv", "project_id", pid)?;
     Ok(json!({
         "project_id": pid,
         "template_id": template_id,
-        "settings": parse_json(&settings_raw, json!({})),
+        "settings": settings,
     }))
 }
 
@@ -212,16 +294,15 @@ pub fn save_project_settings(
     conn.execute(
         "INSERT INTO project_settings
             (project_id, template_id, settings_json, created_by, updated_by, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         VALUES (?1, ?2, '{}', ?3, ?4, ?5, ?6)
          ON CONFLICT(project_id) DO UPDATE SET
             template_id = excluded.template_id,
-            settings_json = excluded.settings_json,
+            settings_json = '{}',
             updated_by = excluded.updated_by,
             updated_at = excluded.updated_at",
         params![
             pid,
             template_id,
-            json_string(settings),
             if created_by_val.is_empty() {
                 user_id
             } else {
@@ -232,6 +313,7 @@ pub fn save_project_settings(
             now,
         ],
     )?;
+    replace_object(&conn, "project_settings_kv", "project_id", pid, settings)?;
     get_project_settings(paths, pid)
 }
 
@@ -268,16 +350,31 @@ pub fn create_user_template(
         "INSERT INTO project_templates
             (template_id, name, description, system, settings_json, source_template_ids_json,
              created_by, updated_by, created_at, updated_at)
-         VALUES (?1, ?2, ?3, 0, ?4, ?5, ?6, ?6, ?7, ?7)",
-        params![
-            template_id,
-            name.trim(),
-            description.trim(),
-            json_string(&payload),
-            json_string(&source_ids),
-            user_id,
-            now,
-        ],
+         VALUES (?1, ?2, ?3, 0, '{}', '[]', ?4, ?4, ?5, ?5)",
+        params![template_id, name.trim(), description.trim(), user_id, now],
+    )?;
+    replace_object(
+        conn,
+        "project_template_kv",
+        "template_id",
+        &template_id,
+        &payload,
+    )?;
+    let source_list: Vec<String> = source_ids
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    replace_string_list(
+        conn,
+        "project_template_sources",
+        "template_id",
+        &template_id,
+        "source_template_id",
+        &source_list,
     )?;
     get_project_template(conn, &template_id)?
         .ok_or_else(|| rusqlite::Error::InvalidParameterName("template insert failed".into()))
@@ -344,7 +441,6 @@ pub fn create_project_from_template(
     write_project_workflow(&project_conn, &project_id, &settings)?;
     set_active_project_id(global, &project_id)?;
     record_project_opened(global, &project_id)?;
-    export_projects_json(paths, global);
     Ok(json!({
         "project": {
             "project_id": project_id,
@@ -420,18 +516,19 @@ fn save_template_snapshot(
     conn.execute(
         "INSERT INTO project_template_snapshot
             (project_id, template_id, template_name, template_version, snapshot_json, created_at)
-         VALUES (?1, ?2, ?3, '', ?4, ?5)
+         VALUES (?1, ?2, ?3, '', '{}', ?4)
          ON CONFLICT(project_id) DO UPDATE SET
             template_id = excluded.template_id,
             template_name = excluded.template_name,
-            snapshot_json = excluded.snapshot_json",
-        params![
-            project_id,
-            template_id,
-            template_name,
-            json_string(template),
-            now
-        ],
+            snapshot_json = '{}'",
+        params![project_id, template_id, template_name, now],
+    )?;
+    replace_object(
+        conn,
+        "project_snapshot_kv",
+        "project_id",
+        project_id,
+        template,
     )?;
     Ok(())
 }
@@ -518,25 +615,39 @@ fn ensure_project_workflow(
 
 fn list_workflow_steps(conn: &Connection, project_id: &str) -> rusqlite::Result<Vec<Value>> {
     let mut stmt = conn.prepare(
-        "SELECT step_id, plugin_id, tab_id, label, position, status, next_step_id, settings_json
+        "SELECT step_id, plugin_id, tab_id, label, position, status, next_step_id
          FROM project_workflow_steps
          WHERE project_id = ?1
          ORDER BY position, step_id",
     )?;
     let rows = stmt.query_map(params![project_id], |r| {
-        let settings_raw: String = r.get(7)?;
-        Ok(json!({
-            "step_id": r.get::<_, String>(0)?,
-            "plugin_id": r.get::<_, String>(1)?,
-            "tab_id": r.get::<_, String>(2)?,
-            "label": r.get::<_, String>(3)?,
-            "position": r.get::<_, i64>(4)?,
-            "status": r.get::<_, String>(5)?,
-            "next_step_id": r.get::<_, Option<String>>(6)?,
-            "settings": parse_json(&settings_raw, json!({})),
-        }))
+        let step_id: String = r.get(0)?;
+        Ok((
+            step_id,
+            r.get::<_, String>(1)?,
+            r.get::<_, String>(2)?,
+            r.get::<_, String>(3)?,
+            r.get::<_, i64>(4)?,
+            r.get::<_, String>(5)?,
+            r.get::<_, Option<String>>(6)?,
+        ))
     })?;
-    rows.collect()
+    let mut out = Vec::new();
+    for row in rows {
+        let (step_id, plugin_id, tab_id, label, position, status, next_step_id) = row?;
+        let settings = load_object(conn, "project_workflow_step_kv", "step_id", &step_id)?;
+        out.push(json!({
+            "step_id": step_id,
+            "plugin_id": plugin_id,
+            "tab_id": tab_id,
+            "label": label,
+            "position": position,
+            "status": status,
+            "next_step_id": next_step_id,
+            "settings": settings,
+        }));
+    }
+    Ok(out)
 }
 
 fn workflow_state(conn: &Connection, project_id: &str) -> rusqlite::Result<Value> {

@@ -11,7 +11,7 @@ use tracing::{info, warn};
 use crate::media::{import_source_path, is_breaking_news, proxy_policy_copy};
 use crate::project::db::{ensure_project_dirs, project_settings_snapshot, ProjectPaths};
 
-use super::db::{json_string, open_ingest, parse_json, thumbnail_path};
+use super::db::{ingest_asset_meta, open_ingest, thumbnail_path};
 use super::store::{reconcile_thumbnail_rows, row_import_error};
 
 #[derive(Clone)]
@@ -110,19 +110,42 @@ impl ImportWorker {
 
         let mut stmt = conn
             .prepare(
-                "SELECT source_id, clip_id, metadata_json, import_status
+                "SELECT source_id, clip_id, source_path, original_path, proxy_path,
+                        project_proxy_path, card_thumb_path, file_extension,
+                        read_from_card, card_locked, poster_source, import_status
                  FROM ingest_assets
                  WHERE import_status IN ('queued', 'processing')
                  ORDER BY clip_id",
             )
             .map_err(|e| e.to_string())?;
-        let rows: Vec<(String, String, String, String)> = stmt
+        let rows: Vec<(
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+            i64,
+            i64,
+            String,
+            String,
+        )> = stmt
             .query_map([], |r| {
                 Ok((
                     r.get::<_, String>(0)?,
                     r.get::<_, String>(1)?,
                     r.get::<_, String>(2)?,
                     r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, String>(5)?,
+                    r.get::<_, String>(6)?,
+                    r.get::<_, String>(7)?,
+                    r.get::<_, i64>(8)?,
+                    r.get::<_, i64>(9)?,
+                    r.get::<_, String>(10)?,
+                    r.get::<_, String>(11)?,
                 ))
             })
             .map_err(|e| e.to_string())?
@@ -133,7 +156,21 @@ impl ImportWorker {
         fs::create_dir_all(&proxy_dir).map_err(|e| e.to_string())?;
 
         let mut done = 0usize;
-        for (source_id, clip_id, meta_raw, status) in rows {
+        for (
+            source_id,
+            clip_id,
+            source_path,
+            original_path,
+            proxy_path,
+            _project_proxy_path,
+            card_thumb_path,
+            file_extension,
+            read_from_card,
+            card_locked,
+            poster_source,
+            status,
+        ) in rows
+        {
             if self.is_blocked(project_id) {
                 break;
             }
@@ -146,7 +183,17 @@ impl ImportWorker {
             )
             .map_err(|e| e.to_string())?;
 
-            let meta = parse_json(&meta_raw, json!({}));
+            let meta = ingest_asset_meta(
+                &source_path,
+                &original_path,
+                &proxy_path,
+                "",
+                &card_thumb_path,
+                &file_extension,
+                read_from_card != 0,
+                card_locked != 0,
+                &poster_source,
+            );
             let result = if breaking {
                 import_breaking_card(&meta, &project, copy_proxy, &proxy_dir, &clip_id)
             } else {
@@ -163,24 +210,13 @@ impl ImportWorker {
 
             match result {
                 Ok((dest_or_link, asset_status, on_card)) => {
-                    let mut new_meta = meta.clone();
-                    if let Some(obj) = new_meta.as_object_mut() {
-                        if on_card {
-                            obj.insert("read_from_card".into(), json!(true));
-                            obj.insert("card_locked".into(), json!(true));
-                            if dest_or_link.is_file() {
-                                obj.insert(
-                                    "project_proxy_path".into(),
-                                    json!(dest_or_link.to_string_lossy()),
-                                );
-                            }
-                        } else {
-                            obj.insert(
-                                "project_proxy_path".into(),
-                                json!(dest_or_link.to_string_lossy()),
-                            );
-                        }
-                    }
+                    let project_proxy_path = if dest_or_link.is_file() {
+                        dest_or_link.to_string_lossy().to_string()
+                    } else {
+                        String::new()
+                    };
+                    let read_from_card = on_card;
+                    let card_locked = on_card;
                     let poster = thumbnail_path(&self.paths, project_id, &clip_id);
                     let thumb_st = if poster.is_file() { "ready" } else { "pending" };
                     let thumb_path = if poster.is_file() {
@@ -188,29 +224,27 @@ impl ImportWorker {
                     } else {
                         String::new()
                     };
-                    let project_proxy_path = if dest_or_link.is_file() {
-                        dest_or_link.to_string_lossy().to_string()
-                    } else {
-                        String::new()
-                    };
                     conn.execute(
                         "UPDATE ingest_assets SET
                             import_status = 'imported',
-                            status = ?4,
-                            metadata_json = ?3,
-                            thumb_status = ?5,
+                            status = ?3,
+                            thumb_status = ?4,
                             thumb_error = '',
-                            project_proxy_path = ?6,
-                            thumb_path = CASE WHEN ?7 = '' THEN thumb_path ELSE ?7 END
+                            project_proxy_path = ?5,
+                            thumb_path = CASE WHEN ?6 = '' THEN thumb_path ELSE ?6 END,
+                            read_from_card = ?7,
+                            card_locked = ?8,
+                            metadata_json = '{}'
                          WHERE source_id = ?1 AND clip_id = ?2",
                         params![
                             source_id,
                             clip_id,
-                            json_string(&new_meta),
                             asset_status,
                             thumb_st,
                             project_proxy_path,
                             thumb_path,
+                            if read_from_card { 1 } else { 0 },
+                            if card_locked { 1 } else { 0 },
                         ],
                     )
                     .map_err(|e| e.to_string())?;

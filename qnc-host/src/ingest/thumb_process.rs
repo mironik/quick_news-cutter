@@ -7,7 +7,7 @@ use crate::media::{find_card_poster_copy, proxy_poster_source_path, CardPosterKi
 use crate::project::db::ProjectPaths;
 
 use super::db::{
-    copy_card_image_to_poster, ensure_ingest_dirs, get_meta, open_ingest, parse_json,
+    copy_card_image_to_poster, ensure_ingest_dirs, get_meta, ingest_asset_meta, open_ingest,
     poster_exists, set_thumb_ready_path, set_thumb_status, thumbnail_path,
 };
 use super::store::reconcile_thumbnail_rows;
@@ -73,19 +73,42 @@ pub fn copy_thumbs_from_card(
 
     let mut stmt = conn
         .prepare(
-            "SELECT source_id, clip_id, metadata_json, thumb_status
+            "SELECT source_id, clip_id, source_path, original_path, proxy_path,
+                    project_proxy_path, card_thumb_path, file_extension,
+                    read_from_card, card_locked, poster_source, thumb_status
              FROM ingest_assets
              WHERE thumb_status NOT IN ('ready')
              ORDER BY clip_id",
         )
         .map_err(|e| e.to_string())?;
-    let rows: Vec<(String, String, String, String)> = stmt
+    let rows: Vec<(
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        i64,
+        i64,
+        String,
+        String,
+    )> = stmt
         .query_map([], |r| {
             Ok((
                 r.get::<_, String>(0)?,
                 r.get::<_, String>(1)?,
                 r.get::<_, String>(2)?,
                 r.get::<_, String>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, String>(5)?,
+                r.get::<_, String>(6)?,
+                r.get::<_, String>(7)?,
+                r.get::<_, i64>(8)?,
+                r.get::<_, i64>(9)?,
+                r.get::<_, String>(10)?,
+                r.get::<_, String>(11)?,
             ))
         })
         .map_err(|e| e.to_string())?
@@ -95,31 +118,62 @@ pub fn copy_thumbs_from_card(
     let mut copied = 0usize;
     let mut no_thumb = Vec::new();
 
-    for (source_id, clip_id, meta_raw, status) in rows {
+    for (
+        source_id,
+        clip_id,
+        source_path,
+        original_path,
+        proxy_path,
+        project_proxy_path,
+        card_thumb_path,
+        file_extension,
+        read_from_card,
+        card_locked,
+        poster_source,
+        status,
+    ) in rows
+    {
         if status == "processing" {
             set_thumb_status(&conn, &source_id, &clip_id, "pending", "")
                 .map_err(|e| e.to_string())?;
         }
 
-        let mut meta = parse_json(&meta_raw, json!({}));
+        let mut meta = ingest_asset_meta(
+            &source_path,
+            &original_path,
+            &proxy_path,
+            &project_proxy_path,
+            &card_thumb_path,
+            &file_extension,
+            read_from_card != 0,
+            card_locked != 0,
+            &poster_source,
+        );
 
         if apply_card_poster_copy(paths, project_id, &clip_id, &mut meta, card_root.as_deref()) {
+            let card_thumb = meta
+                .get("card_thumb_path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let poster_src = meta
+                .get("poster_source")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             conn.execute(
                 "UPDATE ingest_assets SET
                     thumb_status = 'ready',
                     thumb_error = '',
                     thumb_path = ?3,
                     card_thumb_path = ?4,
-                    metadata_json = ?5
+                    poster_source = ?5,
+                    metadata_json = '{}'
                  WHERE source_id = ?1 AND clip_id = ?2",
                 rusqlite::params![
                     source_id,
                     clip_id,
                     thumbnail_path(paths, project_id, &clip_id).to_string_lossy(),
-                    meta.get("card_thumb_path")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or(""),
-                    serde_json::to_string(&meta).unwrap_or_default()
+                    card_thumb,
+                    poster_src,
                 ],
             )
             .map_err(|e| e.to_string())?;
@@ -167,19 +221,42 @@ pub fn generate_thumbs_from_proxy(
 
     let mut stmt = conn
         .prepare(
-            "SELECT source_id, clip_id, metadata_json, thumb_status
+            "SELECT source_id, clip_id, source_path, original_path, proxy_path,
+                    project_proxy_path, card_thumb_path, file_extension,
+                    read_from_card, card_locked, poster_source, thumb_status
              FROM ingest_assets
              WHERE thumb_status IN ('no_card_thumb', 'pending', 'error')
              ORDER BY clip_id",
         )
         .map_err(|e| e.to_string())?;
-    let rows: Vec<(String, String, String, String)> = stmt
+    let rows: Vec<(
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        i64,
+        i64,
+        String,
+        String,
+    )> = stmt
         .query_map([], |r| {
             Ok((
                 r.get::<_, String>(0)?,
                 r.get::<_, String>(1)?,
                 r.get::<_, String>(2)?,
                 r.get::<_, String>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, String>(5)?,
+                r.get::<_, String>(6)?,
+                r.get::<_, String>(7)?,
+                r.get::<_, i64>(8)?,
+                r.get::<_, i64>(9)?,
+                r.get::<_, String>(10)?,
+                r.get::<_, String>(11)?,
             ))
         })
         .map_err(|e| e.to_string())?
@@ -187,7 +264,21 @@ pub fn generate_thumbs_from_proxy(
         .map_err(|e| e.to_string())?;
 
     let mut done = 0usize;
-    for (source_id, clip_id, meta_raw, _) in rows {
+    for (
+        source_id,
+        clip_id,
+        source_path,
+        original_path,
+        proxy_path,
+        project_proxy_path,
+        card_thumb_path,
+        file_extension,
+        read_from_card,
+        card_locked,
+        poster_source,
+        _,
+    ) in rows
+    {
         if let Some(ref ids) = filter {
             if !ids.contains(&clip_id) {
                 continue;
@@ -195,25 +286,42 @@ pub fn generate_thumbs_from_proxy(
         }
 
         let poster = thumbnail_path(paths, project_id, &clip_id);
-        let mut meta = parse_json(&meta_raw, json!({}));
+        let mut meta = ingest_asset_meta(
+            &source_path,
+            &original_path,
+            &proxy_path,
+            &project_proxy_path,
+            &card_thumb_path,
+            &file_extension,
+            read_from_card != 0,
+            card_locked != 0,
+            &poster_source,
+        );
 
         if apply_card_poster_copy(paths, project_id, &clip_id, &mut meta, card_root.as_deref()) {
+            let card_thumb = meta
+                .get("card_thumb_path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let poster_src = meta
+                .get("poster_source")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             conn.execute(
                 "UPDATE ingest_assets SET
                     thumb_status = 'ready',
                     thumb_error = '',
                     thumb_path = ?3,
                     card_thumb_path = ?4,
-                    metadata_json = ?5
+                    poster_source = ?5,
+                    metadata_json = '{}'
                  WHERE source_id = ?1 AND clip_id = ?2",
                 rusqlite::params![
                     source_id,
                     clip_id,
                     thumbnail_path(paths, project_id, &clip_id).to_string_lossy(),
-                    meta.get("card_thumb_path")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or(""),
-                    serde_json::to_string(&meta).unwrap_or_default()
+                    card_thumb,
+                    poster_src,
                 ],
             )
             .map_err(|e| e.to_string())?;
@@ -247,22 +355,15 @@ pub fn generate_thumbs_from_proxy(
 
         match result {
             Ok(()) if poster_exists(&poster) => {
-                if let Some(obj) = meta.as_object_mut() {
-                    obj.insert("poster_source".into(), json!("proxy_ffmpeg"));
-                }
                 conn.execute(
                     "UPDATE ingest_assets SET
                         thumb_status = 'ready',
                         thumb_error = '',
                         thumb_path = ?3,
-                        metadata_json = ?4
+                        poster_source = 'proxy_ffmpeg',
+                        metadata_json = '{}'
                      WHERE source_id = ?1 AND clip_id = ?2",
-                    rusqlite::params![
-                        source_id,
-                        clip_id,
-                        poster.to_string_lossy(),
-                        serde_json::to_string(&meta).unwrap_or_default()
-                    ],
+                    rusqlite::params![source_id, clip_id, poster.to_string_lossy()],
                 )
                 .map_err(|e| e.to_string())?;
                 done += 1;

@@ -58,6 +58,91 @@ fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
         ",
     )?;
     migrate_thumb_columns(conn)?;
+    migrate_ingest_metadata_columns(conn)?;
+    Ok(())
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
+    conn.prepare(&format!("PRAGMA table_info({table})"))
+        .and_then(|mut stmt| {
+            stmt.query_map([], |row| row.get::<_, String>(1))
+                .map(|rows| rows.filter_map(Result::ok).any(|name| name == column))
+        })
+        .unwrap_or(false)
+}
+
+fn migrate_ingest_metadata_columns(conn: &Connection) -> rusqlite::Result<()> {
+    if !column_exists(conn, "ingest_assets", "file_extension") {
+        let _ = conn.execute(
+            "ALTER TABLE ingest_assets ADD COLUMN file_extension TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+    }
+    if !column_exists(conn, "ingest_assets", "poster_source") {
+        let _ = conn.execute(
+            "ALTER TABLE ingest_assets ADD COLUMN poster_source TEXT NOT NULL DEFAULT ''",
+            [],
+        );
+    }
+    if !column_exists(conn, "ingest_assets", "read_from_card") {
+        let _ = conn.execute(
+            "ALTER TABLE ingest_assets ADD COLUMN read_from_card INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+    }
+    if !column_exists(conn, "ingest_assets", "card_locked") {
+        let _ = conn.execute(
+            "ALTER TABLE ingest_assets ADD COLUMN card_locked INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
+    }
+    let mut stmt = conn.prepare(
+        "SELECT source_id, clip_id, metadata_json FROM ingest_assets WHERE metadata_json != '{}'",
+    )?;
+    let rows: Vec<(String, String, String)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    for (source_id, clip_id, raw) in rows {
+        let meta = parse_json(&raw, serde_json::json!({}));
+        let ext = meta.get("extension").and_then(|v| v.as_str()).unwrap_or("");
+        let poster = meta
+            .get("poster_source")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let read_from_card = meta
+            .get("read_from_card")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let card_locked = meta
+            .get("card_locked")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        conn.execute(
+            "UPDATE ingest_assets SET
+                file_extension = CASE WHEN file_extension = '' THEN ?3 ELSE file_extension END,
+                poster_source = CASE WHEN poster_source = '' THEN ?4 ELSE poster_source END,
+                read_from_card = CASE WHEN read_from_card = 0 AND ?5 = 1 THEN 1 ELSE read_from_card END,
+                card_locked = CASE WHEN card_locked = 0 AND ?6 = 1 THEN 1 ELSE card_locked END,
+                source_path = CASE WHEN source_path = '' THEN COALESCE(?7, '') ELSE source_path END,
+                original_path = CASE WHEN original_path = '' THEN COALESCE(?8, '') ELSE original_path END,
+                proxy_path = CASE WHEN proxy_path = '' THEN COALESCE(?9, '') ELSE proxy_path END,
+                card_thumb_path = CASE WHEN card_thumb_path = '' THEN COALESCE(?10, '') ELSE card_thumb_path END,
+                metadata_json = '{}'
+             WHERE source_id = ?1 AND clip_id = ?2",
+            params![
+                source_id,
+                clip_id,
+                ext,
+                poster,
+                if read_from_card { 1 } else { 0 },
+                if card_locked { 1 } else { 0 },
+                meta.get("source_path").and_then(|v| v.as_str()).unwrap_or(""),
+                meta.get("original_path").and_then(|v| v.as_str()).unwrap_or(""),
+                meta.get("proxy_path").and_then(|v| v.as_str()).unwrap_or(""),
+                meta.get("card_thumb_path").and_then(|v| v.as_str()).unwrap_or(""),
+            ],
+        )?;
+    }
     Ok(())
 }
 
@@ -171,8 +256,38 @@ pub fn parse_json(raw: &str, fallback: Value) -> Value {
     serde_json::from_str(raw).unwrap_or(fallback)
 }
 
-pub fn json_string(value: &Value) -> String {
-    serde_json::to_string(value).unwrap_or_else(|_| "{}".into())
+pub fn ingest_asset_meta(
+    source_path: &str,
+    original_path: &str,
+    proxy_path: &str,
+    project_proxy_path: &str,
+    card_thumb_path: &str,
+    file_extension: &str,
+    read_from_card: bool,
+    card_locked: bool,
+    poster_source: &str,
+) -> Value {
+    let mut obj = serde_json::Map::new();
+    for (key, val) in [
+        ("source_path", source_path),
+        ("original_path", original_path),
+        ("proxy_path", proxy_path),
+        ("project_proxy_path", project_proxy_path),
+        ("card_thumb_path", card_thumb_path),
+        ("extension", file_extension),
+        ("poster_source", poster_source),
+    ] {
+        if !val.trim().is_empty() {
+            obj.insert(key.into(), Value::String(val.to_string()));
+        }
+    }
+    if read_from_card {
+        obj.insert("read_from_card".into(), Value::Bool(true));
+    }
+    if card_locked {
+        obj.insert("card_locked".into(), Value::Bool(true));
+    }
+    Value::Object(obj)
 }
 
 pub fn thumbnail_path(paths: &ProjectPaths, project_id: &str, clip_id: &str) -> PathBuf {

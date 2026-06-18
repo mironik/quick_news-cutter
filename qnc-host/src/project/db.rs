@@ -150,13 +150,14 @@ pub fn project_settings_snapshot(
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .ok();
-    let Some((template_id, settings_raw)) = row else {
+    let Some((template_id, _settings_raw)) = row else {
         return Ok(json!({}));
     };
+    let settings = load_project_settings_object(&conn, pid)?;
     Ok(json!({
         "project_id": pid,
         "template_id": template_id,
-        "settings": parse_json(&settings_raw, json!({})),
+        "settings": settings,
     }))
 }
 
@@ -261,10 +262,117 @@ fn init_global_schema(conn: &Connection) -> rusqlite::Result<()> {
             enabled INTEGER NOT NULL DEFAULT 1,
             updated_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS project_template_kv (
+            template_id TEXT NOT NULL,
+            setting_key TEXT NOT NULL,
+            setting_value TEXT NOT NULL,
+            PRIMARY KEY (template_id, setting_key)
+        );
+        CREATE TABLE IF NOT EXISTS project_template_sources (
+            template_id TEXT NOT NULL,
+            source_template_id TEXT NOT NULL,
+            PRIMARY KEY (template_id, source_template_id)
+        );
+        CREATE TABLE IF NOT EXISTS source_template_kv (
+            source_template_id TEXT NOT NULL,
+            setting_key TEXT NOT NULL,
+            setting_value TEXT NOT NULL,
+            PRIMARY KEY (source_template_id, setting_key)
+        );
         ",
     )?;
     migrate_projects_columns(conn)?;
+    migrate_global_json_blobs_to_kv(conn)?;
     Ok(())
+}
+
+fn migrate_global_json_blobs_to_kv(conn: &Connection) -> rusqlite::Result<()> {
+    use super::kv::{kv_count, migrate_json_column_to_kv, replace_string_list};
+    migrate_json_column_to_kv(
+        conn,
+        "project_templates",
+        "template_id",
+        "settings_json",
+        "project_template_kv",
+    )?;
+    migrate_json_column_to_kv(
+        conn,
+        "source_templates",
+        "source_template_id",
+        "config_json",
+        "source_template_kv",
+    )?;
+    let mut stmt = conn.prepare(
+        "SELECT template_id, source_template_ids_json FROM project_templates
+         WHERE source_template_ids_json != '[]'",
+    )?;
+    let rows: Vec<(String, String)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    for (template_id, raw) in rows {
+        if kv_count(
+            conn,
+            "project_template_sources",
+            "template_id",
+            &template_id,
+        )? > 0
+        {
+            continue;
+        }
+        let ids = parse_json(&raw, json!([]));
+        let list: Vec<String> = ids
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default();
+        replace_string_list(
+            conn,
+            "project_template_sources",
+            "template_id",
+            &template_id,
+            "source_template_id",
+            &list,
+        )?;
+        conn.execute(
+            "UPDATE project_templates SET source_template_ids_json = '[]' WHERE template_id = ?1",
+            params![template_id],
+        )?;
+    }
+    Ok(())
+}
+
+fn migrate_project_db_kv(conn: &Connection) -> rusqlite::Result<()> {
+    use super::kv::migrate_json_column_to_kv;
+    migrate_json_column_to_kv(
+        conn,
+        "project_settings",
+        "project_id",
+        "settings_json",
+        "project_settings_kv",
+    )?;
+    migrate_json_column_to_kv(
+        conn,
+        "project_template_snapshot",
+        "project_id",
+        "snapshot_json",
+        "project_snapshot_kv",
+    )?;
+    migrate_json_column_to_kv(
+        conn,
+        "project_workflow_steps",
+        "step_id",
+        "settings_json",
+        "project_workflow_step_kv",
+    )?;
+    Ok(())
+}
+
+fn load_project_settings_object(conn: &Connection, project_id: &str) -> rusqlite::Result<Value> {
+    use super::kv::load_object;
+    load_object(conn, "project_settings_kv", "project_id", project_id)
 }
 
 fn migrate_projects_columns(conn: &Connection) -> rusqlite::Result<()> {
@@ -318,8 +426,27 @@ fn init_project_schema(conn: &Connection) -> rusqlite::Result<()> {
             entry_step_id TEXT,
             updated_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS project_settings_kv (
+            project_id TEXT NOT NULL,
+            setting_key TEXT NOT NULL,
+            setting_value TEXT NOT NULL,
+            PRIMARY KEY (project_id, setting_key)
+        );
+        CREATE TABLE IF NOT EXISTS project_snapshot_kv (
+            project_id TEXT NOT NULL,
+            setting_key TEXT NOT NULL,
+            setting_value TEXT NOT NULL,
+            PRIMARY KEY (project_id, setting_key)
+        );
+        CREATE TABLE IF NOT EXISTS project_workflow_step_kv (
+            step_id TEXT NOT NULL,
+            setting_key TEXT NOT NULL,
+            setting_value TEXT NOT NULL,
+            PRIMARY KEY (step_id, setting_key)
+        );
         ",
     )?;
+    migrate_project_db_kv(conn)?;
     Ok(())
 }
 
@@ -476,38 +603,6 @@ pub fn parse_json(raw: &str, fallback: Value) -> Value {
     serde_json::from_str(raw).unwrap_or(fallback)
 }
 
-pub fn export_projects_json(paths: &ProjectPaths, conn: &Connection) {
-    let active = get_setting(conn, "active_project_id", "").unwrap_or_default();
-    let mut stmt = conn
-        .prepare("SELECT project_id, name, project_dir, created_at, last_opened_at FROM projects ORDER BY project_id")
-        .ok();
-    let Some(ref mut stmt) = stmt else { return };
-    let rows = stmt
-        .query_map([], |r| {
-            Ok(json!({
-                "project_id": r.get::<_, String>(0)?,
-                "name": r.get::<_, String>(1)?,
-                "project_dir": r.get::<_, Option<String>>(2)?,
-                "created_at": r.get::<_, Option<String>>(3)?,
-                "last_opened_at": r.get::<_, Option<String>>(4)?,
-            }))
-        })
-        .ok();
-    let Some(rows) = rows else { return };
-    let mut projects = Vec::new();
-    for row in rows.flatten() {
-        projects.push(row);
-    }
-    let payload = json!({
-        "active_project_id": active,
-        "projects": projects,
-    });
-    if let Ok(text) = serde_json::to_string_pretty(&payload) {
-        fs::create_dir_all(&paths.data_dir).ok();
-        fs::write(paths.data_dir.join("projects.json"), text).ok();
-    }
-}
-
 pub fn ensure_project_dirs(paths: &ProjectPaths, project_id: &str) -> std::io::Result<()> {
     let base = paths.project_dir(project_id);
     ensure_project_dirs_at(&base)
@@ -522,7 +617,6 @@ pub fn ensure_project_dirs_at(base: &Path) -> std::io::Result<()> {
         "ingest/thumbnails",
         "filmstrip",
         "media_pool",
-        "transcripts",
     ] {
         let dir = if sub.is_empty() {
             base.to_path_buf()

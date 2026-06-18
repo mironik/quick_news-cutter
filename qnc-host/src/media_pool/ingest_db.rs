@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 
+use crate::ingest::db::ingest_asset_meta;
 use crate::project::db::{open_project, ProjectPaths};
 
 const VIDEO_EXT: &[&str] = &["mp4", "mov", "m4v", "mxf", "mts", "mkv", "avi", "webm"];
@@ -31,8 +32,9 @@ pub fn read_imported_clips(paths: &ProjectPaths, project_id: &str) -> Result<Vec
     }
     let mut stmt = conn
         .prepare(
-            "SELECT clip_id, name, duration_sec, import_status, status, metadata_json,
-                    project_proxy_path, proxy_path, thumb_path, source_path, original_path, card_thumb_path
+            "SELECT clip_id, name, duration_sec, import_status, status,
+                    project_proxy_path, proxy_path, thumb_path, source_path, original_path,
+                    card_thumb_path, file_extension, read_from_card, card_locked, poster_source
              FROM ingest_assets
              WHERE import_status = 'imported'
              ORDER BY clip_id",
@@ -41,19 +43,30 @@ pub fn read_imported_clips(paths: &ProjectPaths, project_id: &str) -> Result<Vec
     let rows = stmt
         .query_map([], |row| {
             let clip_id: String = row.get(0)?;
-            let meta_raw: String = row.get(5)?;
-            let meta = serde_json::from_str::<Value>(&meta_raw).unwrap_or_else(|_| json!({}));
-            let project_proxy_path = row.get::<_, String>(6).unwrap_or_default();
-            let ingest_proxy_path = row.get::<_, String>(7).unwrap_or_default();
-            let thumb_path = row.get::<_, String>(8).unwrap_or_default();
-            let source_path = row.get::<_, String>(9).unwrap_or_default();
-            let original_path = row.get::<_, String>(10).unwrap_or_default();
-            let card_thumb_path = row.get::<_, String>(11).unwrap_or_default();
+            let project_proxy_path = row.get::<_, String>(5).unwrap_or_default();
+            let ingest_proxy_path = row.get::<_, String>(6).unwrap_or_default();
+            let thumb_path = row.get::<_, String>(7).unwrap_or_default();
+            let source_path = row.get::<_, String>(8).unwrap_or_default();
+            let original_path = row.get::<_, String>(9).unwrap_or_default();
+            let card_thumb_path = row.get::<_, String>(10).unwrap_or_default();
+            let file_extension = row.get::<_, String>(11).unwrap_or_default();
+            let read_from_card = row.get::<_, i64>(12).unwrap_or(0) != 0;
+            let card_locked = row.get::<_, i64>(13).unwrap_or(0) != 0;
+            let poster_source = row.get::<_, String>(14).unwrap_or_default();
+            let meta = ingest_asset_meta(
+                &source_path,
+                &original_path,
+                &ingest_proxy_path,
+                &project_proxy_path,
+                &card_thumb_path,
+                &file_extension,
+                read_from_card,
+                card_locked,
+                &poster_source,
+            );
             let proxy_path = Some(project_proxy_path.as_str())
                 .filter(|s| !s.trim().is_empty())
                 .or_else(|| Some(ingest_proxy_path.as_str()).filter(|s| !s.trim().is_empty()))
-                .or_else(|| meta.get("project_proxy_path").and_then(|v| v.as_str()))
-                .or_else(|| meta.get("proxy_path").and_then(|v| v.as_str()))
                 .filter(|s| !s.is_empty())
                 .map(PathBuf::from)
                 .filter(|p| p.is_file());

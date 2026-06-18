@@ -19,22 +19,51 @@ pub fn get_workflow(paths: &ProjectPaths, project_id: &str) -> Result<Value, Str
     get_workflow_conn(&conn)
 }
 
+fn ensure_workflow_row(conn: &Connection) -> Result<(), String> {
+    let now = now_str();
+    conn.execute(
+        "INSERT OR IGNORE INTO media_pool_workflow (id, updated_at) VALUES (1, ?1)",
+        params![now],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn selected_clip_ids(conn: &Connection) -> Result<Vec<String>, String> {
+    let mut stmt = conn
+        .prepare("SELECT clip_id FROM media_pool_workflow_selection ORDER BY clip_id")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| r.get(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(rows)
+}
+
 fn get_workflow_conn(conn: &Connection) -> Result<Value, String> {
-    let raw: Option<String> = conn
+    ensure_workflow_row(conn)?;
+    let (current_clip_id, mark_in, mark_out, active_shot): (
+        String,
+        Option<f64>,
+        Option<f64>,
+        String,
+    ) = conn
         .query_row(
-            "SELECT state_json FROM media_pool_workflow WHERE id = 1",
+            "SELECT current_clip_id, mark_in_sec, mark_out_sec, active_virtual_shot_id
+                 FROM media_pool_workflow WHERE id = 1",
             [],
-            |r| r.get(0),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
-        .ok();
-    let Some(raw) = raw else {
-        return Ok(default_workflow());
-    };
-    let mut state = serde_json::from_str::<Value>(&raw).unwrap_or_else(|_| default_workflow());
-    if !state.is_object() {
-        state = default_workflow();
-    }
-    normalize_workflow(state)
+        .map_err(|e| e.to_string())?;
+    let selected = selected_clip_ids(conn)?;
+    Ok(json!({
+        "selected_clip_ids": selected,
+        "current_clip_id": current_clip_id,
+        "mark_in_sec": mark_in.map(|v| json!(v)).unwrap_or(Value::Null),
+        "mark_out_sec": mark_out.map(|v| json!(v)).unwrap_or(Value::Null),
+        "active_virtual_shot_id": active_shot,
+    }))
 }
 
 pub fn patch_workflow(
@@ -43,17 +72,56 @@ pub fn patch_workflow(
     patch: &Value,
 ) -> Result<Value, String> {
     let conn = open_db(paths, project_id)?;
+    ensure_workflow_row(&conn)?;
     let mut current = get_workflow_conn(&conn)?;
     apply_workflow_patch(&mut current, patch);
     normalize_workflow_in_place(&mut current);
+    persist_workflow(&conn, &current)?;
+    get_workflow_conn(&conn)
+}
+
+fn persist_workflow(conn: &Connection, state: &Value) -> Result<(), String> {
+    let obj = state
+        .as_object()
+        .ok_or_else(|| "workflow nije objekt".to_string())?;
+    let current_clip_id = obj
+        .get("current_clip_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let active_shot = obj
+        .get("active_virtual_shot_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let mark_in = obj.get("mark_in_sec").and_then(|v| v.as_f64());
+    let mark_out = obj.get("mark_out_sec").and_then(|v| v.as_f64());
     let now = now_str();
     conn.execute(
-        "INSERT INTO media_pool_workflow (id, state_json, updated_at) VALUES (1, ?1, ?2)
-         ON CONFLICT(id) DO UPDATE SET state_json = excluded.state_json, updated_at = excluded.updated_at",
-        params![current.to_string(), now],
+        "UPDATE media_pool_workflow SET
+           current_clip_id = ?1,
+           mark_in_sec = ?2,
+           mark_out_sec = ?3,
+           active_virtual_shot_id = ?4,
+           updated_at = ?5
+         WHERE id = 1",
+        params![current_clip_id, mark_in, mark_out, active_shot, now],
     )
     .map_err(|e| e.to_string())?;
-    Ok(current)
+    if let Some(ids) = obj.get("selected_clip_ids").and_then(|v| v.as_array()) {
+        conn.execute("DELETE FROM media_pool_workflow_selection", [])
+            .map_err(|e| e.to_string())?;
+        for id in ids.iter().filter_map(|v| v.as_str()) {
+            let trimmed = id.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            conn.execute(
+                "INSERT INTO media_pool_workflow_selection (clip_id, added_at) VALUES (?1, ?2)",
+                params![trimmed, now],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 fn apply_workflow_patch(state: &mut Value, patch: &Value) {
@@ -140,11 +208,6 @@ fn apply_workflow_patch(state: &mut Value, patch: &Value) {
     }
 }
 
-fn normalize_workflow(mut state: Value) -> Result<Value, String> {
-    normalize_workflow_in_place(&mut state);
-    Ok(state)
-}
-
 fn normalize_workflow_in_place(state: &mut Value) {
     let defaults = default_workflow();
     let Some(obj) = state.as_object_mut() else {
@@ -159,10 +222,10 @@ fn normalize_workflow_in_place(state: &mut Value) {
             obj.insert(key.clone(), default_val.clone());
         }
     }
-    if !obj
+    if obj
         .get("selected_clip_ids")
         .and_then(|v| v.as_array())
-        .is_some()
+        .is_none()
     {
         obj.insert("selected_clip_ids".into(), json!([]));
     }

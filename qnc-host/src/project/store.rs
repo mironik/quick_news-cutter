@@ -8,8 +8,8 @@ use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 
 use super::db::{
-    ensure_project_dirs, ensure_project_store, export_projects_json, get_setting, now_str,
-    project_dir_in_root, set_setting, slug_id, ProjectPaths,
+    ensure_project_dirs, ensure_project_store, get_setting, now_str, project_dir_in_root,
+    set_setting, slug_id, ProjectPaths,
 };
 
 pub fn get_active_project_id(conn: &Connection) -> rusqlite::Result<String> {
@@ -143,7 +143,6 @@ pub fn create_project(
     )?;
     record_project_opened(conn, &project_id)?;
     set_active_project_id(conn, &project_id)?;
-    export_projects_json(paths, conn);
     Ok(json!({
         "project_id": project_id,
         "name": label,
@@ -154,7 +153,7 @@ pub fn create_project(
 
 pub fn open_project(
     conn: &Connection,
-    paths: &ProjectPaths,
+    _paths: &ProjectPaths,
     project_id: &str,
 ) -> rusqlite::Result<Option<Value>> {
     let pid = project_id.trim();
@@ -162,7 +161,6 @@ pub fn open_project(
         if p.get("project_id").and_then(|v| v.as_str()) == Some(pid) {
             set_active_project_id(conn, pid)?;
             record_project_opened(conn, pid)?;
-            export_projects_json(paths, conn);
             return Ok(Some(p));
         }
     }
@@ -228,7 +226,6 @@ pub fn delete_projects(
             .to_string();
         set_active_project_id(conn, &active)?;
     }
-    export_projects_json(paths, conn);
     Ok((remove, vec![]))
 }
 

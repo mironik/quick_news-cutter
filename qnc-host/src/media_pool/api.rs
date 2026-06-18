@@ -13,6 +13,7 @@ use crate::ingest::thumb::extract_poster_jpeg_at_seek;
 use crate::media_pool::db::{add_virtual_shot, list_virtual_shots};
 use crate::media_pool::ingest_db::proxy_path_for_clip;
 use crate::media_pool::store::{list_clips_enriched, mark_filmstrip_building};
+use crate::media_pool::transcripts::{get_transcript, save_transcript};
 use crate::media_pool::workflow::{get_workflow, patch_workflow};
 
 #[derive(serde::Deserialize)]
@@ -77,10 +78,19 @@ struct VirtualShotBody {
     out_seconds: f64,
 }
 
+#[derive(serde::Deserialize)]
+struct TranscriptQuery {
+    #[serde(default)]
+    project_id: String,
+    clip_id: String,
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/media-pool/clips", get(api_clips))
         .route("/api/media-pool/workflow", post(api_workflow_patch))
+        .route("/api/media-pool/transcript", get(api_transcript_get))
+        .route("/api/media-pool/transcript", post(api_transcript_save))
         .route("/api/media-pool/media", get(api_media))
         .route("/api/media-pool/thumbnail", get(api_thumbnail))
         .route("/api/media-pool/timeline/build", post(api_timeline_build))
@@ -119,6 +129,56 @@ async fn api_workflow_patch(
         "status": "ok",
         "project_id": pid,
         "workflow": workflow,
+    })))
+}
+
+async fn api_transcript_get(
+    State(app): State<AppState>,
+    Query(q): Query<TranscriptQuery>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(&app, &q.project_id)?;
+    let clip_id = q.clip_id.trim();
+    if clip_id.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "clip_id je prazan".into()));
+    }
+    let transcript = get_transcript(&app.project.paths, &pid, clip_id).map_err(internal)?;
+    Ok(Json(json!({
+        "project_id": pid,
+        "clip_id": clip_id,
+        "transcript": transcript,
+    })))
+}
+
+async fn api_transcript_save(
+    State(app): State<AppState>,
+    Json(body): Json<Value>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(
+        &app,
+        body.get("project_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
+    )?;
+    let clip_id = body
+        .get("clip_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
+    if clip_id.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "clip_id je prazan".into()));
+    }
+    let status = body
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("complete");
+    let transcript = body.get("transcript").cloned().unwrap_or(json!({}));
+    let saved = save_transcript(&app.project.paths, &pid, clip_id, status, &transcript)
+        .map_err(internal)?;
+    Ok(Json(json!({
+        "status": "ok",
+        "project_id": pid,
+        "clip_id": clip_id,
+        "saved": saved,
     })))
 }
 

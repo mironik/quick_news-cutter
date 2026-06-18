@@ -17,6 +17,7 @@ mod app_state;
 mod components;
 mod config;
 mod design;
+mod design_db;
 mod filmstrip;
 mod ingest;
 mod media;

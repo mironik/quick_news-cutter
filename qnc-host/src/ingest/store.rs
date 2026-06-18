@@ -10,8 +10,8 @@ use crate::media::{
 use crate::project::db::{project_display_name, project_settings_snapshot, ProjectPaths};
 
 use super::db::{
-    ensure_ingest_dirs, get_meta, json_string, open_ingest, parse_json, poster_exists, set_meta,
-    set_thumb_status, thumbnail_path, thumbnail_url,
+    ensure_ingest_dirs, get_meta, open_ingest, poster_exists, set_meta, set_thumb_status,
+    thumbnail_path, thumbnail_url,
 };
 use super::scanner;
 use super::thumb_process::{apply_card_poster_copy, copy_thumbs_from_card, CardThumbCopyResult};
@@ -23,9 +23,16 @@ fn row_to_clip(
     project: &Value,
 ) -> rusqlite::Result<Value> {
     let clip_id: String = row.get("clip_id")?;
-    let meta_raw: String = row.get("metadata_json")?;
-    let meta = parse_json(&meta_raw, json!({}));
-    let ext = meta.get("extension").and_then(|v| v.as_str()).unwrap_or("");
+    let ext: String = row
+        .get::<_, Option<String>>("file_extension")
+        .unwrap_or_default()
+        .unwrap_or_default();
+    let read_from_card = row.get::<_, i64>("read_from_card").unwrap_or(0) != 0;
+    let card_locked = row.get::<_, i64>("card_locked").unwrap_or(0) != 0;
+    let poster_source: String = row
+        .get::<_, Option<String>>("poster_source")
+        .unwrap_or_default()
+        .unwrap_or_default();
     let thumb_status: String = row
         .get::<_, Option<String>>("thumb_status")?
         .unwrap_or_else(|| "pending".into());
@@ -72,52 +79,53 @@ fn row_to_clip(
         let card_thumb_path: String = row.get("card_thumb_path").unwrap_or_default();
         if !source_path.trim().is_empty() {
             obj.insert("source_path".into(), json!(source_path));
-        } else if let Some(p) = meta.get("source_path").and_then(|v| v.as_str()) {
-            obj.insert("source_path".into(), json!(p));
         }
         if !original_path.trim().is_empty() {
             obj.insert("original_path".into(), json!(original_path));
-        } else if let Some(p) = meta.get("original_path").and_then(|v| v.as_str()) {
-            obj.insert("original_path".into(), json!(p));
         }
         if !proxy_path.trim().is_empty() {
             obj.insert("proxy_path".into(), json!(proxy_path));
-        } else if let Some(p) = meta.get("proxy_path").and_then(|v| v.as_str()) {
-            obj.insert("proxy_path".into(), json!(p));
         }
         if !project_proxy_path.trim().is_empty() {
             obj.insert("project_proxy_path".into(), json!(project_proxy_path));
-        } else if let Some(p) = meta.get("project_proxy_path").and_then(|v| v.as_str()) {
-            obj.insert("project_proxy_path".into(), json!(p));
         }
         if !thumb_path.trim().is_empty() {
             obj.insert("thumb_path".into(), json!(thumb_path));
         }
         if !card_thumb_path.trim().is_empty() {
             obj.insert("card_thumb_path".into(), json!(card_thumb_path));
-        } else if let Some(p) = meta.get("card_thumb_path").and_then(|v| v.as_str()) {
-            obj.insert("card_thumb_path".into(), json!(p));
         }
-        if let Some(p) = meta.get("poster_source").and_then(|v| v.as_str()) {
-            obj.insert("poster_source".into(), json!(p));
+        if !poster_source.is_empty() {
+            obj.insert("poster_source".into(), json!(poster_source));
         }
-        if meta
-            .get("read_from_card")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
-        {
+        if read_from_card {
             obj.insert("read_from_card".into(), json!(true));
         }
-        if meta
-            .get("card_locked")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
-        {
+        if card_locked {
             obj.insert("card_locked".into(), json!(true));
         }
-        let import_label = import_display_label(&meta, project);
+        let import_label = import_display_label(
+            &json!({
+                "source_path": source_path,
+                "original_path": original_path,
+                "proxy_path": proxy_path,
+                "card_thumb_path": card_thumb_path,
+                "extension": ext,
+                "read_from_card": read_from_card,
+                "card_locked": card_locked,
+                "poster_source": poster_source,
+            }),
+            project,
+        );
         obj.insert("import_label".into(), json!(import_label));
-        if let Some(p) = crate::media::import_source_path(&meta, project) {
+        if let Some(p) = crate::media::import_source_path(
+            &json!({
+                "source_path": source_path,
+                "original_path": original_path,
+                "proxy_path": proxy_path,
+            }),
+            project,
+        ) {
             obj.insert("import_path".into(), json!(p.to_string_lossy()));
         }
     }
@@ -219,27 +227,31 @@ pub fn discover(
     }))
 }
 
-fn metadata_has_video(meta: &Value) -> bool {
-    for key in ["original_path", "proxy_path"] {
-        if let Some(s) = meta.get(key).and_then(|v| v.as_str()) {
-            let p = PathBuf::from(s.trim());
-            if p.is_file() && (is_media_file(&p) || is_proxy_media_path(&p)) {
-                return true;
-            }
+fn metadata_has_video(source_path: &str, original_path: &str, proxy_path: &str) -> bool {
+    for s in [source_path, original_path, proxy_path] {
+        if s.trim().is_empty() {
+            continue;
+        }
+        let p = PathBuf::from(s.trim());
+        if p.is_file() && (is_media_file(&p) || is_proxy_media_path(&p)) {
+            return true;
         }
     }
     false
 }
 
 fn purge_non_video_clips(conn: &rusqlite::Connection, source_id: &str) -> rusqlite::Result<()> {
-    let mut stmt =
-        conn.prepare("SELECT clip_id, metadata_json FROM ingest_assets WHERE source_id = ?1")?;
-    let rows: Vec<(String, String)> = stmt
-        .query_map(params![source_id], |r| Ok((r.get(0)?, r.get(1)?)))?
+    let mut stmt = conn.prepare(
+        "SELECT clip_id, source_path, original_path, proxy_path
+         FROM ingest_assets WHERE source_id = ?1",
+    )?;
+    let rows: Vec<(String, String, String, String)> = stmt
+        .query_map(params![source_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+        })?
         .collect::<Result<_, _>>()?;
-    for (clip_id, meta_raw) in rows {
-        let meta = parse_json(&meta_raw, json!({}));
-        if !metadata_has_video(&meta) {
+    for (clip_id, source_path, original_path, proxy_path) in rows {
+        if !metadata_has_video(&source_path, &original_path, &proxy_path) {
             conn.execute(
                 "DELETE FROM ingest_assets WHERE source_id = ?1 AND clip_id = ?2",
                 params![source_id, clip_id],
@@ -258,13 +270,12 @@ fn reconcile_source_assets(
         return Ok(());
     }
     let valid: HashSet<String> = valid_clip_ids.iter().cloned().collect();
-    let mut stmt =
-        conn.prepare("SELECT clip_id, metadata_json FROM ingest_assets WHERE source_id = ?1")?;
-    let rows: Vec<(String, String)> = stmt
-        .query_map(params![source_id], |r| Ok((r.get(0)?, r.get(1)?)))?
+    let mut stmt = conn.prepare("SELECT clip_id FROM ingest_assets WHERE source_id = ?1")?;
+    let rows: Vec<String> = stmt
+        .query_map(params![source_id], |r| r.get(0))?
         .collect::<Result<_, _>>()?;
 
-    for (clip_id, _meta_raw) in rows {
+    for clip_id in rows {
         if valid.contains(&clip_id) {
             continue;
         }
@@ -570,14 +581,25 @@ fn upsert_media_group(
     let original_path = path_text_from_meta(&meta, "original_path");
     let proxy_path = path_text_from_meta(&meta, "proxy_path");
     let card_thumb_path = path_text_from_meta(&meta, "card_thumb_path");
+    let file_extension = path_text_from_meta(&meta, "extension");
+    let read_from_card = meta
+        .get("read_from_card")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let card_locked = meta
+        .get("card_locked")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let poster_source = path_text_from_meta(&meta, "poster_source");
     conn.execute(
         "INSERT INTO ingest_assets
             (source_id, clip_id, name, media_id, duration_sec, resolution, codec, fps,
              status, import_status, selected, thumb_color_a, thumb_color_b,
              thumb_status, thumb_error, source_path, original_path, proxy_path,
-             project_proxy_path, thumb_path, card_thumb_path, metadata_json)
+             project_proxy_path, thumb_path, card_thumb_path, file_extension, poster_source,
+             read_from_card, card_locked, metadata_json)
          VALUES (?1, ?2, ?3, ?4, 0, '', ?5, 0, 'on_source', 'detected', 1, ?6, ?7, ?8, '',
-             ?9, ?10, ?11, '', ?12, ?13, ?14)
+             ?9, ?10, ?11, '', ?12, ?13, ?14, ?15, ?16, ?17, '{}')
          ON CONFLICT(source_id, clip_id) DO UPDATE SET
             name = excluded.name,
             codec = excluded.codec,
@@ -594,7 +616,11 @@ fn upsert_media_group(
             proxy_path = excluded.proxy_path,
             thumb_path = CASE WHEN excluded.thumb_path = '' THEN ingest_assets.thumb_path ELSE excluded.thumb_path END,
             card_thumb_path = CASE WHEN excluded.card_thumb_path = '' THEN ingest_assets.card_thumb_path ELSE excluded.card_thumb_path END,
-            metadata_json = excluded.metadata_json,
+            file_extension = excluded.file_extension,
+            poster_source = excluded.poster_source,
+            read_from_card = excluded.read_from_card,
+            card_locked = excluded.card_locked,
+            metadata_json = '{}',
             selected = ingest_assets.selected,
             import_status = ingest_assets.import_status",
         params![
@@ -611,7 +637,10 @@ fn upsert_media_group(
             proxy_path,
             thumb_path,
             card_thumb_path,
-            json_string(&meta),
+            file_extension,
+            poster_source,
+            if read_from_card { 1 } else { 0 },
+            if card_locked { 1 } else { 0 },
         ],
     )?;
     Ok(1)
