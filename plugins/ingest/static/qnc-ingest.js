@@ -1,15 +1,19 @@
-/* Ingest tab — orchestrator. Stanje samo u ingest.db (SQLite); UI čita/zapisuje preko API-ja. */
+/* Ingest tab — Plugin SDK v1 orchestrator. Stanje samo u bazi; UI = snapshot. */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
+  if (!QNC.createPluginApp) {
+    console.error('[Ingest] QNC.createPluginApp nije učitan (qnc-plugin-sdk.js)');
+    return;
+  }
+
   const runtime = {
     busy: false,
-    orchestratorReady: false,
-    busDisposers: [],
-    /** Zadnji snapshot iz baze — samo reloadFromDb() → syncFromDb(), nikad lokalna mutacija. */
-    db: null,
     thumbPollTimer: null,
+    mounted: false,
   };
+
+  const PLUGIN_CTX = { pluginId: 'ingest' };
 
   const GRID_FEATURES = {
     density: 'comfortable',
@@ -30,236 +34,183 @@ window.QNC = window.QNC || {};
     return (root || panel() || document).querySelector(selector);
   }
 
-  function toolbarApi() {
-    return QNC.components?.get?.('ingest-toolbar');
+  function comp(id) {
+    return QNC.components?.get?.(id);
   }
 
-  function sourceApi() {
-    return QNC.components?.get?.('ingest-source-picker');
+  function snap(ctx) {
+    return ctx.store.get('ingest.state') || {};
   }
 
-  function actionsApi() {
-    return QNC.components?.get?.('ingest-actions');
+  function clips(ctx) {
+    return snap(ctx).clips || [];
   }
 
-  function gridApi() {
-    return QNC.components?.get?.('ingest-clip-grid');
+  function selectedClipIds(ctx) {
+    return (snap(ctx).selected_clip_ids || []).map(String);
   }
 
-  function toolbarRoot() {
-    return q('[data-qnc-panel="ingest-toolbar"]');
-  }
-
-  function sourceRoot() {
-    return q('[data-qnc-panel="ingest-source-picker"]');
-  }
-
-  function actionsRoot() {
-    return q('[data-qnc-panel="ingest-actions"]');
-  }
-
-  function gridRoot() {
-    return q('[data-qnc-panel="ingest-clip-grid"]');
-  }
-
-  function ingestProjectId() {
-    return QNC.getProjectId?.() || '';
-  }
-
-  function clips() {
-    return runtime.db?.clips || [];
-  }
-
-  function selectedClipIds() {
-    return (runtime.db?.selected_clip_ids || []).map(String);
-  }
-
-  function syncFromDb(d) {
-    if (d && typeof d === 'object') {
-      runtime.db = d;
-    }
-    renderAll();
-    maybePollThumbnails();
-  }
-
-  function hasPendingThumbs() {
-    return (runtime.db?.clips || []).some((c) => {
+  function hasPendingThumbs(ctx) {
+    return clips(ctx).some((c) => {
       const st = String(c.thumb_status || '').toLowerCase();
       return st === 'pending' || st === 'processing';
     });
   }
 
-  function maybePollThumbnails() {
-    if (!hasPendingThumbs()) {
-      if (runtime.thumbPollTimer) {
-        clearInterval(runtime.thumbPollTimer);
-        runtime.thumbPollTimer = null;
-      }
+  function maybePollThumbnails(ctx) {
+    if (!hasPendingThumbs(ctx)) {
+      stopThumbPoll();
       return;
     }
     if (runtime.thumbPollTimer) return;
     runtime.thumbPollTimer = setInterval(() => {
-      reloadFromDb().catch(() => {});
-      if (!hasPendingThumbs()) {
-        clearInterval(runtime.thumbPollTimer);
-        runtime.thumbPollTimer = null;
-      }
+      ctx.store.reload('ingest.state').then(() => renderAll(ctx)).catch(() => {});
+      if (!hasPendingThumbs(ctx)) stopThumbPoll();
     }, 2000);
   }
 
-  async function reloadFromDb() {
-    const d = await QNC.api(
-      'GET',
-      '/api/ingest/state?project_id=' + encodeURIComponent(ingestProjectId())
-    );
-    syncFromDb(d);
-    return d;
+  function stopThumbPoll() {
+    if (runtime.thumbPollTimer) {
+      clearInterval(runtime.thumbPollTimer);
+      runtime.thumbPollTimer = null;
+    }
   }
 
-  /** Zapis u bazu preko API-ja, zatim uvijek puni snapshot iz GET /state. */
-  async function writeIngest(method, path, body) {
-    await QNC.api(method, path, body);
-    return reloadFromDb();
+  async function writeAndReload(ctx, actionId, body) {
+    await ctx.action(actionId, { project_id: ctx.projectId, ...(body || {}) });
+    return ctx.store.reload('ingest.state');
   }
 
-  function renderToolbar() {
-    const db = runtime.db || {};
-    toolbarApi()?.update?.(toolbarRoot(), {
-      project_id: db.project_id || ingestProjectId(),
-      project_name: db.project_name || db.project_id || '',
-      clip_count: clips().length,
-      selected_count: selectedClipIds().length,
-    }, { pluginId: 'ingest' });
+  function mountComponents() {
+    if (runtime.mounted) return;
+    comp('ingest-toolbar')?.mount?.(q('[data-qnc-panel="ingest-toolbar"]'), PLUGIN_CTX);
+    comp('ingest-source-picker')?.mount?.(q('[data-qnc-panel="ingest-source-picker"]'), PLUGIN_CTX);
+    comp('ingest-actions')?.mount?.(q('[data-qnc-panel="ingest-actions"]'), PLUGIN_CTX);
+    comp('ingest-clip-grid')?.mount?.(q('[data-qnc-panel="ingest-clip-grid"]'), PLUGIN_CTX);
+    runtime.mounted = true;
   }
 
-  function renderSourcePicker() {
-    const db = runtime.db || {};
-    sourceApi()?.update?.(sourceRoot(), {
-      sources: db.sources || [],
-      active_source_id: db.active_source_id || '',
-      browse_path: db.browse_path || '',
-    }, { pluginId: 'ingest' });
-  }
+  function renderAll(ctx) {
+    const db = snap(ctx);
+    const n = clips(ctx).length;
+    const sel = selectedClipIds(ctx).length;
 
-  function renderActions() {
-    const n = clips().length;
-    const sel = selectedClipIds().length;
-    actionsApi()?.update?.(actionsRoot(), {
-      busy: runtime.busy,
-      clip_count: n,
-      selected_count: sel,
-      all_selected: n > 0 && sel >= n,
-    }, { pluginId: 'ingest' });
-  }
-
-  function renderGrid() {
-    const api = gridApi();
-    const root = gridRoot();
-    if (!api || !root) return;
-    const n = clips().length;
-    const sel = selectedClipIds().length;
-    api.update(
-      root,
+    comp('ingest-toolbar')?.update?.(
+      q('[data-qnc-panel="ingest-toolbar"]'),
       {
-        clips: clips(),
-        selected_clip_ids: selectedClipIds(),
-        features: GRID_FEATURES,
-        status_text: n
-          ? sel + ' od ' + n + ' odabrano'
-          : 'Nema klipova — Otkrij materijal.',
+        project_id: db.project_id || ctx.projectId,
+        project_name: db.project_name || db.project_id || '',
+        clip_count: n,
+        selected_count: sel,
       },
-      { pluginId: 'ingest' }
+      PLUGIN_CTX
     );
-  }
 
-  function renderAll() {
-    renderGrid();
-    renderToolbar();
-    renderSourcePicker();
-    renderActions();
-  }
+    comp('ingest-source-picker')?.update?.(
+      q('[data-qnc-panel="ingest-source-picker"]'),
+      {
+        sources: db.sources || [],
+        active_source_id: db.active_source_id || '',
+        browse_path: db.browse_path || '',
+      },
+      PLUGIN_CTX
+    );
 
-  async function refreshAll() {
-    await reloadFromDb();
-  }
+    comp('ingest-actions')?.update?.(
+      q('[data-qnc-panel="ingest-actions"]'),
+      {
+        busy: runtime.busy,
+        clip_count: n,
+        selected_count: sel,
+        all_selected: n > 0 && sel >= n,
+      },
+      PLUGIN_CTX
+    );
 
-  async function toggleClip(clipId) {
-    const id = String(clipId || '').trim();
-    if (!id) return;
-    try {
-      await writeIngest('POST', '/api/ingest/selection/toggle', {
-        project_id: ingestProjectId(),
-        clip_id: id,
-      });
-    } catch (e) {
-      QNC.setBox('Odabir: ' + e.message, 'err');
-    }
-  }
-
-  async function selectAll() {
-    try {
-      await writeIngest('POST', '/api/ingest/selection/select-all', {
-        project_id: ingestProjectId(),
-      });
-    } catch (e) {
-      QNC.setBox('Odabir: ' + e.message, 'err');
-    }
-  }
-
-  async function runDiscover() {
-    if (runtime.busy) return;
-    runtime.busy = true;
-    renderActions();
-    QNC.setBox('Otkrivam materijal...', 'busy');
-    try {
-      const d = await writeIngest('POST', '/api/ingest/discover', {
-        project_id: ingestProjectId(),
-        source_id: runtime.db?.active_source_id || '',
-      });
-      maybePollThumbnails();
-      const n = (d?.clips || []).length;
-      QNC.setBox(
-        n ? 'Otkriveno ' + n + ' klipova.' : 'Nema klipova u mapi (mxf, mov, mp4…). Odaberi mapu.',
-        n ? 'ok' : 'err'
-      );
-    } catch (e) {
-      QNC.setBox('Otkrij: ' + e.message, 'err');
-    } finally {
-      runtime.busy = false;
-      renderActions();
-    }
-  }
-
-  async function runImport() {
-    if (runtime.busy) return;
-    const ids = selectedClipIds();
-    if (!ids.length) {
-      QNC.setBox('Odaberi klipove za uvoz.', 'err');
-      return;
-    }
-    runtime.busy = true;
-    renderActions();
-    try {
-      await writeIngest('POST', '/api/ingest/import', {
-        project_id: ingestProjectId(),
-        clip_ids: ids,
-      });
-      QNC.setBox('Uvoz u pozadini: ' + ids.length + ' klip(ova).', 'busy');
-      await QNC.nextTab?.('ingest');
-    } catch (e) {
-      QNC.setBox('Uvoz: ' + e.message, 'err');
-    } finally {
-      runtime.busy = false;
-      renderActions();
-    }
+    comp('ingest-clip-grid')?.update?.(
+      q('[data-qnc-panel="ingest-clip-grid"]'),
+      {
+        clips: clips(ctx),
+        selected_clip_ids: selectedClipIds(ctx),
+        features: GRID_FEATURES,
+        status_text: n ? sel + ' od ' + n + ' odabrano' : 'Nema klipova — Otkrij materijal.',
+      },
+      PLUGIN_CTX
+    );
   }
 
   function folderPicker() {
     return QNC.components?.get?.('folder-picker') || QNC.folderPicker || null;
   }
 
-  async function pickBrowse() {
-    const initial = runtime.db?.browse_path || '';
+  async function toggleClip(ctx, clipId) {
+    const id = String(clipId || '').trim();
+    if (!id) return;
+    try {
+      await writeAndReload(ctx, 'clip.toggle', { clip_id: id });
+      renderAll(ctx);
+      maybePollThumbnails(ctx);
+    } catch (e) {
+      ctx.setStatus('Odabir: ' + e.message, 'err');
+    }
+  }
+
+  async function selectAll(ctx) {
+    try {
+      await writeAndReload(ctx, 'ingest.select-all', {});
+      renderAll(ctx);
+    } catch (e) {
+      ctx.setStatus('Odabir: ' + e.message, 'err');
+    }
+  }
+
+  async function runDiscover(ctx) {
+    if (runtime.busy) return;
+    runtime.busy = true;
+    renderAll(ctx);
+    ctx.setStatus('Otkrivam materijal...', 'busy');
+    try {
+      const d = await writeAndReload(ctx, 'ingest.discover', {
+        source_id: snap(ctx).active_source_id || '',
+      });
+      renderAll(ctx);
+      maybePollThumbnails(ctx);
+      const n = (d?.clips || []).length;
+      ctx.setStatus(
+        n ? 'Otkriveno ' + n + ' klipova.' : 'Nema klipova u mapi (mxf, mov, mp4…). Odaberi mapu.',
+        n ? 'ok' : 'err'
+      );
+    } catch (e) {
+      ctx.setStatus('Otkrij: ' + e.message, 'err');
+    } finally {
+      runtime.busy = false;
+      renderAll(ctx);
+    }
+  }
+
+  async function runImport(ctx) {
+    if (runtime.busy) return;
+    const ids = selectedClipIds(ctx);
+    if (!ids.length) {
+      ctx.setStatus('Odaberi klipove za uvoz.', 'err');
+      return;
+    }
+    runtime.busy = true;
+    renderAll(ctx);
+    try {
+      await writeAndReload(ctx, 'ingest.import', { clip_ids: ids });
+      ctx.setStatus('Uvoz u pozadini: ' + ids.length + ' klip(ova).', 'busy');
+      await QNC.nextTab?.('ingest');
+    } catch (e) {
+      ctx.setStatus('Uvoz: ' + e.message, 'err');
+    } finally {
+      runtime.busy = false;
+      renderAll(ctx);
+    }
+  }
+
+  async function pickBrowse(ctx) {
+    const initial = snap(ctx).browse_path || '';
     try {
       const fp = folderPicker();
       let path = null;
@@ -270,122 +221,104 @@ window.QNC = window.QNC || {};
         path = String(d?.path || '').trim() || null;
       }
       if (!path) return;
-      await saveBrowsePath(path);
+      await saveBrowsePath(ctx, path);
     } catch (e) {
       if (String(e.message || '').includes('cancelled')) return;
-      QNC.setBox('Odaberi mapu: ' + e.message, 'err');
+      ctx.setStatus('Odaberi mapu: ' + e.message, 'err');
     }
   }
 
-  async function saveBrowsePath(path) {
-    QNC.setBox('Otkrivam materijal...', 'busy');
+  async function saveBrowsePath(ctx, path) {
+    ctx.setStatus('Otkrivam materijal...', 'busy');
     try {
-      const d = await writeIngest('POST', '/api/ingest/browse', {
-        project_id: ingestProjectId(),
-        path,
-      });
-      maybePollThumbnails();
+      const d = await writeAndReload(ctx, 'ingest.browse', { path });
+      renderAll(ctx);
+      maybePollThumbnails(ctx);
       const n = (d?.clips || []).length;
-      QNC.setBox(
+      ctx.setStatus(
         n ? 'Otkriveno ' + n + ' klipova.' : 'Nema klipova u odabranoj mapi (mxf, mov, mp4…).',
         n ? 'ok' : 'err'
       );
     } catch (e) {
-      QNC.setBox('Odaberi mapu: ' + e.message, 'err');
+      ctx.setStatus('Odaberi mapu: ' + e.message, 'err');
     }
   }
 
-  async function changeSource(sourceId) {
+  async function changeSource(ctx, sourceId) {
     const sid = String(sourceId || '').trim();
-    if (!sid || sid === runtime.db?.active_source_id) return;
-    QNC.setBox('Mijenjam izvor...', 'busy');
+    if (!sid || sid === snap(ctx).active_source_id) return;
+    ctx.setStatus('Mijenjam izvor...', 'busy');
     try {
-      await writeIngest('POST', '/api/ingest/source', {
-        project_id: ingestProjectId(),
-        source_id: sid,
-      });
-      QNC.setBox('Izvor promijenjen.', 'ok');
+      await writeAndReload(ctx, 'source.change', { source_id: sid });
+      renderAll(ctx);
+      ctx.setStatus('Izvor promijenjen.', 'ok');
     } catch (e) {
-      QNC.setBox('Izvor: ' + e.message, 'err');
+      ctx.setStatus('Izvor: ' + e.message, 'err');
     }
   }
 
-  function installComponentOrchestrator() {
-    if (runtime.orchestratorReady || !QNC.componentBus) return;
-    runtime.orchestratorReady = true;
-    const on = (event, handler) => {
-      runtime.busDisposers.push(QNC.componentBus.on('ingest', event, handler));
-    };
-    on('clip.toggle', async (ev) => {
-      await toggleClip(ev.payload?.clip_id || '');
-    });
-    on('ingest.discover', runDiscover);
-    on('ingest.import', runImport);
-    on('ingest.select-all', selectAll);
-    on('ingest.browse', pickBrowse);
-    on('source.change', async (ev) => {
-      await changeSource(ev.payload?.source_id || '');
-    });
-  }
+  const app = QNC.createPluginApp({
+    pluginId: 'ingest',
+    tabId: 'ingest',
+    apiNamespace: '/api/ingest',
+    snapshots: ['ingest.state'],
+    snapshotLoaders: {
+      'ingest.state': { path: '/api/ingest/state', projectScoped: true },
+    },
+  });
 
-  function mountComponents() {
-    const ctx = { pluginId: 'ingest' };
-    toolbarApi()?.mount?.(toolbarRoot(), ctx);
-    sourceApi()?.mount?.(sourceRoot(), ctx);
-    actionsApi()?.mount?.(actionsRoot(), ctx);
-    gridApi()?.mount?.(gridRoot(), ctx);
-  }
+  app.lifecycle({
+    onInit(ctx) {
+      mountComponents();
 
-  function teardownIngest() {
-    if (runtime.thumbPollTimer) {
-      clearInterval(runtime.thumbPollTimer);
-      runtime.thumbPollTimer = null;
-    }
-    runtime.busDisposers.forEach((off) => {
-      try {
-        if (typeof off === 'function') off();
-      } catch (_) {}
-    });
-    runtime.busDisposers = [];
-    runtime.orchestratorReady = false;
-    runtime.db = null;
-    QNC.componentBus?.offPlugin?.('ingest');
-  }
+      ctx.on('clip.toggle', async (ev) => {
+        await toggleClip(ctx, ev.payload?.clip_id || '');
+      });
+      ctx.on('ingest.discover', () => runDiscover(ctx));
+      ctx.on('ingest.import', () => runImport(ctx));
+      ctx.on('ingest.select-all', () => selectAll(ctx));
+      ctx.on('ingest.browse', () => pickBrowse(ctx));
+      ctx.on('source.change', async (ev) => {
+        await changeSource(ctx, ev.payload?.source_id || '');
+      });
 
-  async function bootIngest() {
-    installComponentOrchestrator();
-    mountComponents();
-    if (QNC.bus) {
-      QNC.bus.on('project:changed', () => {
-        runtime.db = null;
-        renderAll();
-        if (QNC.shell?.footerHasTab?.('ingest')) {
-          refreshAll().catch((e) => QNC.setBox('Ingest: ' + e.message, 'err'));
+      ctx.onShell('project:changed', async () => {
+        ctx.store.invalidate('ingest.state');
+        renderAll(ctx);
+        if (!QNC.shell?.footerHasTab?.('ingest')) return;
+        try {
+          await ctx.store.reload('ingest.state');
+          renderAll(ctx);
+          maybePollThumbnails(ctx);
+        } catch (e) {
+          ctx.setStatus('Ingest: ' + e.message, 'err');
         }
       });
-    }
-    QNC.log('[Ingest] modul spreman — čeka Project tab (otvoreni projekt)', 'ok');
-  }
 
-  async function onShowIngest() {
-    if (!QNC.shell?.footerHasTab?.('ingest')) {
-      QNC.setBox('Prvo otvori projekt na Project tabu.', 'err');
-      QNC.switchTab?.('project');
-      return;
-    }
-    try {
-      await refreshAll();
-    } catch (e) {
-      QNC.setBox('Ingest: ' + e.message, 'err');
-    }
-  }
+      QNC.log('[Ingest] SDK modul spreman — čeka otvoreni projekt', 'ok');
+    },
 
-  if (QNC.tabs && QNC.tabs.register) {
-    QNC.tabs.register({
-      id: 'ingest',
-      init: bootIngest,
-      destroy: teardownIngest,
-      onShow: onShowIngest,
-    });
-  }
+    async onShow(ctx) {
+      if (!QNC.shell?.footerHasTab?.('ingest')) {
+        ctx.setStatus('Prvo otvori projekt na Project tabu.', 'err');
+        QNC.switchTab?.('project');
+        return;
+      }
+      try {
+        await ctx.store.reload('ingest.state');
+        renderAll(ctx);
+        maybePollThumbnails(ctx);
+      } catch (e) {
+        ctx.setStatus('Ingest: ' + e.message, 'err');
+      }
+    },
+
+    onDestroy(ctx) {
+      stopThumbPoll();
+      runtime.mounted = false;
+      ctx.teardown();
+    },
+  });
+
+  app.register();
 })(window.QNC);

@@ -6,7 +6,7 @@
   "position": "normal",
   "entry_js": "/plugins/media_pool/static/qnc-media-pool.js",
   "entry_css": "/plugins/media_pool/static/qnc-media-pool.css",
-  "asset_version": 19,
+  "asset_version": 20,
   "panel_id": "panel-pool",
   "api_namespace": "/api/media-pool",
   "storage": "media_pool",
@@ -28,6 +28,33 @@
     "media-pool-transcript-panel",
     "filmstrip-viewer"
   ],
+  "sdk_version": 1,
+  "state": {
+    "snapshots": [
+      {
+        "key": "media_pool.clips",
+        "method": "GET",
+        "path": "/api/media-pool/clips",
+        "query": ["project_id"]
+      }
+    ],
+    "invalidates_on": ["project:changed", "project:deleting"]
+  },
+  "consumes": {
+    "shell_events": ["project:changed", "project:deleting"],
+    "snapshots": ["ingest.state"]
+  },
+  "events": {
+    "emits": [
+      { "bus": "component", "action": "clip.play", "payload": { "clip_id": "string" } },
+      { "bus": "component", "action": "filmstrip.seek", "payload": { "clip_id": "string", "seconds": "number" } }
+    ],
+    "listens": [
+      { "bus": "component", "action": "clips.refresh" },
+      { "bus": "component", "action": "virtual-shot.create" },
+      { "bus": "shell", "name": "project:changed" }
+    ]
+  },
   "backend": {
     "implementation": "rust",
     "host_module": "qnc-host/src/media_pool",

@@ -2,7 +2,7 @@
 # QNC multiplatform shell — Rust host (bez Pythona)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 HOST_DIR="${ROOT}/qnc-host"
 export QNC_ROOT="${ROOT}"
 export QNC_APP_VERSION="${QNC_APP_VERSION:-host-0.1}"
@@ -28,5 +28,5 @@ fi
 
 echo "=== QNC shell host ==="
 echo "Root: ${ROOT}"
-echo "URL:  http://127.0.0.1:${QNC_API_PORT}/app"
+echo "URL:  http://127.0.0.1:${QNC_API_PORT}/app  (LAN: export QNC_BIND_HOST=0.0.0.0)"
 exec "${HOST_DIR}/target/release/qnc-host"

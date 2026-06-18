@@ -18,8 +18,11 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
     Write-Error "Instaliraj Rust: https://rustup.rs"
 }
 
-Write-Host "Building qnc-host..."
+Write-Host "Checking qnc-host..."
 Push-Location $HostDir
+cargo check
+if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
+Write-Host "Building qnc-host..."
 cargo build --release
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 Pop-Location
@@ -53,6 +56,9 @@ try {
 
     Test-Get "$Base/api/health" '"ok"' "GET /api/health"
     Test-Get "$Base/api/shell/runtime" 'shell_api_version' "GET /api/shell/runtime"
+    $diag = Test-GetJson "$Base/api/shell/diagnostics" '"plugins_loaded"' "GET /api/shell/diagnostics"
+    if ($diag.bind_host -ne "127.0.0.1") { throw "FAIL: diagnostics bind_host expected 127.0.0.1" }
+    if ($diag.plugins_loaded_count -lt 1) { throw "FAIL: diagnostics plugins_loaded_count" }
     Test-Get "$Base/api/shell/tabs" 'project' "GET /api/shell/tabs"
     Test-Get "$Base/api/shell/tabs" 'ingest' "GET /api/shell/tabs (ingest)"
     Test-Get "$Base/api/design-tools/status" '"mode":"open"' "GET /api/design-tools/status"

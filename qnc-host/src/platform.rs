@@ -32,6 +32,12 @@ pub fn runtime_info(root: &Path, config: &AppConfig) -> Value {
                 .unwrap_or_else(|| "localhost".into()),
         },
         "api_port": config.api_port,
+        "bind_host": config.bind_host,
+        "app_url": format!(
+            "http://{}:{}/app",
+            crate::config::app_url_host(&config.bind_host),
+            config.api_port
+        ),
         "projects_root": crate::config::configured_projects_root(config).to_string_lossy(),
         "capabilities": capabilities(root, &deployment),
         "network_presets": config.network_presets,

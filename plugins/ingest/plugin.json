@@ -6,7 +6,7 @@
   "position": "normal",
   "entry_js": "/plugins/ingest/static/qnc-ingest.js",
   "entry_css": "/plugins/ingest/static/qnc-ingest.css",
-  "asset_version": 22,
+  "asset_version": 23,
   "panel_id": "panel-ingest",
   "api_namespace": "/api/ingest",
   "storage": "ingest",
@@ -26,6 +26,21 @@
     "media-thumb",
     "ingest-clip-grid"
   ],
+  "sdk_version": 1,
+  "state": {
+    "snapshots": [
+      {
+        "key": "ingest.state",
+        "method": "GET",
+        "path": "/api/ingest/state",
+        "query": ["project_id"]
+      }
+    ],
+    "invalidates_on": ["project:changed"]
+  },
+  "consumes": {
+    "shell_events": ["project:changed"]
+  },
   "backend": {
     "implementation": "rust",
     "host_module": "qnc-host/src/ingest",

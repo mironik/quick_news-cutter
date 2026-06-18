@@ -39,6 +39,7 @@ pub const APP_HTML: &str = r#"<!DOCTYPE html>
   <script src="/app/shell/qnc-shell.js?v=6"></script>
   <script src="/app/shell/qnc-bus.js?v=2"></script>
   <script src="/app/shell/qnc-tab-registry.js?v=4"></script>
+  <script src="/app/shell/qnc-plugin-sdk.js?v=1"></script>
   <script src="/app/shell/app.js?v=12"></script>
 </body>
 </html>"#;

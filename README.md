@@ -31,9 +31,34 @@ cd C:\Users\<user>\Projects\quick_news_cutter
 
 Instalacija Rusta (jednom): [https://rustup.rs](https://rustup.rs)
 
-GUI: **http://127.0.0.1:8001/app**
+GUI: **http://127.0.0.1:8001/app** (default bind localhost; LAN: `QNC_BIND_HOST=0.0.0.0`)
 
 Detalji: [qnc-host/README.md](qnc-host/README.md)
+
+## Legacy Python dev server (referenca — ne produkt)
+
+| | |
+|--|--|
+| **Produkt runtime** | Rust `qnc-host` — `run_host.bat` / `run_host.sh` |
+| **Python stack** | samo **dev referenca** za usporedbu / stari workflow |
+
+Datoteke u repou koje **ne koristi** Windows produkt:
+
+- `server.py`, `server_app_web.py` — FastAPI shell (djelomično zastarjeli API)
+- `run_server.sh` — pokreće `uvicorn server:app` na `:8001`, bind `0.0.0.0`
+- `requirements-core.txt`, `requirements-server.txt`, `requirements-ai.txt`
+- `shell/` — Python registry/loader (paralelan starijem modelu)
+
+**Pravilo:** novi backend ide u `qnc-host/` (Rust). Python datoteke **ne brišemo** bez posebnog odobrenja; ne pokrećemo ih na Windowsu. Vidi [docs/development-policy.md](docs/development-policy.md).
+
+Na Linux/macOS/Jetson (samo ako treba usporediti staro ponašanje):
+
+```bash
+pip install -r requirements-core.txt
+./run_server.sh
+```
+
+Za svakodnevni rad uvijek: `./run_host.sh` (Rust).
 
 Projektni folderi nisu unutar aplikacije. Project template može definirati `storage.projects_root` za projekte koji se kreiraju iz tog templatea. Ako template nema putanju, koristi se default:
 
@@ -115,7 +140,9 @@ AI i GPU se **ne učitavaju** pri startu.
 |----------|---------|------|
 | `GET /api/health` | shell | Health check |
 | `GET /api/shell/runtime` | shell | Platforma, port, capabilities, mreža |
+| `GET /api/shell/diagnostics` | shell | Bind, putanje, učitani plugini, manifest greške |
 | `GET /api/shell/components` | shell | Globalni component catalog |
+| Plugin SDK v1 | shell JS | `QNC.createPluginApp` — vidi [docs/plugin-sdk-v1.md](docs/plugin-sdk-v1.md) |
 | `POST /api/shell/components/sync` | shell | Ručna sinkronizacija iz plugina |
 | `GET /api/modules` | shell | Module enable/disable |
 | `GET/POST /api/projects*` | **project plugin** | Projekti, templatei, settings |

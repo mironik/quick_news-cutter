@@ -1,7 +1,13 @@
-/* Media Pool — orchestrator (Jetson put): pool.clips iz GET /clips, filmstrip iz timeline_seeks + thumbUrl. */
+/* Media Pool — Plugin SDK v1 orchestrator (WIP). Pool snapshot iz API; UI state lokalno za player. */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
+  if (!QNC.createPluginApp) {
+    console.error('[Media Pool] QNC.createPluginApp nije učitan (qnc-plugin-sdk.js)');
+    return;
+  }
+
+  let sdkCtx = null;
   let actionsInstalled = false;
   let busInstalled = false;
 
@@ -386,7 +392,9 @@ window.QNC = window.QNC || {};
 
   async function loadPool() {
     const pid = poolProjectId();
-    const d = await QNC.api('GET', '/api/media-pool/clips?project_id=' + encodeURIComponent(pid));
+    const d = sdkCtx
+      ? await sdkCtx.api.get('/clips', { project_id: pid })
+      : await QNC.api('GET', '/api/media-pool/clips?project_id=' + encodeURIComponent(pid));
     if (d.project_id && QNC.setActiveProjectId) QNC.setActiveProjectId(d.project_id);
     const nextClips = d.clips || [];
     const nextVirtualShots = d.virtual_shots || [];
@@ -1100,12 +1108,20 @@ window.QNC = window.QNC || {};
     missing.forEach((clip) => {
       const pid = poolProjectId();
       pool.buildingTimeline.add(clip.clip_id);
-      QNC.api('POST', '/api/media-pool/timeline/build', {
-        clip_id: clip.clip_id,
-        frames: Math.min(10, THUMB_MAX_FRAMES),
-        project_id: pid,
-        media_path: clip.proxy_path || '',
-      })
+      const buildReq = sdkCtx
+        ? sdkCtx.action('filmstrip.build', {
+            clip_id: clip.clip_id,
+            frames: Math.min(10, THUMB_MAX_FRAMES),
+            project_id: pid,
+            media_path: clip.proxy_path || '',
+          })
+        : QNC.api('POST', '/api/media-pool/timeline/build', {
+            clip_id: clip.clip_id,
+            frames: Math.min(10, THUMB_MAX_FRAMES),
+            project_id: pid,
+            media_path: clip.proxy_path || '',
+          });
+      buildReq
         .then(() => {
           pool.buildingTimeline.delete(clip.clip_id);
           return loadPool();
@@ -1255,13 +1271,21 @@ window.QNC = window.QNC || {};
     const pid = poolProjectId();
     try {
       QNC.setBox('Spremam virtualni kadar…', 'busy');
-      const d = await QNC.api('POST', '/api/media-pool/virtual-shot', {
-        project_id: pid,
-        clip_id: clip.clip_id,
-        in_seconds: inSec,
-        out_seconds: outSec,
-        windows_original_path: clip.windows_original_path || null,
-      });
+      const d = sdkCtx
+        ? await sdkCtx.action('virtual-shot.create', {
+            project_id: pid,
+            clip_id: clip.clip_id,
+            in_seconds: inSec,
+            out_seconds: outSec,
+            windows_original_path: clip.windows_original_path || null,
+          })
+        : await QNC.api('POST', '/api/media-pool/virtual-shot', {
+            project_id: pid,
+            clip_id: clip.clip_id,
+            in_seconds: inSec,
+            out_seconds: outSec,
+            windows_original_path: clip.windows_original_path || null,
+          });
       applyVirtualShots(d.virtual_shots || pool.virtualShots, { force: true });
       pool.thumbRev++;
       pool.activeVirtualShotId = d.shot?.id || null;
@@ -1334,31 +1358,31 @@ window.QNC = window.QNC || {};
     });
   }
 
-  function installActionBridge() {
+  function installActionBridge(ctx) {
     if (!actionsInstalled && QNC.installComponentActions) {
       QNC.installComponentActions(panelRoot(), 'media_pool');
       actionsInstalled = true;
     }
-    if (busInstalled || !QNC.componentBus) return;
-    QNC.componentBus.on('media_pool', 'filmstrip.seek', (event) => {
+    if (busInstalled || !ctx) return;
+    ctx.on('filmstrip.seek', (event) => {
       const clipId = event.payload?.clip_id || event.root?.dataset?.clipId;
       const sec = Number(event.payload?.seconds);
       const clip = clipId ? clipById(clipId) : null;
       if (clip && Number.isFinite(sec)) playClip(clip, sec);
     });
-    QNC.componentBus.on('media_pool', 'mark.in', setMarkIn);
-    QNC.componentBus.on('media_pool', 'mark.out', setMarkOut);
-    QNC.componentBus.on('media_pool', 'virtual-shot.create', saveInOut);
-    QNC.componentBus.on('media_pool', 'clips.refresh', refresh);
-    QNC.componentBus.on('media_pool', 'transcription.queue', transcribe);
-    QNC.componentBus.on('media_pool', 'clip.toggle', (event) => {
+    ctx.on('mark.in', setMarkIn);
+    ctx.on('mark.out', setMarkOut);
+    ctx.on('virtual-shot.create', saveInOut);
+    ctx.on('clips.refresh', refresh);
+    ctx.on('transcription.queue', transcribe);
+    ctx.on('clip.toggle', (event) => {
       const id = String(event.payload?.clip_id || '').trim();
       if (!id) return;
       if (event.payload?.checked) pool.selected.add(id);
       else pool.selected.delete(id);
       updateUi();
     });
-    QNC.componentBus.on('media_pool', 'clip.play', (event) => {
+    ctx.on('clip.play', (event) => {
       const id = String(event.payload?.clip_id || '').trim();
       const clip = id ? clipById(id) : null;
       if (!clip) return;
@@ -1366,7 +1390,7 @@ window.QNC = window.QNC || {};
       const start = event.payload?.edge ? Math.max(0, d - 0.5) : 0;
       playClip(clip, start);
     });
-    QNC.componentBus.on('media_pool', 'clips.select-all', (event) => {
+    ctx.on('clips.select-all', (event) => {
       const checked = !!event?.payload?.checked;
       ids().forEach((id) => (checked ? pool.selected.add(id) : pool.selected.delete(id)));
       renderRows();
@@ -1454,44 +1478,72 @@ window.QNC = window.QNC || {};
     }
   }
 
-  function bootPool() {
-    bindPlayer();
-    bindPoolShortcuts();
-    installActionBridge();
-    QNC.bus.on('project:changed', () => {
-      releaseProjectHold();
-      loadPool()
-        .then(() => {
-          if (pool.clips.length) renderRows();
-        })
-        .catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
-    });
-    QNC.bus.on('project:deleting', () => {
-      releaseProjectHold();
-    });
-    renderRows();
-    QNC.log('[Media Pool] modul spreman', 'ok');
-  }
-
-  QNC.tabs.register({
-    id: 'pool',
-    init() {
-      bootPool();
+  const app = QNC.createPluginApp({
+    pluginId: 'media_pool',
+    tabId: 'pool',
+    apiNamespace: '/api/media-pool',
+    snapshots: ['media_pool.clips'],
+    snapshotLoaders: {
+      'media_pool.clips': { path: '/clips', projectScoped: true },
     },
-    onShow() {
+  });
+
+  app.lifecycle({
+    onInit(ctx) {
+      sdkCtx = ctx;
+      bindPlayer();
+      bindPoolShortcuts();
+      installActionBridge(ctx);
+
+      ctx.onShell('project:changed', () => {
+        ctx.store.invalidate('media_pool.clips');
+        releaseProjectHold();
+        loadPool()
+          .then(() => {
+            if (pool.clips.length) renderRows();
+          })
+          .catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
+      });
+
+      ctx.onShell('project:deleting', () => {
+        releaseProjectHold();
+      });
+
+      renderRows();
+      QNC.log('[Media Pool] SDK modul spreman (WIP)', 'ok');
+    },
+
+    onShow(ctx) {
+      sdkCtx = ctx;
       startPoolPolling();
       pool.thumbRev += 1;
       loadPool()
         .then(() => {
           if (pool.clips.length) renderRows();
         })
-        .catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
+        .catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
     },
+
     onHide() {
       stopPoolPolling();
       releasePlayerMedia();
     },
+
+    onDestroy(ctx) {
+      stopPoolPolling();
+      releasePlayerMedia();
+      if (unbindPoolShortcuts) {
+        unbindPoolShortcuts();
+        unbindPoolShortcuts = null;
+      }
+      busInstalled = false;
+      actionsInstalled = false;
+      sdkCtx = null;
+      ctx.teardown();
+    },
   });
+
+  app.register();
 
   QNC.mediaPool = pool;
 })(window.QNC);

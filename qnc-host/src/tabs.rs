@@ -1,12 +1,39 @@
 use std::fs;
 use std::path::Path;
 
-use serde_json::{Value, json};
+use serde::Serialize;
+use serde_json::{json, Value};
+use tracing::warn;
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PluginManifestError {
+    pub path: String,
+    pub error: String,
+}
+
+pub struct PluginScanResult {
+    pub manifests: Vec<Value>,
+    pub errors: Vec<PluginManifestError>,
+}
 
 pub fn list_tab_manifests(plugins_root: &Path) -> Vec<Value> {
+    let mut scan = scan_plugin_manifests(plugins_root);
+    scan.manifests.sort_by(|a, b| sort_key(a).cmp(&sort_key(b)));
+    scan.manifests
+}
+
+pub fn scan_plugin_manifests(plugins_root: &Path) -> PluginScanResult {
     let mut manifests = Vec::new();
+    let mut errors = Vec::new();
+
     let Ok(entries) = fs::read_dir(plugins_root) else {
-        return manifests;
+        let msg = format!("cannot read plugins directory: {}", plugins_root.display());
+        warn!(path = %plugins_root.display(), "Cannot read plugins directory; no tab manifests loaded");
+        errors.push(PluginManifestError {
+            path: plugins_root.display().to_string(),
+            error: msg,
+        });
+        return PluginScanResult { manifests, errors };
     };
 
     for entry in entries.flatten() {
@@ -18,37 +45,72 @@ pub fn list_tab_manifests(plugins_root: &Path) -> Vec<Value> {
         if !manifest_path.is_file() {
             continue;
         }
-        let Ok(raw) = fs::read_to_string(&manifest_path) else {
-            continue;
+        let raw = match fs::read_to_string(&manifest_path) {
+            Ok(raw) => raw,
+            Err(e) => {
+                record_manifest_error(
+                    &mut errors,
+                    &manifest_path,
+                    format!("read failed: {e}"),
+                );
+                continue;
+            }
         };
-        let Ok(mut data) = serde_json::from_str::<Value>(&raw) else {
-            continue;
+        let mut data = match serde_json::from_str::<Value>(&raw) {
+            Ok(v) => v,
+            Err(e) => {
+                record_manifest_error(
+                    &mut errors,
+                    &manifest_path,
+                    format!("invalid JSON: {e}"),
+                );
+                continue;
+            }
         };
-        let default_id = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("plugin")
-            .to_string();
-        if let Some(obj) = data.as_object_mut() {
-            if !obj.contains_key("plugin_id") {
-                obj.insert("plugin_id".into(), json!(default_id));
-            }
-            if !obj.contains_key("tab_id") {
-                let pid = obj
-                    .get("plugin_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(&default_id);
-                obj.insert("tab_id".into(), json!(pid));
-            }
-            if !obj.contains_key("enabled") {
-                obj.insert("enabled".into(), json!(true));
-            }
+        if !data.is_object() {
+            record_manifest_error(
+                &mut errors,
+                &manifest_path,
+                "root must be a JSON object".into(),
+            );
+            continue;
         }
+        normalize_manifest(&path, &mut data);
         manifests.push(data);
     }
 
-    manifests.sort_by(|a, b| sort_key(a).cmp(&sort_key(b)));
-    manifests
+    PluginScanResult { manifests, errors }
+}
+
+fn record_manifest_error(errors: &mut Vec<PluginManifestError>, path: &Path, error: String) {
+    warn!(path = %path.display(), %error, "Skipping plugin manifest");
+    errors.push(PluginManifestError {
+        path: path.display().to_string(),
+        error,
+    });
+}
+
+fn normalize_manifest(plugin_dir: &Path, data: &mut Value) {
+    let default_id = plugin_dir
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("plugin")
+        .to_string();
+    if let Some(obj) = data.as_object_mut() {
+        if !obj.contains_key("plugin_id") {
+            obj.insert("plugin_id".into(), json!(default_id));
+        }
+        if !obj.contains_key("tab_id") {
+            let pid = obj
+                .get("plugin_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&default_id);
+            obj.insert("tab_id".into(), json!(pid));
+        }
+        if !obj.contains_key("enabled") {
+            obj.insert("enabled".into(), json!(true));
+        }
+    }
 }
 
 fn sort_key(item: &Value) -> (i32, i32, String) {

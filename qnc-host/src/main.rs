@@ -24,6 +24,7 @@ mod media_pool;
 mod modules;
 mod platform;
 mod project;
+mod routes;
 mod shell_dialog;
 mod tabs;
 
@@ -73,36 +74,13 @@ async fn main() {
     let app = Router::new()
         .route("/api/health", get(api_health))
         .route("/api/shell/runtime", get(api_shell_runtime))
+        .route("/api/shell/diagnostics", get(api_shell_diagnostics))
         .route("/api/shell/tabs", get(api_shell_tabs))
         .route("/api/shell/components", get(api_shell_components))
         .route("/api/shell/components/sync", post(api_shell_components_sync))
         .route("/api/shell/pick-directory", post(api_shell_pick_directory))
         .route("/api/shell/pick-files", post(api_shell_pick_files))
         .route("/api/shell/projects-root", get(api_shell_projects_root).post(api_shell_projects_root_save))
-        .route("/api/design-tools/status", get(api_design_status))
-        .route("/api/design-tools/tokens", get(api_design_tokens))
-        .route("/api/design-tools/themes", get(api_design_themes).post(api_design_create_theme))
-        .route(
-            "/api/design-tools/themes/{theme_id}/activate",
-            post(api_design_activate_theme),
-        )
-        .route("/api/design-tools/overrides/tokens", post(api_design_save_tokens))
-        .route(
-            "/api/design-tools/timeline-lab",
-            get(api_design_timeline_lab).post(api_design_save_timeline_lab),
-        )
-        .route(
-            "/api/design-tools/project-list-lab",
-            get(api_design_project_list_lab).post(api_design_save_project_list_lab),
-        )
-        .route(
-            "/api/design-tools/project-template-settings-lab",
-            get(api_design_project_template_settings_lab).post(api_design_save_project_template_settings_lab),
-        )
-        .route(
-            "/api/design-tools/ingest-clip-grid-lab",
-            get(api_design_ingest_clip_grid_lab).post(api_design_save_ingest_clip_grid_lab),
-        )
         .route("/api/modules", get(api_modules_list))
         .route("/api/modules/{module_id}/enable", post(api_module_enable))
         .route("/app", get(app_page))
@@ -112,14 +90,21 @@ async fn main() {
         .nest_service("/app/components", app_components_dir)
         .nest_service("/plugins", plugins_dir)
         .merge(project::router())
+        .merge(routes::design_tools::router())
         .merge(ingest::router())
         .merge(media_pool::router())
         .with_state(state);
 
     let port = config.api_port;
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let bind_ip: std::net::IpAddr = config
+        .bind_host
+        .parse()
+        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+    let addr = SocketAddr::from((bind_ip, port));
+    let app_host = config::app_url_host(&config.bind_host);
     info!("QNC host root: {}", root.display());
-    info!("Listening on http://127.0.0.1:{port}/app");
+    info!("Binding to {bind_ip}:{port}");
+    info!("App URL: http://{app_host}:{port}/app");
     let listener = tokio::net::TcpListener::bind(addr).await.expect("bind");
     axum::serve(listener, app).await.expect("serve");
 }
@@ -150,6 +135,44 @@ async fn api_health() -> Json<serde_json::Value> {
 
 async fn api_shell_runtime(State(state): State<AppState>) -> Json<serde_json::Value> {
     Json(platform::runtime_info(&state.root, &state.config))
+}
+
+async fn api_shell_diagnostics(State(state): State<AppState>) -> Json<serde_json::Value> {
+    let plugins_root = state.root.join("plugins");
+    let scan = tabs::scan_plugin_manifests(&plugins_root);
+    let plugins_loaded: Vec<String> = scan
+        .manifests
+        .iter()
+        .filter_map(|m| {
+            m.get("plugin_id")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        })
+        .collect();
+    let components_catalog =
+        components::list_global(&state.root.join("app").join("components"));
+    let components_count = components_catalog
+        .get("components")
+        .and_then(|v| v.as_object())
+        .map(|o| o.len())
+        .unwrap_or(0);
+
+    Json(serde_json::json!({
+        "status": "ok",
+        "bind_host": state.config.bind_host,
+        "api_port": state.config.api_port,
+        "app_url": format!(
+            "http://{}:{}/app",
+            config::app_url_host(&state.config.bind_host),
+            state.config.api_port
+        ),
+        "data_dir": state.root.join("data").to_string_lossy(),
+        "projects_root": config::configured_projects_root(&state.config).to_string_lossy(),
+        "plugins_loaded": plugins_loaded,
+        "plugins_loaded_count": plugins_loaded.len(),
+        "plugin_manifest_errors": scan.errors,
+        "components_count": components_count,
+    }))
 }
 
 async fn api_shell_projects_root(State(state): State<AppState>) -> Json<serde_json::Value> {
@@ -291,134 +314,6 @@ async fn api_module_enable(
             StatusCode::FORBIDDEN,
             format!("Modul '{module_id}' je sistemski i ne moze se iskljuciti."),
         )),
-    }
-}
-
-async fn api_design_status(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(design::design_status(&state.root))
-}
-
-async fn api_design_tokens(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(design::merged_tokens(&state.root))
-}
-
-async fn api_design_themes(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(design::list_themes(&state.root))
-}
-
-#[derive(serde::Deserialize)]
-struct CreateThemeBody {
-    label: String,
-}
-
-async fn api_design_create_theme(
-    State(state): State<AppState>,
-    Json(body): Json<CreateThemeBody>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    match design::create_theme(&state.root, &body.label) {
-        Ok(out) => Ok(Json(out)),
-        Err(msg) => Err((StatusCode::BAD_REQUEST, msg)),
-    }
-}
-
-async fn api_design_activate_theme(
-    State(state): State<AppState>,
-    axum::extract::Path(theme_id): axum::extract::Path<String>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    match design::activate_theme(&state.root, &theme_id) {
-        Ok(out) => Ok(Json(out)),
-        Err(msg) => Err((StatusCode::NOT_FOUND, msg)),
-    }
-}
-
-#[derive(serde::Deserialize)]
-struct TokenOverridesBody {
-    tokens: std::collections::HashMap<String, String>,
-}
-
-async fn api_design_save_tokens(
-    State(state): State<AppState>,
-    Json(body): Json<TokenOverridesBody>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    match design::save_token_overrides(&state.root, &body.tokens) {
-        Ok(out) => Ok(Json(out)),
-        Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
-    }
-}
-
-async fn api_design_timeline_lab(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(design::load_timeline_lab_prefs(&state.root))
-}
-
-#[derive(serde::Deserialize)]
-struct TimelineLabBody {
-    prefs: serde_json::Value,
-}
-
-async fn api_design_save_timeline_lab(
-    State(state): State<AppState>,
-    Json(body): Json<TimelineLabBody>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    match design::save_timeline_lab_prefs(&state.root, body.prefs) {
-        Ok(out) => Ok(Json(out)),
-        Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
-    }
-}
-
-async fn api_design_project_list_lab(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(design::load_project_list_lab_prefs(&state.root))
-}
-
-#[derive(serde::Deserialize)]
-struct ProjectListLabBody {
-    prefs: serde_json::Value,
-}
-
-async fn api_design_save_project_list_lab(
-    State(state): State<AppState>,
-    Json(body): Json<ProjectListLabBody>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    match design::save_project_list_lab_prefs(&state.root, body.prefs) {
-        Ok(out) => Ok(Json(out)),
-        Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
-    }
-}
-
-async fn api_design_project_template_settings_lab(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(design::load_project_template_settings_lab_prefs(&state.root))
-}
-
-#[derive(serde::Deserialize)]
-struct ProjectTemplateSettingsLabBody {
-    prefs: serde_json::Value,
-}
-
-async fn api_design_save_project_template_settings_lab(
-    State(state): State<AppState>,
-    Json(body): Json<ProjectTemplateSettingsLabBody>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    match design::save_project_template_settings_lab_prefs(&state.root, body.prefs) {
-        Ok(out) => Ok(Json(out)),
-        Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
-    }
-}
-
-async fn api_design_ingest_clip_grid_lab(State(state): State<AppState>) -> Json<serde_json::Value> {
-    Json(design::load_ingest_clip_grid_lab_prefs(&state.root))
-}
-
-#[derive(serde::Deserialize)]
-struct IngestClipGridLabBody {
-    prefs: serde_json::Value,
-}
-
-async fn api_design_save_ingest_clip_grid_lab(
-    State(state): State<AppState>,
-    Json(body): Json<IngestClipGridLabBody>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    match design::save_ingest_clip_grid_lab_prefs(&state.root, body.prefs) {
-        Ok(out) => Ok(Json(out)),
-        Err(msg) => Err((StatusCode::FORBIDDEN, msg)),
     }
 }
 

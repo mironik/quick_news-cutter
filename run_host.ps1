@@ -24,5 +24,5 @@ if (-not (Test-Path $Bin)) {
     cargo build --release
     Pop-Location
 }
-Write-Host "QNC: http://127.0.0.1:$($env:QNC_API_PORT)/app"
+Write-Host "QNC: http://127.0.0.1:$($env:QNC_API_PORT)/app  (LAN: set QNC_BIND_HOST=0.0.0.0)"
 & $Bin

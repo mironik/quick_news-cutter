@@ -8,6 +8,8 @@ use serde_json::Value;
 pub struct AppConfig {
     #[serde(default = "default_port")]
     pub api_port: u16,
+    #[serde(default = "default_bind_host")]
+    pub bind_host: String,
     #[serde(default = "default_server_label")]
     pub server_label: String,
     #[serde(default)]
@@ -26,6 +28,10 @@ fn default_port() -> u16 {
     8001
 }
 
+fn default_bind_host() -> String {
+    "127.0.0.1".into()
+}
+
 fn default_server_label() -> String {
     "QNC server".into()
 }
@@ -34,6 +40,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             api_port: default_port(),
+            bind_host: default_bind_host(),
             server_label: default_server_label(),
             projects_root: None,
             network_presets: vec![],
@@ -59,7 +66,36 @@ impl AppConfig {
                 cfg.projects_root = Some(trimmed.to_string());
             }
         }
+        cfg.bind_host = configured_bind_host();
         cfg
+    }
+}
+
+/// HTTP bind address. Default `127.0.0.1`; set `QNC_BIND_HOST=0.0.0.0` for LAN.
+pub fn configured_bind_host() -> String {
+    match std::env::var("QNC_BIND_HOST") {
+        Ok(raw) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                return default_bind_host();
+            }
+            if trimmed.parse::<std::net::IpAddr>().is_ok() {
+                trimmed.to_string()
+            } else {
+                tracing::warn!("Invalid QNC_BIND_HOST '{trimmed}', using 127.0.0.1");
+                default_bind_host()
+            }
+        }
+        Err(_) => default_bind_host(),
+    }
+}
+
+/// Hostname for logs and UI when bind is `0.0.0.0` / `::`.
+pub fn app_url_host(bind_host: &str) -> String {
+    match bind_host.parse::<std::net::IpAddr>() {
+        Ok(ip) if ip.is_unspecified() => default_bind_host(),
+        Ok(ip) => ip.to_string(),
+        Err(_) => default_bind_host(),
     }
 }
 
