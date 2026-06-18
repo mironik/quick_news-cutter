@@ -59,7 +59,7 @@ If a value affects workflow and is not in SQLite, **it is not application state*
 
 | Allowed (A — declarative) | Forbidden (B — runtime state) |
 |---------------------------|-------------------------------|
-| `plugins/*/plugin.json` | `data/shell_module_state.json` (target: SQLite) |
+| `plugins/*/plugin.json` | ~~`data/shell_module_state.json`~~ (migrated Phase 1 → `project_store.db`) |
 | `app/components/registry.json`, `component.json` | `data/projects.json` as live mirror (export/migration only) |
 | `plugins/project/storage/system_seed.json` | `data/design_overrides/*.json` for lab/theme runtime |
 | `app/shell/keyboard-shortcuts.json` (defaults) | Any host-written JSON holding workflow state long-term |
@@ -102,7 +102,7 @@ onShow
 | `data/project_store.db` | Global | Projects, active project, templates, collab users/sessions, project tab UI state (`app_settings`) |
 | `{project_dir}/qnc_project.db` | Per project | Project settings, workflow steps, **ingest** assets/meta, **media_pool** pool_clips & virtual_shots, **filmstrip** tables |
 
-Modules enable flags are **not yet in SQLite** — see §6.
+Modules enable flags live in **`project_store.db` → `module_state`** (Phase 1). Legacy `data/shell_module_state.json` is imported once on host start and renamed to `.migrated`.
 
 ---
 
@@ -131,7 +131,7 @@ These violate this contract until migrated (see roadmap in audit / Phase 1–5):
 
 | Area | Current | Target |
 |------|---------|--------|
-| Module enable | `data/shell_module_state.json` | SQLite table in global DB |
+| Module enable | ~~`data/shell_module_state.json`~~ → **`project_store.db` `module_state`** (Phase 1 ✓) |
 | media_pool | `pool.selected`, marks, player context, transcripts in JS | Per-project tables + unified snapshot |
 | project tab | Large `state` object cache; no SDK store | Snapshot-driven orchestrator |
 | design-tools | Theme/lab state in JSON overrides | SQLite or isolated non-prod addon |

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -255,6 +256,11 @@ fn init_global_schema(conn: &Connection) -> rusqlite::Result<()> {
             created_at TEXT,
             updated_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS module_state (
+            module_id TEXT PRIMARY KEY,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT
+        );
         ",
     )?;
     migrate_projects_columns(conn)?;
@@ -374,6 +380,68 @@ pub fn set_setting(conn: &Connection, key: &str, value: &str) -> rusqlite::Resul
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         params![key, value],
     )?;
+    Ok(())
+}
+
+pub fn open_shell_db(data_dir: &Path) -> rusqlite::Result<Connection> {
+    fs::create_dir_all(data_dir).ok();
+    let conn = Connection::open(data_dir.join("project_store.db"))?;
+    conn.execute("PRAGMA foreign_keys = ON", [])?;
+    init_global_schema(&conn)?;
+    migrate_from_shell_module_state_json(&conn, data_dir)?;
+    Ok(conn)
+}
+
+pub fn load_module_enabled(conn: &Connection) -> rusqlite::Result<HashMap<String, bool>> {
+    let mut stmt = conn.prepare("SELECT module_id, enabled FROM module_state")?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? != 0))
+    })?;
+    let mut out = HashMap::new();
+    for row in rows {
+        let (module_id, enabled) = row?;
+        out.insert(module_id, enabled);
+    }
+    Ok(out)
+}
+
+pub fn upsert_module_enabled(
+    conn: &Connection,
+    module_id: &str,
+    enabled: bool,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT INTO module_state (module_id, enabled, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(module_id) DO UPDATE SET
+            enabled = excluded.enabled,
+            updated_at = excluded.updated_at",
+        params![module_id, if enabled { 1 } else { 0 }, now_str()],
+    )?;
+    Ok(())
+}
+
+fn migrate_from_shell_module_state_json(
+    conn: &Connection,
+    data_dir: &Path,
+) -> rusqlite::Result<()> {
+    let path = data_dir.join("shell_module_state.json");
+    let Ok(raw) = fs::read_to_string(&path) else {
+        return Ok(());
+    };
+    let Ok(parsed) = serde_json::from_str::<Value>(&raw) else {
+        return Ok(());
+    };
+    let Some(enabled_obj) = parsed.get("enabled").and_then(|v| v.as_object()) else {
+        return Ok(());
+    };
+    for (module_id, value) in enabled_obj {
+        let Some(enabled) = value.as_bool() else {
+            continue;
+        };
+        upsert_module_enabled(conn, module_id, enabled)?;
+    }
+    let backup = data_dir.join("shell_module_state.json.migrated");
+    let _ = fs::rename(&path, &backup);
     Ok(())
 }
 

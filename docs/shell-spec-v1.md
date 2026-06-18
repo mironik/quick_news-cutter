@@ -383,7 +383,7 @@ Shell globalni `server.py` **ne smije** definirati plugin rute.
 
 | Podaci | Lokacija (target / current) | Vlasnik |
 |--------|----------------------------|---------|
-| Module enable | **Target:** `project_store.db` (`module_state` table). **Current:** `data/shell_module_state.json` (legacy — Phase 1 migration) | shell |
+| Module enable | `data/project_store.db` (`module_state` table) | shell |
 | Shell config (port, presets) | `data/shell_config.json` (static config; minimal runtime patches) | shell |
 | Global component registry | `app/components/registry.json` | shell |
 | Project lista, templatei, UI state | `data/project_store.db` | **project plugin** (Rust) |
@@ -396,7 +396,7 @@ Plugin **ne piše** u shell module storage. Shell **ne piše** u per-project bus
 
 ### 10.1 Implementation note (Rust host v2)
 
-Current `qnc-host` uses `data/shell_module_state.json` for module enable flags. This is **not** the long-term contract — migrate to SQLite per [architecture-db-first.md](architecture-db-first.md) §6.
+Module enable flags are stored in `project_store.db` (`module_state`). On first start after upgrade, `data/shell_module_state.json` (if present) is imported and renamed to `shell_module_state.json.migrated`.
 
 ---
 

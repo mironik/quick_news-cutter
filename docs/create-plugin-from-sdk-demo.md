@@ -238,7 +238,7 @@ Add smoke checks to `test.ps1` (see sdk_demo block):
 - [ ] `POST` action mutates state; response reflects change.
 - [ ] `GET …/static/qnc-<plugin>.js` contains `QNC.createPluginApp`.
 - [ ] `POST /api/modules/<tab_id>/enable` `{ "enabled": true }` — tab appears.
-- [ ] **Cleanup** — disable module again at end of test so `data/shell_module_state.json` is not left dirty.
+- [ ] **Cleanup** — disable module again at end of test so `module_state` in `project_store.db` is not left dirty.
 
 Do not commit `data/project_store.db`, `data/projects.json`, or other runtime `data/*` files.
 

@@ -1,15 +1,9 @@
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-#[derive(Clone, Default, Serialize, Deserialize)]
-struct ModuleStateFile {
-    #[serde(default)]
-    enabled: HashMap<String, bool>,
-}
+use crate::project::db::{load_module_enabled, open_shell_db, upsert_module_enabled};
 
 #[derive(Clone)]
 pub struct ModuleStore {
@@ -23,23 +17,16 @@ pub enum ModuleError {
 
 impl ModuleStore {
     pub fn load(data_dir: &Path) -> Self {
-        let path = data_dir.join("shell_module_state.json");
-        let enabled = match fs::read_to_string(&path) {
-            Ok(raw) => serde_json::from_str::<ModuleStateFile>(&raw)
-                .map(|s| s.enabled)
-                .unwrap_or_default(),
-            Err(_) => HashMap::new(),
-        };
+        let enabled = open_shell_db(data_dir)
+            .and_then(|conn| load_module_enabled(&conn))
+            .unwrap_or_default();
         Self { enabled }
     }
 
-    fn save(&self, data_dir: &Path) -> std::io::Result<()> {
-        fs::create_dir_all(data_dir)?;
-        let path = data_dir.join("shell_module_state.json");
-        let payload = ModuleStateFile {
-            enabled: self.enabled.clone(),
-        };
-        fs::write(path, serde_json::to_string_pretty(&payload)?)
+    fn persist_enabled(data_dir: &Path, module_id: &str, enabled: bool) {
+        if let Ok(conn) = open_shell_db(data_dir) {
+            upsert_module_enabled(&conn, module_id, enabled).ok();
+        }
     }
 
     pub fn apply_enabled(&self, root: &Path, manifests: Vec<Value>) -> Vec<Value> {
@@ -140,7 +127,7 @@ impl ModuleStore {
         }
 
         self.enabled.insert(module_id.to_string(), enabled);
-        self.save(data_dir).ok();
+        Self::persist_enabled(data_dir, module_id, enabled);
 
         let mut out = manifest.clone();
         if let Some(obj) = out.as_object_mut() {
