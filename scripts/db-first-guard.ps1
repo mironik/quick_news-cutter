@@ -66,6 +66,13 @@ foreach ($rel in $orchestrators) {
 }
 Write-Host "OK    production orchestrators (no workflow object stores)"
 
+$projectJs = Join-Path $Root "plugins\project\static\qnc-project.js"
+$projRaw = Get-Content $projectJs -Raw
+if ($projRaw -match 'async\s+onShow\s*\(\s*ctx\s*\)\s*\{[^}]*showProjectOnly') {
+    Fail "project onShow must not call showProjectOnly (lifecycle re-entry loop)"
+}
+Write-Host "OK    project onShow lifecycle (no showProjectOnly re-entry)"
+
 $mediaPool = Join-Path $Root "plugins\media_pool\static\qnc-media-pool.js"
 $mp = Get-Content $mediaPool -Raw
 if ($mp -match 'function\s+transcriptStatus\s*\([^)]*\)\s*\{[^}]*transcribingClips') {

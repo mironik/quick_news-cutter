@@ -20,7 +20,7 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 
 Write-Host "DB-first guard (static)..."
 & (Join-Path $Root "scripts\db-first-guard.ps1")
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Checking qnc-host..."
 Push-Location $HostDir
@@ -73,6 +73,9 @@ try {
     Test-Get "$Base/api/shell/tabs" 'ingest' "GET /api/shell/tabs (ingest)"
     Test-Get "$Base/api/design-tools/status" '"mode":"open"' "GET /api/design-tools/status"
     Test-Get "$Base/app" 'qnc-plugin-panels' "GET /app"
+    Test-Get "$Base/plugins/project/static/qnc-project.js" 'createPluginApp' "GET qnc-project.js (SDK orchestrator)"
+    Test-Get "$Base/app/components/registry.json" 'project-list' "GET registry (project-list)"
+    Test-Get "$Base/app/components/registry.json" 'project-template-settings' "GET registry (project-template-settings)"
 
     $projects = Test-GetJson "$Base/api/projects" '"projects"' "GET /api/projects"
     if (-not $projects.active_project_id) {
@@ -100,6 +103,19 @@ try {
     if ($patched.ui_state.project_name -ne "Test projekt QA") {
         throw "FAIL: ui-state project_name not persisted"
     }
+
+    $tplPatch = Test-PostJson "$Base/api/projects/ui-state" @{
+        selected_template_id = "tpl_news_package"
+        reset_settings_override = $true
+    } '"ui_state"' "POST /api/projects/ui-state (template select)"
+    if ($tplPatch.ui_state.selected_template_id -ne "tpl_news_package") {
+        throw "FAIL: ui-state selected_template_id not persisted"
+    }
+    $tplReload = Test-GetJson "$Base/api/projects/ui-state" '"ui_state"' "GET /api/projects/ui-state (template reload)"
+    if ($tplReload.ui_state.selected_template_id -ne "tpl_news_package") {
+        throw "FAIL: ui-state template reload mismatch"
+    }
+    Write-Host "OK: Project tab template selection round-trip"
 
     $session = Test-PostJson "$Base/api/collab/session" @{
         display_name = "QA tester"
@@ -135,6 +151,38 @@ try {
         throw "FAIL: per-project db not created at $dbPath"
     }
     Write-Host "OK: qnc_project.db created ($dbPath)"
+
+    $projectsListed = Test-GetJson "$Base/api/projects" '"projects"' "GET /api/projects (list after create)"
+    if (-not ($projectsListed.projects | Where-Object { $_.project_id -eq $newId })) {
+        throw "FAIL: created project missing from project index"
+    }
+
+    $openTargetId = $null
+    if ($bootstrapProjectId -and $bootstrapProjectId -ne $newId) {
+        $openTargetId = $bootstrapProjectId
+    } else {
+        $otherListed = @($projectsListed.projects | Where-Object { $_.project_id -ne $newId })
+        if ($otherListed.Count -ge 1) {
+            $openTargetId = $otherListed[0].project_id
+        }
+    }
+    if ($openTargetId) {
+        $opened = Test-PostJson "$Base/api/projects/open" @{
+            project_id = $openTargetId
+        } '"active_project_id"' "POST /api/projects/open"
+        if ($opened.active_project_id -ne $openTargetId) {
+            throw "FAIL: open did not set active_project_id"
+        }
+        $reopened = Test-PostJson "$Base/api/projects/open" @{
+            project_id = $newId
+        } '"active_project_id"' "POST /api/projects/open (restore active)"
+        if ($reopened.active_project_id -ne $newId) {
+            throw "FAIL: open restore did not set active_project_id"
+        }
+        Write-Host "OK: Project tab open/switch regression"
+    } else {
+        Write-Host "OK: Project tab open/switch regression (skipped — single project in index)"
+    }
 
     $settings = Test-GetJson "$Base/api/projects/$([uri]::EscapeDataString($newId))/settings" '"settings"' "GET /api/projects/{id}/settings"
     if (-not $settings.settings.template_id) { throw "FAIL: project settings missing template_id" }
@@ -264,10 +312,25 @@ try {
     if ($txGet.transcript.text -ne "QA transcript line") { throw "FAIL: transcript text mismatch after save" }
     Write-Host "OK: media_pool workflow + transcript round-trip"
 
+    $beforeDelete = Test-GetJson "$Base/api/projects" '"projects"' "GET /api/projects (before delete)"
+    $countBeforeDelete = @($beforeDelete.projects).Count
+
     $deleted = Test-PostJson "$Base/api/projects/delete" @{
         project_ids = @($newId)
     } '"projects"' "POST /api/projects/delete"
     if ($deleted.removed -notcontains $newId) { throw "FAIL: project not deleted" }
+    if (@($deleted.projects).Count -ne ($countBeforeDelete - 1)) {
+        throw "FAIL: delete response project count mismatch"
+    }
+
+    $afterDelete = Test-GetJson "$Base/api/projects" '"projects"' "GET /api/projects (after delete)"
+    if (@($afterDelete.projects).Count -ne ($countBeforeDelete - 1)) {
+        throw "FAIL: project index count after delete"
+    }
+    if ($afterDelete.projects | Where-Object { $_.project_id -eq $newId }) {
+        throw "FAIL: deleted project still listed in index"
+    }
+    Write-Host "OK: Project tab delete regression"
 
     if ($bootstrapProjectId) {
         $deletedBootstrap = Test-PostJson "$Base/api/projects/delete" @{
@@ -277,7 +340,7 @@ try {
     }
 
     Write-Host ""
-    Write-Host "All host integration tests passed (project + ingest + media_pool + sdk_demo flow)."
+    Write-Host "All host integration tests passed (project tab + ingest + media_pool + sdk_demo flow)."
 }
 finally {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
