@@ -1,0 +1,288 @@
+{
+  "version": 1,
+  "active_preset": "default",
+  "actions": {
+    "play_pause": { "label": "Play / Pauza" },
+    "step_back_frame": { "label": "Korak unazad (kadar)" },
+    "step_forward_frame": { "label": "Korak naprijed (kadar)" },
+    "step_prev_part": { "label": "Prethodni blok" },
+    "step_next_part": { "label": "Sljedeći blok" },
+    "mark_in": { "label": "Mark IN" },
+    "mark_out": { "label": "Mark OUT" },
+    "save_virtual_shot": { "label": "Spremi virtualni kadar" },
+    "add_marker": { "label": "Dodaj marker" },
+    "add_marker_continue": { "label": "Dodaj marker (nastavak)" },
+    "step_prev_marker_slot": { "label": "Prethodni odsječak (M–M)" },
+    "step_next_marker_slot": { "label": "Sljedeći odsječak (M–M)" },
+    "overwrite_cover": { "label": "Overwrite pokrivalicu u odsječak" },
+    "delete_part": { "label": "Obriši story segment" },
+    "close_player": { "label": "Zatvori plejer" },
+    "add_off_segment": { "label": "Dodaj OFF segment" },
+    "add_ton_segment": { "label": "Dodaj IZJAVA / TON segment" },
+    "record_toggle": { "label": "Snimi / zaustavi OFF audio" },
+    "delete_segment": { "label": "Obriši OFF segment" },
+    "save_off": { "label": "Spremi OFF priču" },
+    "step_prev_segment": { "label": "Prethodni OFF segment" },
+    "step_next_segment": { "label": "Sljedeći OFF segment" }
+  },
+  "presets": {
+    "default": {
+      "name": "QNC zadano",
+      "description": "Kao većina NLE (FCP, Resolve, Premiere): M marker, I/O, Space play",
+      "media_pool": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }]
+      },
+      "storyboard": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "step_prev_part": [{ "key": "ArrowUp" }],
+        "step_next_part": [{ "key": "ArrowDown" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "overwrite_cover": [{ "code": "F10" }],
+        "delete_part": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "close_player": [{ "key": "Escape" }]
+      },
+      "timeline_modal": {
+        "close_player": [{ "key": "Escape" }],
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "overwrite_cover": [{ "code": "F10" }]
+      },
+      "off": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_off_segment": [{ "code": "KeyO", "shift": true }],
+        "add_ton_segment": [{ "key": "t" }, { "key": "T" }],
+        "record_toggle": [{ "key": "r" }, { "key": "R" }],
+        "delete_segment": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "save_off": [{ "code": "KeyS", "ctrl": true }],
+        "step_prev_segment": [{ "key": "ArrowUp" }],
+        "step_next_segment": [{ "key": "ArrowDown" }]
+      }
+    },
+    "edius": {
+      "name": "Grass Valley EDIUS",
+      "description": "V marker na clipu, Ctrl+M nastavak, Space play",
+      "media_pool": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "v" }, { "key": "V" }]
+      },
+      "storyboard": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "step_prev_part": [{ "key": "ArrowUp" }],
+        "step_next_part": [{ "key": "ArrowDown" }],
+        "add_marker": [{ "key": "v" }, { "key": "V" }],
+        "add_marker_continue": [{ "code": "KeyM", "ctrl": true }],
+        "overwrite_cover": [{ "code": "F10" }],
+        "delete_part": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "close_player": [{ "key": "Escape" }]
+      },
+      "timeline_modal": {
+        "close_player": [{ "key": "Escape" }],
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "step_prev_part": [{ "key": "ArrowUp" }],
+        "step_next_part": [{ "key": "ArrowDown" }],
+        "add_marker": [{ "key": "v" }, { "key": "V" }],
+        "add_marker_continue": [{ "code": "KeyM", "ctrl": true }],
+        "overwrite_cover": [{ "code": "F10" }]
+      },
+      "off": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_off_segment": [{ "code": "KeyO", "shift": true }],
+        "add_ton_segment": [{ "key": "t" }, { "key": "T" }],
+        "record_toggle": [{ "key": "r" }, { "key": "R" }],
+        "delete_segment": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "save_off": [{ "code": "KeyS", "ctrl": true }],
+        "step_prev_segment": [{ "key": "ArrowUp" }],
+        "step_next_segment": [{ "key": "ArrowDown" }]
+      }
+    },
+    "resolve": {
+      "name": "DaVinci Resolve",
+      "description": "M marker, I/O in-out, F10 overwrite, Space play",
+      "media_pool": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }]
+      },
+      "storyboard": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "step_prev_part": [{ "key": "ArrowUp" }],
+        "step_next_part": [{ "key": "ArrowDown" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "overwrite_cover": [{ "code": "F10" }],
+        "delete_part": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "close_player": [{ "key": "Escape" }]
+      },
+      "timeline_modal": {
+        "close_player": [{ "key": "Escape" }],
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "overwrite_cover": [{ "code": "F10" }]
+      },
+      "off": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_off_segment": [{ "code": "KeyO", "shift": true }],
+        "add_ton_segment": [{ "key": "t" }, { "key": "T" }],
+        "record_toggle": [{ "key": "r" }, { "key": "R" }],
+        "delete_segment": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "save_off": [{ "code": "KeyS", "ctrl": true }],
+        "step_prev_segment": [{ "key": "ArrowUp" }],
+        "step_next_segment": [{ "key": "ArrowDown" }]
+      }
+    },
+    "premiere": {
+      "name": "Adobe Premiere Pro",
+      "description": "M marker, I/O in-out, Space play",
+      "media_pool": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }]
+      },
+      "storyboard": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "step_prev_part": [{ "key": "ArrowUp" }],
+        "step_next_part": [{ "key": "ArrowDown" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "overwrite_cover": [{ "code": "F10" }],
+        "delete_part": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "close_player": [{ "key": "Escape" }]
+      },
+      "timeline_modal": {
+        "close_player": [{ "key": "Escape" }],
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "overwrite_cover": [{ "code": "F10" }]
+      },
+      "off": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_off_segment": [{ "code": "KeyO", "shift": true }],
+        "add_ton_segment": [{ "key": "t" }, { "key": "T" }],
+        "record_toggle": [{ "key": "r" }, { "key": "R" }],
+        "delete_segment": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "save_off": [{ "code": "KeyS", "ctrl": true }],
+        "step_prev_segment": [{ "key": "ArrowUp" }],
+        "step_next_segment": [{ "key": "ArrowDown" }]
+      }
+    },
+    "finalcut": {
+      "name": "Final Cut Pro",
+      "description": "M marker, Option+M marker+nastavak, I/O in-out, Space play",
+      "media_pool": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }]
+      },
+      "storyboard": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "step_prev_part": [{ "key": "ArrowUp" }],
+        "step_next_part": [{ "key": "ArrowDown" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "add_marker_continue": [{ "code": "KeyM", "alt": true }],
+        "overwrite_cover": [{ "code": "F10" }],
+        "delete_part": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "close_player": [{ "key": "Escape" }]
+      },
+      "timeline_modal": {
+        "close_player": [{ "key": "Escape" }],
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "step_prev_part": [{ "key": "ArrowUp" }],
+        "step_next_part": [{ "key": "ArrowDown" }],
+        "add_marker": [{ "key": "m" }, { "key": "M" }],
+        "add_marker_continue": [{ "code": "KeyM", "alt": true }],
+        "overwrite_cover": [{ "code": "F10" }]
+      },
+      "off": {
+        "play_pause": [{ "code": "Space" }, { "key": " " }],
+        "mark_in": [{ "key": "i" }, { "key": "I" }],
+        "mark_out": [{ "key": "o" }, { "key": "O" }],
+        "save_virtual_shot": [{ "key": "Enter" }],
+        "step_back_frame": [{ "key": "ArrowLeft" }],
+        "step_forward_frame": [{ "key": "ArrowRight" }],
+        "add_off_segment": [{ "code": "KeyO", "shift": true }],
+        "add_ton_segment": [{ "key": "t" }, { "key": "T" }],
+        "record_toggle": [{ "key": "r" }, { "key": "R" }],
+        "delete_segment": [{ "key": "Delete" }, { "key": "Backspace" }],
+        "save_off": [{ "code": "KeyS", "ctrl": true }],
+        "step_prev_segment": [{ "key": "ArrowUp" }],
+        "step_next_segment": [{ "key": "ArrowDown" }]
+      }
+    }
+  }
+}

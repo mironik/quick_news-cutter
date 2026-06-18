@@ -1,0 +1,53 @@
+{
+  "component_id": "custom-template-save",
+  "kind": "panel",
+  "path": "/app/components/custom-template-save/component.html",
+  "description": "Reusable custom template save panel.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "template_settings",
+      "ai_settings",
+      "video_settings",
+      "audio_settings",
+      "storage_settings",
+      "export_settings",
+      "workflow_tabs"
+    ],
+    "slots": [
+      "template-base",
+      "ai",
+      "advanced-video-settings"
+    ],
+    "events": [
+      {
+        "action": "template.duplicate",
+        "payload": {
+          "name": "string",
+          "description": "string"
+        }
+      },
+      {
+        "action": "template.create-panel.close",
+        "payload": {}
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [
+      "ai-settings",
+      "advanced-video-settings"
+    ],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/custom-template-save/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/custom-template-save"
+}

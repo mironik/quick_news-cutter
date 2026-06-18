@@ -1,0 +1,578 @@
+/* Design add-on — samostalan modul (plugins/design-tools). */
+@import url('story-segment-design.css');
+@import url('project-list-design.css');
+@import url('project-template-settings-design.css');
+@import url('ingest-proxy-workspace-design.css');
+
+.tab-panel.design-tools-panel {
+  display: none;
+  color-scheme: dark;
+}
+
+.tab-panel.design-tools-panel.active {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: var(--qnc-space-2);
+  min-height: 0;
+  height: 100%;
+  position: relative;
+}
+
+.qnc-design-studio-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--qnc-space-3);
+}
+
+.qnc-design-studio-sub {
+  margin: 4px 0 0;
+  font-size: var(--qnc-font-sm);
+}
+
+.qnc-design-studio-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qnc-space-2);
+}
+
+.qnc-design-editor-host {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.qnc-design-editor {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--qnc-space-2);
+}
+
+.qnc-design-editor[data-design-view="components"] {
+  grid-template-rows: 1fr;
+}
+
+.qnc-design-editor[data-design-view="components"] .qnc-design-studio-body {
+  --qnc-design-sidebar-w: 340px;
+}
+
+.qnc-design-editor[hidden] {
+  display: none !important;
+}
+
+.qnc-design-theme-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qnc-space-2);
+  padding: var(--qnc-space-1) 0;
+  border-bottom: 1px solid var(--qnc-line-soft);
+}
+
+.qnc-design-theme-bar .qnc-ui-label {
+  margin: 0;
+}
+
+.qnc-design-theme-select {
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.qnc-design-studio-body {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: var(--qnc-design-sidebar-w, 260px) 5px minmax(0, 1fr);
+  gap: 0;
+}
+
+.qnc-design-studio-body--fill {
+  height: 100%;
+}
+
+.qnc-design-sidebar {
+  min-width: 240px;
+  max-width: 560px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--qnc-space-2);
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-panel);
+  scrollbar-width: thin;
+  scrollbar-color: var(--qnc-line-strong) var(--qnc-panel);
+}
+
+.qnc-design-sidebar::-webkit-scrollbar,
+.qnc-design-preview::-webkit-scrollbar,
+.qnc-design-overlay-body::-webkit-scrollbar,
+.design-tools-panel .qnc-timeline-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.qnc-design-sidebar::-webkit-scrollbar-track,
+.qnc-design-preview::-webkit-scrollbar-track,
+.qnc-design-overlay-body::-webkit-scrollbar-track,
+.design-tools-panel .qnc-timeline-scroll::-webkit-scrollbar-track {
+  background: var(--qnc-panel);
+}
+
+.qnc-design-sidebar::-webkit-scrollbar-thumb,
+.qnc-design-preview::-webkit-scrollbar-thumb,
+.qnc-design-overlay-body::-webkit-scrollbar-thumb,
+.design-tools-panel .qnc-timeline-scroll::-webkit-scrollbar-thumb {
+  background: var(--qnc-line-strong);
+  border: 2px solid var(--qnc-panel);
+  border-radius: 6px;
+}
+
+.qnc-design-sidebar::-webkit-scrollbar-thumb:hover,
+.qnc-design-preview::-webkit-scrollbar-thumb:hover,
+.qnc-design-overlay-body::-webkit-scrollbar-thumb:hover,
+.design-tools-panel .qnc-timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--qnc-muted);
+}
+
+.qnc-design-resize-handle {
+  cursor: col-resize;
+  background: var(--qnc-line-soft);
+  border-radius: 2px;
+  touch-action: none;
+  user-select: none;
+}
+
+.qnc-design-resize-handle:hover,
+.qnc-design-resize-handle.is-dragging {
+  background: var(--qnc-line-strong);
+}
+
+.qnc-design-token-group {
+  margin-bottom: var(--qnc-space-4);
+}
+
+.qnc-design-token-group h4 {
+  margin: 0 0 var(--qnc-space-2);
+  font-size: var(--qnc-font-sm);
+  color: var(--qnc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.qnc-design-token-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--qnc-space-2);
+  align-items: center;
+  margin-bottom: var(--qnc-space-2);
+}
+
+.qnc-design-token-row--color {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--qnc-space-1);
+}
+
+.qnc-design-token-row--color code {
+  display: block;
+}
+
+.qnc-design-token-row code {
+  font-size: var(--qnc-font-xs);
+  color: var(--qnc-faint);
+  word-break: break-word;
+}
+
+.qnc-design-token-row input[type="color"] {
+  width: 40px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid var(--qnc-line);
+  border-radius: 2px;
+  background: var(--qnc-panel-2);
+  color-scheme: dark;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.qnc-design-token-row input[type="text"],
+.qnc-design-style-color-wrap input[type="text"] {
+  min-height: 28px;
+  min-width: 0;
+  max-width: 140px;
+  padding: 4px 6px;
+  border: 1px solid var(--qnc-line);
+  border-radius: 0;
+  background: var(--qnc-panel-2);
+  color: var(--qnc-text);
+  font: inherit;
+  font-size: var(--qnc-font-xs);
+  box-sizing: border-box;
+}
+
+.qnc-design-token-row--color .qnc-design-style-color-wrap input[type="text"] {
+  flex: 1;
+  max-width: none;
+}
+
+.qnc-design-token-row input[type="text"]::placeholder,
+.qnc-design-style-color-wrap input[type="text"]::placeholder {
+  color: var(--qnc-faint);
+}
+
+.qnc-design-token-row input[type="text"]:focus,
+.qnc-design-style-color-wrap input[type="text"]:focus {
+  outline: 1px solid var(--qnc-focus);
+  outline-offset: 0;
+  border-color: var(--qnc-line-strong);
+}
+
+.qnc-design-component-lab .qnc-ui-select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--qnc-panel-2);
+  color: var(--qnc-text);
+  color-scheme: dark;
+}
+
+.qnc-design-component-lab option {
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+}
+
+.qnc-design-preview {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--qnc-space-2);
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-bg-elevated);
+  scrollbar-width: thin;
+  scrollbar-color: var(--qnc-line-strong) var(--qnc-bg-elevated);
+}
+
+.qnc-design-preview--fill {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--qnc-space-1);
+}
+
+.qnc-design-preview--fill:has(.qnc-design-pts-host) {
+  padding: 0;
+}
+
+.qnc-design-preview-card {
+  display: grid;
+  gap: var(--qnc-space-3);
+  max-width: 520px;
+}
+
+.qnc-design-studio-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--qnc-space-2);
+  padding-top: var(--qnc-space-1);
+}
+
+/* Zajednički overlay — sve Design komponente */
+.qnc-design-editor-host {
+  position: relative;
+}
+
+.tab-panel.design-tools-panel.has-design-overlay .qnc-design-studio-head,
+.tab-panel.design-tools-panel.has-design-overlay .qnc-design-studio-nav,
+.tab-panel.design-tools-panel.has-design-overlay .qnc-design-editor-host {
+  pointer-events: none;
+}
+
+.qnc-design-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--qnc-space-2);
+}
+
+.qnc-design-overlay[hidden] {
+  display: none !important;
+}
+
+.qnc-design-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--qnc-bg) 60%, transparent);
+}
+
+.qnc-design-overlay-panel {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  max-height: calc(100% - var(--qnc-space-2) * 2);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--qnc-space-2);
+  padding: var(--qnc-space-2) var(--qnc-space-3);
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--qnc-bg) 40%, black);
+  background: var(--qnc-panel);
+  border: 1px solid var(--qnc-line-soft);
+  color-scheme: dark;
+}
+
+.qnc-design-overlay-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--qnc-space-2);
+}
+
+.qnc-design-overlay-head h3 {
+  margin: 0;
+  font-size: var(--qnc-font-md);
+}
+
+.qnc-design-overlay-subtitle {
+  margin: 0 0 2px;
+  font-size: var(--qnc-font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qnc-design-overlay-body {
+  display: grid;
+  gap: var(--qnc-space-2);
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--qnc-line-strong) var(--qnc-panel);
+}
+
+.qnc-design-overlay-stack {
+  display: grid;
+  gap: var(--qnc-space-2);
+}
+
+.qnc-design-overlay-section-title {
+  margin: 0 0 var(--qnc-space-1);
+  font-size: var(--qnc-font-xs);
+  font-weight: 600;
+  color: var(--qnc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qnc-design-overlay-label-picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--qnc-space-1);
+}
+
+/* Horizontalna matrica — stanja traka */
+.qnc-design-overlay-matrix {
+  display: grid;
+  gap: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.qnc-design-overlay-section--states {
+  min-width: 0;
+}
+
+.qnc-design-overlay-matrix-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1.1fr) repeat(3, minmax(0, 1fr));
+  gap: 0;
+  align-items: stretch;
+}
+
+.qnc-design-overlay-matrix-head {
+  font-size: var(--qnc-font-xs);
+  font-weight: 600;
+  color: var(--qnc-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: color-mix(in srgb, var(--qnc-line-strong) 28%, var(--qnc-bg));
+}
+
+.qnc-design-overlay-matrix-head .qnc-design-overlay-matrix-label {
+  padding: var(--qnc-space-1) var(--qnc-space-2);
+  font-weight: 600;
+  color: var(--qnc-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qnc-design-overlay-matrix-head .qnc-design-overlay-matrix-col {
+  min-height: 32px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--qnc-text);
+}
+
+.qnc-design-overlay-matrix-label {
+  display: flex;
+  align-items: center;
+  font-size: var(--qnc-font-xs);
+  line-height: 1.2;
+  padding: var(--qnc-space-1) var(--qnc-space-2);
+}
+
+.qnc-design-overlay-matrix-row--track:nth-child(even) {
+  background: color-mix(in srgb, var(--qnc-line-soft) 40%, var(--qnc-bg));
+}
+
+.qnc-design-overlay-matrix-row--track:nth-child(odd) {
+  background: var(--qnc-bg);
+}
+
+.qnc-design-overlay-matrix-row--track .qnc-design-overlay-matrix-label {
+  color: var(--qnc-text);
+}
+
+.qnc-design-overlay-matrix-row--track .qnc-design-overlay-pick--state {
+  border-radius: 0;
+  min-height: 32px;
+  background: transparent;
+}
+
+.qnc-design-overlay-matrix-row--track .qnc-design-overlay-pick--state:hover {
+  background: color-mix(in srgb, var(--qnc-text) 5%, transparent);
+}
+
+.qnc-design-overlay-matrix-row--track .qnc-design-overlay-pick--state input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.qnc-design-overlay-state-mark {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--qnc-text);
+}
+
+.qnc-design-overlay-pick--state:not(:has(input:checked)) .qnc-design-overlay-state-mark {
+  opacity: 0;
+}
+
+.qnc-design-overlay-pick--state:has(input:checked) .qnc-design-overlay-state-mark {
+  opacity: 1;
+}
+
+.qnc-design-overlay-matrix-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 36px;
+}
+
+.qnc-design-overlay-pick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: var(--qnc-space-2);
+  border: none;
+  outline: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  background: transparent;
+}
+
+.qnc-design-overlay-pick:hover {
+  background: color-mix(in srgb, var(--qnc-line-soft) 30%, transparent);
+}
+
+/* Oznake traka — selekcija samo pozadinom ćelije */
+.qnc-design-overlay-label-picks .qnc-design-overlay-pick:has(input:checked) {
+  background: color-mix(in srgb, var(--qnc-line-strong) 30%, var(--qnc-bg));
+}
+
+.qnc-design-overlay-label-picks .qnc-design-overlay-pick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.qnc-design-overlay-pick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.qnc-design-overlay-pick-preview {
+  font-size: var(--qnc-font-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--qnc-text);
+}
+
+.qnc-design-overlay-matrix-row--track .qnc-design-overlay-pick-preview {
+  display: none;
+}
+
+.qnc-design-overlay-open-all {
+  width: 100%;
+}
+
+.qnc-design-overlay-foot {
+  display: grid;
+  gap: var(--qnc-space-2);
+}
+
+.qnc-design-overlay-hint {
+  font-size: var(--qnc-font-xs);
+}
+
+.qnc-design-overlay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--qnc-space-2);
+}
+
+.qnc-design-overlay-fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: grid;
+  gap: var(--qnc-space-2);
+}
+
+.qnc-design-overlay-fieldset legend {
+  padding: 0 0 var(--qnc-space-1);
+  font-size: var(--qnc-font-xs);
+  color: var(--qnc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.qnc-design-overlay-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--qnc-space-2);
+  align-items: start;
+  padding: var(--qnc-space-2);
+  border: 1px solid var(--qnc-line-soft);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.qnc-design-overlay-option:hover {
+  border-color: var(--qnc-line-strong);
+}
+
+.qnc-design-overlay-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.qnc-design-overlay-option small {
+  color: var(--qnc-muted);
+  font-size: var(--qnc-font-xs);
+}

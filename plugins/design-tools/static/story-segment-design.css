@@ -1,0 +1,330 @@
+/* Story segment — FCP 11 filmstrip + neutralni slojevi (bez overlay boja). */
+@import url('timeline-design.css');
+
+.qnc-story-segment {
+  --qnc-story-segment-accent: var(--qnc-text);
+  --qnc-fcp-video-lane-bg: #1a1a1c;
+  --qnc-fcp-audio-lane-bg: #18181a;
+  --qnc-fcp-audio-lane-bg-alt: #161618;
+  --qnc-fcp-label-bg: #131315;
+  --qnc-fcp-lane-edge: rgba(255, 255, 255, 0.06);
+  --qnc-fcp-filmstrip-seam: #0b0b0c;
+  --qnc-fcp-filmstrip-frame: #2a2a2e;
+  --qnc-fcp-filmstrip-frame-hi: #3a3a40;
+  --qnc-fcp-io-dim: rgba(0, 0, 0, 0.52);
+  --qnc-fcp-io-handle: rgba(255, 255, 255, 0.94);
+  --qnc-fcp-io-handle-edge: rgba(0, 0, 0, 0.55);
+  --qnc-fcp-wave-a1: rgba(167, 203, 167, 0.68);
+  --qnc-fcp-wave-a2: rgba(159, 189, 210, 0.62);
+  --qnc-fcp-wave-a3: rgba(210, 189, 159, 0.58);
+  --qnc-fcp-wave-a4: rgba(189, 167, 203, 0.58);
+  --qnc-fcp-wave-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='24' viewBox='0 0 72 24'%3E%3Cg fill='white'%3E%3Crect x='1' y='10' width='2' height='4' rx='1'/%3E%3Crect x='4' y='8' width='2' height='8' rx='1'/%3E%3Crect x='7' y='9' width='2' height='6' rx='1'/%3E%3Crect x='10' y='6' width='2' height='12' rx='1'/%3E%3Crect x='13' y='8' width='2' height='8' rx='1'/%3E%3Crect x='16' y='7' width='2' height='10' rx='1'/%3E%3Crect x='19' y='9' width='2' height='6' rx='1'/%3E%3Crect x='22' y='5' width='2' height='14' rx='1'/%3E%3Crect x='25' y='8' width='2' height='8' rx='1'/%3E%3Crect x='28' y='10' width='2' height='4' rx='1'/%3E%3Crect x='31' y='7' width='2' height='10' rx='1'/%3E%3Crect x='34' y='9' width='2' height='6' rx='1'/%3E%3Crect x='37' y='6' width='2' height='12' rx='1'/%3E%3Crect x='40' y='8' width='2' height='8' rx='1'/%3E%3Crect x='43' y='10' width='2' height='4' rx='1'/%3E%3Crect x='46' y='7' width='2' height='10' rx='1'/%3E%3Crect x='49' y='5' width='2' height='14' rx='1'/%3E%3Crect x='52' y='9' width='2' height='6' rx='1'/%3E%3Crect x='55' y='8' width='2' height='8' rx='1'/%3E%3Crect x='58' y='10' width='2' height='4' rx='1'/%3E%3Crect x='61' y='7' width='2' height='10' rx='1'/%3E%3Crect x='64' y='9' width='2' height='6' rx='1'/%3E%3Crect x='67' y='8' width='2' height='8' rx='1'/%3E%3C/g%3E%3C/svg%3E");
+  --qnc-timeline-row-h-video: 56px;
+  --qnc-timeline-row-h-audio: 30px;
+  --qnc-timeline-row-h-compact: 14px;
+  --qnc-timeline-playhead-color: rgba(255, 255, 255, 0.88);
+  --qnc-timeline-label-bg: var(--qnc-fcp-label-bg);
+  --qnc-timeline-lane-bg: var(--qnc-fcp-audio-lane-bg);
+  --qnc-timeline-row-stripe: transparent;
+  background: #121214;
+  border-color: var(--qnc-fcp-lane-edge);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.qnc-story-segment .qnc-timeline-canvas > .qnc-timeline-row {
+  border-bottom-color: var(--qnc-fcp-lane-edge);
+}
+
+.qnc-story-segment .qnc-timeline-canvas > .qnc-timeline-row:nth-child(even):not([data-track-state='off']) {
+  background: transparent;
+}
+
+.qnc-story-segment .qnc-timeline-label {
+  background: var(--qnc-fcp-label-bg);
+  border-right-color: var(--qnc-fcp-lane-edge);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-state='on-hidden'] {
+  opacity: 0.72;
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-state='on-hidden'] .qnc-timeline-lane {
+  background: var(--qnc-fcp-audio-lane-bg-alt);
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-state='off'] {
+  opacity: 0.42;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.qnc-story-segment-head {
+  flex-wrap: wrap;
+}
+
+.qnc-story-segment-kind {
+  color: var(--qnc-muted);
+}
+
+.qnc-story-segment-hint {
+  margin: 0;
+  font-size: var(--qnc-font-xs);
+  line-height: 1.45;
+}
+
+/* --- Video lane: FCP filmstrip (kontinuirani kadrovi, tamna traka) --- */
+.qnc-story-segment .qnc-timeline-row[data-track-id='video'] .qnc-timeline-lane {
+  background: var(--qnc-fcp-video-lane-bg);
+  padding: 0;
+}
+
+.qnc-story-segment .qnc-timeline-video-strip {
+  display: flex;
+  gap: 1px;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  background: var(--qnc-fcp-filmstrip-seam);
+}
+
+.qnc-story-segment .qnc-timeline-tl-slot {
+  flex: 1 1 52px;
+  min-width: 44px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(
+    180deg,
+    var(--qnc-fcp-filmstrip-frame-hi) 0%,
+    var(--qnc-fcp-filmstrip-frame) 38%,
+    #222226 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.qnc-story-segment .qnc-timeline-tl-slot:nth-child(3n + 1) {
+  filter: brightness(1.04);
+}
+
+.qnc-story-segment .qnc-timeline-tl-slot:nth-child(3n + 2) {
+  filter: brightness(0.96);
+}
+
+.qnc-story-segment[data-segment-type='off'] .qnc-timeline-row[data-track-id='video'][data-track-state='on-hidden'] .qnc-timeline-tl-slot,
+.qnc-story-segment[data-segment-type='off'] .qnc-timeline-row[data-track-id='video'][data-track-state='on-visible'] .qnc-timeline-tl-slot {
+  filter: saturate(0.35) brightness(0.72);
+}
+
+.qnc-story-segment[data-primary-track='video'] .qnc-timeline-row[data-track-id='video'] .qnc-timeline-label-main,
+.qnc-story-segment[data-primary-track='audio-1'] .qnc-timeline-row[data-track-id='audio-1'] .qnc-timeline-label-main {
+  font-weight: 600;
+}
+
+/* --- In/Out: FCP trim (zatamnjenje izvan raspona, bez obojenog fill-a) --- */
+.qnc-story-segment .qnc-timeline-lane-io {
+  --qnc-io-in: 0%;
+  --qnc-io-out: 100%;
+}
+
+.qnc-story-segment .qnc-timeline-lane-io::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    var(--qnc-fcp-io-dim) 0%,
+    var(--qnc-fcp-io-dim) var(--qnc-io-in),
+    transparent var(--qnc-io-in),
+    transparent var(--qnc-io-out),
+    var(--qnc-fcp-io-dim) var(--qnc-io-out),
+    var(--qnc-fcp-io-dim) 100%
+  );
+}
+
+.qnc-story-segment .qnc-timeline-inout-range {
+  top: 0;
+  bottom: 0;
+  background: transparent;
+  border: none;
+  z-index: 2;
+}
+
+.qnc-story-segment .qnc-timeline-in-handle,
+.qnc-story-segment .qnc-timeline-out-handle {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--qnc-fcp-io-handle);
+  box-shadow: 0 0 0 1px var(--qnc-fcp-io-handle-edge);
+  z-index: 3;
+}
+
+.qnc-story-segment [data-timeline-item='inout-range'].is-item-selected,
+.qnc-story-segment [data-timeline-item='inout-in'].is-item-selected,
+.qnc-story-segment [data-timeline-item='inout-out'].is-item-selected {
+  background: transparent;
+}
+
+.qnc-story-segment [data-timeline-item='inout-in'].is-item-selected,
+.qnc-story-segment [data-timeline-item='inout-out'].is-item-selected {
+  width: 3px;
+  margin-left: -1.5px;
+}
+
+/* --- Audio laneovi: FCP 11 (tamna traka, simetričan val, prazna traka bez vala) --- */
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-1'] .qnc-timeline-lane,
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-2'] .qnc-timeline-lane,
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-3'] .qnc-timeline-lane,
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-4'] .qnc-timeline-lane {
+  background: var(--qnc-fcp-audio-lane-bg);
+  padding: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-2'] .qnc-timeline-lane,
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-4'] .qnc-timeline-lane {
+  background: var(--qnc-fcp-audio-lane-bg-alt);
+}
+
+.qnc-story-segment .qnc-timeline-lane.qnc-timeline-audio:not([data-audio-wave='on'])::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  margin-top: -0.5px;
+  background: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+.qnc-story-segment .qnc-timeline-audio-wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: calc(100% - 8px);
+  max-height: 22px;
+  transform: translateY(-50%);
+  border-radius: 0;
+  opacity: 1;
+  background-color: var(--qnc-fcp-wave-a1);
+  -webkit-mask-image: var(--qnc-fcp-wave-mask);
+  mask-image: var(--qnc-fcp-wave-mask);
+  -webkit-mask-size: 72px 100%;
+  mask-size: 72px 100%;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-position: left center;
+  mask-position: left center;
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-1'] .qnc-timeline-audio-wave {
+  background-color: var(--qnc-fcp-wave-a1);
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-2'] .qnc-timeline-audio-wave {
+  background-color: var(--qnc-fcp-wave-a2);
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-3'] .qnc-timeline-audio-wave {
+  background-color: var(--qnc-fcp-wave-a3);
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-id='audio-4'] .qnc-timeline-audio-wave {
+  background-color: var(--qnc-fcp-wave-a4);
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-state='on-hidden'] .qnc-timeline-audio-wave {
+  height: calc(100% - 2px);
+  max-height: 10px;
+  opacity: 0.85;
+}
+
+.qnc-story-segment .qnc-timeline-row[data-track-state='on-hidden'] .qnc-timeline-lane.qnc-timeline-audio:not([data-audio-wave='on'])::after {
+  opacity: 0.6;
+}
+
+/* --- Slojevi: neutralni outline, bez fill boja --- */
+.qnc-story-segment .qnc-timeline-lane-scopes {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.qnc-story-segment .qnc-timeline-lane-scopes [data-timeline-item] {
+  pointer-events: auto;
+}
+
+.qnc-story-segment .qnc-timeline-lane-scopes .qnc-timeline-stab-segment {
+  position: absolute;
+  top: 18%;
+  height: 64%;
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  box-sizing: border-box;
+}
+
+.qnc-story-segment .qnc-timeline-lane-scopes .qnc-editorial-transcript-line {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--qnc-timeline-transcript-font-size);
+  padding: 0 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-sizing: border-box;
+}
+
+.qnc-story-segment .qnc-timeline-lane-scopes [data-timeline-item='stab'].is-item-selected {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.qnc-story-segment .qnc-timeline-lane-scopes [data-timeline-item='transcript'].is-item-selected {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(0, 0, 0, 0.68);
+}
+
+/* Marker sloj — FCP neutral */
+.qnc-story-segment .qnc-timeline-lane-markers {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.qnc-story-segment .qnc-timeline-lane-markers [data-timeline-item='marker'] {
+  pointer-events: auto;
+}
+
+.qnc-story-segment .qnc-timeline-lane-markers .qnc-timeline-lane-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  min-width: 14px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.qnc-story-segment .qnc-timeline-lane-markers [data-timeline-item='marker'].is-item-selected {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.8);
+}

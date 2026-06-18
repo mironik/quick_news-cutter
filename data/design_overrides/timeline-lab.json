@@ -1,0 +1,88 @@
+{
+  "active_profile_id": "off",
+  "audio_wave_states": {
+    "audio-1": true,
+    "audio-2": false,
+    "audio-3": false,
+    "audio-4": false
+  },
+  "component": "story-segment",
+  "label_display": "full",
+  "layer_states": {
+    "inout": "on-visible",
+    "markers": "off",
+    "stabilization": "off",
+    "transcript": "off"
+  },
+  "playhead_pct": 28.9,
+  "segment": {
+    "duration_sec": 18,
+    "in_pct": 0,
+    "label": "Izjava 1",
+    "out_pct": 25.9,
+    "scopes": {
+      "markers": [
+        {
+          "id": "m1",
+          "label": "M",
+          "pct": 35
+        }
+      ],
+      "stabilization": [
+        {
+          "id": "s1",
+          "left_pct": 5,
+          "width_pct": 90
+        }
+      ],
+      "transcript": [
+        {
+          "id": "t1",
+          "left_pct": 0,
+          "text": "Transkript isječka …",
+          "width_pct": 100
+        }
+      ]
+    },
+    "type": "off",
+    "version": 1
+  },
+  "style": {
+    "--qnc-timeline-audio-wave-opacity": "0.4",
+    "--qnc-timeline-inout-handle-color": "",
+    "--qnc-timeline-inout-range-bg": "",
+    "--qnc-timeline-inout-range-border": "",
+    "--qnc-timeline-label-bg": "",
+    "--qnc-timeline-label-w": "152px",
+    "--qnc-timeline-lane-bg": "",
+    "--qnc-timeline-marker-bg": "",
+    "--qnc-timeline-marker-border": "",
+    "--qnc-timeline-marker-color": "",
+    "--qnc-timeline-playhead-color": "#e85d04",
+    "--qnc-timeline-row-h-audio": "34px",
+    "--qnc-timeline-row-h-compact": "10px",
+    "--qnc-timeline-row-h-inout": "34px",
+    "--qnc-timeline-row-h-markers": "30px",
+    "--qnc-timeline-row-h-off": "16px",
+    "--qnc-timeline-row-h-stabilization": "28px",
+    "--qnc-timeline-row-h-transcript": "36px",
+    "--qnc-timeline-row-h-video": "68px",
+    "--qnc-timeline-row-stripe": "",
+    "--qnc-timeline-stab-bg": "",
+    "--qnc-timeline-stab-border": "",
+    "--qnc-timeline-transcript-bg": "",
+    "--qnc-timeline-transcript-border": "",
+    "--qnc-timeline-transcript-color": "",
+    "--qnc-timeline-transcript-font-size": "12px",
+    "--qnc-timeline-video-slot-bg": "",
+    "--qnc-timeline-video-slot-border": ""
+  },
+  "track_states": {
+    "audio-1": "on-visible",
+    "audio-2": "off",
+    "audio-3": "off",
+    "audio-4": "off",
+    "video": "on-hidden"
+  },
+  "version": 2
+}

@@ -1,0 +1,71 @@
+{
+  "description": "Referentni model univerzalnog timelinea (Design lab). axis.mode određuje viewport.",
+  "examples": {
+    "source_clip": {
+      "version": 3,
+      "axis": { "mode": "source_clip", "duration_sec": 600, "offset_sec": 0 },
+      "clip_range": { "in_pct": 12, "out_pct": 48 },
+      "virtual_clips": [
+        { "id": "vc1", "label": "Kadar A", "left_pct": 12, "width_pct": 10, "clip_id": "c1" },
+        { "id": "vc2", "label": "Kadar B", "left_pct": 28, "width_pct": 14, "clip_id": "c1" }
+      ],
+      "segments": [],
+      "editorial": { "markers": [] },
+      "slots": [],
+      "scopes": {
+        "stabilization": [{ "id": "s1", "left_pct": 12, "width_pct": 18 }],
+        "transcript": [{ "id": "t1", "left_pct": 12, "width_pct": 22, "text": "…" }]
+      },
+      "lanes": {
+        "video": { "in_pct": 12, "out_pct": 48 },
+        "audio-1": { "in_pct": 12, "out_pct": 48 },
+        "inout": { "in_pct": 12, "out_pct": 48 }
+      }
+    },
+    "segment_local": {
+      "version": 3,
+      "axis": { "mode": "segment_local", "duration_sec": 120, "segment_index": 0 },
+      "clip_range": { "in_pct": 0, "out_pct": 100 },
+      "virtual_clips": [
+        { "id": "vc1", "segment_id": "seg1", "label": "Glavna izjava", "left_pct": 5, "width_pct": 70, "role": "primary" },
+        { "id": "vc2", "segment_id": "seg1", "label": "Pokrivanje", "left_pct": 20, "width_pct": 35, "role": "cover" }
+      ],
+      "segments": [
+        { "id": "seg1", "type": "izjava", "label": "Izjava 1", "start_pct": 0, "width_pct": 38 },
+        { "id": "seg2", "type": "off", "label": "Off 1", "start_pct": 38, "width_pct": 12 },
+        { "id": "seg3", "type": "izjava", "label": "Izjava 2", "start_pct": 50, "width_pct": 50 }
+      ],
+      "editorial": { "markers": [{ "id": "m1", "pct": 25 }, { "id": "m2", "pct": 80 }] },
+      "scopes": { "stabilization": [], "transcript": [] },
+      "lanes": { "video": { "in_pct": 0, "out_pct": 100 } }
+    },
+    "montage_global": {
+      "version": 3,
+      "axis": { "mode": "montage_global", "duration_sec": 120, "offset_sec": 0 },
+      "clip_range": { "in_pct": 0, "out_pct": 100 },
+      "virtual_clips": [
+        { "id": "vc1", "segment_id": "seg1", "label": "VC izjava 1", "left_pct": 2, "width_pct": 30, "role": "primary" },
+        { "id": "vc2", "segment_id": "seg3", "label": "VC izjava 2", "left_pct": 52, "width_pct": 40, "role": "primary" }
+      ],
+      "segments": [
+        { "id": "seg1", "type": "izjava", "label": "Izjava 1", "start_pct": 0, "width_pct": 38 },
+        { "id": "seg2", "type": "off", "label": "Off 1", "start_pct": 38, "width_pct": 12 },
+        { "id": "seg3", "type": "izjava", "label": "Izjava 2", "start_pct": 50, "width_pct": 50 }
+      ],
+      "editorial": {
+        "markers": [
+          { "id": "m1", "pct": 18, "label": "M" },
+          { "id": "m2", "pct": 62, "label": "M" }
+        ]
+      },
+      "scopes": {
+        "stabilization": [{ "id": "s1", "left_pct": 18, "width_pct": 44 }],
+        "transcript": [{ "id": "t1", "left_pct": 20, "width_pct": 20, "text": "Segment u slotu …" }]
+      },
+      "lanes": {
+        "video": { "in_pct": 0, "out_pct": 100 },
+        "audio-1": { "in_pct": 0, "out_pct": 100 }
+      }
+    }
+  }
+}

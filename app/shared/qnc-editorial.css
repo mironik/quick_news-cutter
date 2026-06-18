@@ -1,0 +1,63 @@
+/* QNC Editorial - shared video/news editing primitives. */
+.qnc-editorial-story-segment,
+.qnc-editorial-shot-card,
+.qnc-editorial-media-strip,
+.qnc-editorial-virtual-timeline,
+.qnc-editorial-transcript-line {
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+}
+
+.qnc-editorial-story-segment,
+.qnc-editorial-shot-card,
+.qnc-editorial-transcript-line {
+  padding: var(--qnc-space-2);
+}
+
+.qnc-editorial-shot-token,
+.qnc-editorial-marker,
+.qnc-editorial-timecode,
+.qnc-editorial-badge-real,
+.qnc-editorial-badge-ai {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 6px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-bg);
+  color: var(--qnc-muted);
+  font-size: var(--qnc-font-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.qnc-editorial-media-strip {
+  display: flex;
+  min-width: 0;
+  overflow: auto;
+}
+
+.qnc-editorial-virtual-timeline {
+  display: grid;
+  min-width: 0;
+}
+
+.qnc-editorial-marker {
+  border-color: var(--qnc-line-strong);
+  color: var(--qnc-text);
+}
+
+.qnc-editorial-timecode {
+  font-variant-numeric: tabular-nums;
+}
+
+.qnc-editorial-badge-real {
+  color: var(--qnc-text);
+}
+
+.qnc-editorial-badge-ai {
+  color: var(--qnc-text-strong);
+  border-color: var(--qnc-line-strong);
+}
+

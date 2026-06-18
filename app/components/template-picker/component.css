@@ -1,0 +1,64 @@
+.qnc-template-summary {
+  display: grid;
+  gap: 4px;
+  color: #a9a9a9;
+  font-size: 0.88rem;
+}
+
+.qnc-template-summary strong {
+  color: #efefef;
+  font-size: 0.96rem;
+}
+
+.qnc-template-picker {
+  margin: 0;
+}
+
+.qnc-template-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 10px;
+}
+
+.qnc-template-picker summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  align-items: center;
+  padding: 6px 0 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.qnc-template-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.qnc-template-panel {
+  display: grid;
+  gap: 0;
+  max-height: 150px;
+  overflow: auto;
+  padding: 0 0 12px;
+}
+
+.qnc-template-picker:not([open]) .qnc-template-panel {
+  display: none;
+}
+
+.qnc-template-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.qnc-template-card span,
+.qnc-template-summary span {
+  white-space: nowrap;
+}
+
+.qnc-template-empty {
+  padding: 12px 0;
+  color: #9a9a9a;
+}

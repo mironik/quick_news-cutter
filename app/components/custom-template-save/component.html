@@ -1,0 +1,18 @@
+<section class="qnc-custom-template-box" data-qnc-panel="custom-template-save" hidden>
+  <div class="qnc-template-create-head">
+    <div>
+      <h3>Novi template</h3>
+      <p>Baza: <span data-qnc-slot="template-base"></span></p>
+    </div>
+    <div class="qnc-template-create-head-actions">
+      <button type="button" class="qnc-ui-button qnc-ui-button-primary" data-qnc-action="template.duplicate">Spremi novi template</button>
+      <button type="button" class="qnc-ui-button qnc-ui-button-quiet" data-qnc-action="template.cancel">Odustani</button>
+    </div>
+  </div>
+  <input class="qnc-ui-input" data-qnc-bind="template.name" placeholder="Naziv novog templatea" />
+  <textarea class="qnc-ui-textarea" data-qnc-bind="template.description" rows="2" placeholder="Kratki opis" ></textarea>
+  <div class="qnc-template-create-settings">
+    <div data-qnc-slot="ai" data-qnc-component="ai-settings"></div>
+    <div data-qnc-slot="advanced-video-settings" data-qnc-component="advanced-video-settings"></div>
+  </div>
+</section>

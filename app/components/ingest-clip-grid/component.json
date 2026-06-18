@@ -1,0 +1,17 @@
+{
+  "component_id": "ingest-clip-grid",
+  "version": "1.0.3",
+  "path": "/app/components/ingest-clip-grid/component.html",
+  "kind": "panel",
+  "assets": {
+    "css": [
+      "/app/components/media-thumb/component.css",
+      "/app/components/ingest-clip-grid/component.css"
+    ],
+    "js": [
+      "/app/components/media-thumb/component.js",
+      "/app/components/ingest-clip-grid/component.js"
+    ]
+  },
+  "package": "/app/components/ingest-clip-grid"
+}

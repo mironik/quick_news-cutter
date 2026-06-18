@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "groups": {
+    "common": {
+      "label": "Općenito",
+      "tokens": [
+        "--qnc-timeline-label-w",
+        "--qnc-timeline-playhead-color",
+        "--qnc-timeline-label-bg",
+        "--qnc-timeline-lane-bg",
+        "--qnc-timeline-row-stripe",
+        "--qnc-timeline-row-h-compact",
+        "--qnc-timeline-row-h-off"
+      ]
+    },
+    "video": {
+      "label": "Video",
+      "tokens": [
+        "--qnc-timeline-row-h-video",
+        "--qnc-timeline-video-slot-bg",
+        "--qnc-timeline-video-slot-border"
+      ]
+    },
+    "audio": {
+      "label": "Audio",
+      "tokens": [
+        "--qnc-timeline-row-h-audio",
+        "--qnc-timeline-audio-wave-opacity"
+      ]
+    },
+    "markers": {
+      "label": "Marker overlay",
+      "tokens": [
+        "--qnc-timeline-marker-bg",
+        "--qnc-timeline-marker-color",
+        "--qnc-timeline-marker-border"
+      ]
+    },
+    "stabilization": {
+      "label": "Stabilizacija",
+      "tokens": [
+        "--qnc-timeline-row-h-stabilization",
+        "--qnc-timeline-stab-bg",
+        "--qnc-timeline-stab-border"
+      ]
+    },
+    "transcript": {
+      "label": "Transkript",
+      "tokens": [
+        "--qnc-timeline-row-h-transcript",
+        "--qnc-timeline-transcript-font-size",
+        "--qnc-timeline-transcript-bg",
+        "--qnc-timeline-transcript-color",
+        "--qnc-timeline-transcript-border"
+      ]
+    },
+    "inout": {
+      "label": "In–Out",
+      "tokens": [
+        "--qnc-timeline-row-h-inout",
+        "--qnc-timeline-inout-range-bg",
+        "--qnc-timeline-inout-handle-color",
+        "--qnc-timeline-inout-range-border"
+      ]
+    }
+  },
+  "defaults": {
+    "--qnc-timeline-label-w": "152px",
+    "--qnc-timeline-playhead-color": "#e85d04",
+    "--qnc-timeline-label-bg": "",
+    "--qnc-timeline-lane-bg": "",
+    "--qnc-timeline-row-stripe": "",
+    "--qnc-timeline-row-h-compact": "10px",
+    "--qnc-timeline-row-h-off": "16px",
+    "--qnc-timeline-row-h-video": "68px",
+    "--qnc-timeline-video-slot-bg": "",
+    "--qnc-timeline-video-slot-border": "",
+    "--qnc-timeline-row-h-audio": "34px",
+    "--qnc-timeline-audio-wave-opacity": "0.4",
+    "--qnc-timeline-row-h-markers": "30px",
+    "--qnc-timeline-marker-bg": "",
+    "--qnc-timeline-marker-color": "",
+    "--qnc-timeline-marker-border": "",
+    "--qnc-timeline-row-h-stabilization": "28px",
+    "--qnc-timeline-stab-bg": "",
+    "--qnc-timeline-stab-border": "",
+    "--qnc-timeline-row-h-transcript": "36px",
+    "--qnc-timeline-transcript-font-size": "12px",
+    "--qnc-timeline-transcript-bg": "",
+    "--qnc-timeline-transcript-color": "",
+    "--qnc-timeline-transcript-border": "",
+    "--qnc-timeline-row-h-inout": "34px",
+    "--qnc-timeline-inout-range-bg": "",
+    "--qnc-timeline-inout-handle-color": "",
+    "--qnc-timeline-inout-range-border": ""
+  },
+  "labels": {
+    "--qnc-timeline-label-w": "Širina label stupca",
+    "--qnc-timeline-playhead-color": "Playhead",
+    "--qnc-timeline-label-bg": "Pozadina labela",
+    "--qnc-timeline-lane-bg": "Pozadina lane-a",
+    "--qnc-timeline-row-stripe": "Zebra red (par)",
+    "--qnc-timeline-row-h-compact": "Visina skrivene trake",
+    "--qnc-timeline-row-h-off": "Visina isključene trake",
+    "--qnc-timeline-row-h-video": "Visina reda",
+    "--qnc-timeline-video-slot-bg": "Pozadina okvira",
+    "--qnc-timeline-video-slot-border": "Rub okvira",
+    "--qnc-timeline-row-h-audio": "Visina reda",
+    "--qnc-timeline-audio-wave-opacity": "Val opacity (0–1)",
+    "--qnc-timeline-row-h-markers": "Visina reda",
+    "--qnc-timeline-marker-bg": "Pozadina markera",
+    "--qnc-timeline-marker-color": "Tekst markera",
+    "--qnc-timeline-marker-border": "Rub markera",
+    "--qnc-timeline-row-h-stabilization": "Visina reda",
+    "--qnc-timeline-stab-bg": "Pozadina segmenta",
+    "--qnc-timeline-stab-border": "Rub segmenta",
+    "--qnc-timeline-row-h-transcript": "Visina reda",
+    "--qnc-timeline-transcript-font-size": "Veličina fonta",
+    "--qnc-timeline-transcript-bg": "Pozadina segmenta",
+    "--qnc-timeline-transcript-color": "Tekst segmenta",
+    "--qnc-timeline-transcript-border": "Rub segmenta",
+    "--qnc-timeline-row-h-inout": "Visina reda",
+    "--qnc-timeline-inout-range-bg": "Pozadina raspona",
+    "--qnc-timeline-inout-handle-color": "In / Out ručke",
+    "--qnc-timeline-inout-range-border": "Rub raspona"
+  },
+  "hints": {
+    "--qnc-timeline-label-bg": "Prazno = tema (--qnc-bg)",
+    "--qnc-timeline-lane-bg": "Prazno = tema (--qnc-panel)",
+    "--qnc-timeline-row-stripe": "Prazno = automatski iz teme",
+    "--qnc-timeline-video-slot-bg": "Prazno = gradijent iz teme",
+    "--qnc-timeline-video-slot-border": "Prazno = --qnc-line-soft",
+    "--qnc-timeline-marker-bg": "Prazno = --qnc-bg",
+    "--qnc-timeline-marker-color": "Prazno = --qnc-text",
+    "--qnc-timeline-marker-border": "Prazno = --qnc-line-strong",
+    "--qnc-timeline-stab-bg": "Prazno = blagi mix iz teme",
+    "--qnc-timeline-stab-border": "Prazno = --qnc-line",
+    "--qnc-timeline-transcript-bg": "Prazno = --qnc-panel",
+    "--qnc-timeline-transcript-color": "Prazno = --qnc-text",
+    "--qnc-timeline-transcript-border": "Prazno = --qnc-line-soft",
+    "--qnc-timeline-inout-range-bg": "Prazno = accent mix 15%",
+    "--qnc-timeline-inout-handle-color": "Prazno = --qnc-accent",
+    "--qnc-timeline-inout-range-border": "Prazno = --qnc-line"
+  }
+}

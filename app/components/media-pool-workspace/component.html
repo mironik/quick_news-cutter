@@ -1,0 +1,22 @@
+<section class="pool-workspace" data-qnc-panel="media-pool-workspace">
+  <div data-qnc-slot="toolbar" data-qnc-component="media-pool-toolbar"></div>
+  <div class="pool-main">
+    <aside class="pool-inspector-pane" data-qnc-slot="viewer">
+      <section class="pool-inspector-section pool-inspector-section--player">
+        <div data-qnc-component="media-pool-player"></div>
+      </section>
+      <details class="pool-inspector-section" data-qnc-inspector-section="transcript" open>
+        <summary>Transkript</summary>
+        <div data-qnc-component="media-pool-transcript-panel"></div>
+      </details>
+    </aside>
+    <main class="pool-sequence-pane">
+      <div data-qnc-slot="actions" data-qnc-component="media-pool-actions"></div>
+      <div data-qnc-slot="timeline-sequence" data-qnc-component="timeline-sequence"></div>
+      <section class="pool-sequence-tools">
+        <div data-qnc-slot="transport" data-qnc-component="media-pool-transport"></div>
+        <div data-qnc-component="media-pool-virtual-shot-panel"></div>
+      </section>
+    </main>
+  </div>
+</section>

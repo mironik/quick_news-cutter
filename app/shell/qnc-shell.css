@@ -1,0 +1,273 @@
+/* QNC Shell - offline kiosk ljuska, odvojena od tab CSS-a.
+   Plain CSS only. No CDN, no external fonts, no icon packs. */
+:root {
+  --qnc-shell-black: #000;
+  --qnc-shell-white: #fff;
+  --qnc-shell-bg: #101010;
+  --qnc-shell-panel: #181818;
+  --qnc-shell-panel-2: #202020;
+  --qnc-shell-panel-3: #242424;
+  --qnc-shell-line: #333;
+  --qnc-shell-line-soft: #262626;
+  --qnc-shell-text: #e6e6e6;
+  --qnc-shell-muted: #9a9a9a;
+  --qnc-shell-faint: #6f6f6f;
+  --qnc-shell-footer-h: 52px;
+  --qnc-shell-focus: #f2f2f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body.qshell {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--qnc-shell-black);
+  color: var(--qnc-shell-text);
+  font-family: system-ui, sans-serif;
+}
+
+.qmain {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  padding-bottom: calc(var(--qnc-shell-footer-h) + 8px);
+  background: var(--qnc-shell-bg);
+}
+
+.tab-widget,
+.qtab-pane,
+.tab-panel.active {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-widget,
+.tab-panel.active {
+  flex: 1;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.qtab-pane {
+  flex: 1;
+  background: var(--qnc-shell-panel);
+  border: 0;
+  border-radius: 0;
+  padding: 8px 10px 10px;
+}
+
+.tab-sticky-top {
+  flex: 0 0 auto;
+  background: var(--qnc-shell-panel);
+  border-bottom: 1px solid var(--qnc-shell-line-soft);
+  padding-bottom: 8px;
+}
+
+.tab-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tab-title {
+  margin: 0 0 10px;
+  color: var(--qnc-shell-text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.qtab-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--qnc-shell-footer-h);
+  padding: 8px 10px;
+  background: var(--qnc-shell-black);
+  border-top: 1px solid var(--qnc-shell-line);
+  box-shadow: none;
+}
+
+.qtab-footer-project {
+  flex: 0 0 auto;
+  max-width: min(180px, 26vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--qnc-shell-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.qtab-footer-project:hover {
+  color: var(--qnc-shell-white);
+}
+
+.qtab-footer-tabs {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.qtab {
+  background: transparent;
+  color: var(--qnc-shell-muted);
+  border: 0;
+  border-radius: 0;
+  border-top: 2px solid transparent;
+  padding: 8px 14px 7px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.qtab:hover:not(.active) {
+  background: var(--qnc-shell-panel);
+  color: var(--qnc-shell-text);
+}
+
+.qtab.active {
+  background: var(--qnc-shell-panel-2);
+  color: var(--qnc-shell-white);
+  border-top-color: var(--qnc-shell-white);
+}
+
+.qtab.qnc-tab-job-busy,
+.qtab.qnc-tab-job-error,
+.qtab.qnc-tab-job-ok {
+  position: relative;
+}
+
+.qtab.qnc-tab-job-busy::after,
+.qtab.qnc-tab-job-error::after,
+.qtab.qnc-tab-job-ok::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  background: #8d2f2f;
+}
+
+.qtab.qnc-tab-job-ok::after {
+  background: #3f7a43;
+}
+
+.qtab:focus-visible,
+.qbtn:focus-visible,
+.qcombo:focus-visible,
+input:focus-visible,
+button:focus-visible,
+select:focus-visible {
+  outline: 1px solid var(--qnc-shell-focus);
+  outline-offset: 1px;
+}
+
+.qcombo,
+.field-row input[type="text"] {
+  background: var(--qnc-shell-panel);
+  color: var(--qnc-shell-text);
+  border: 1px solid var(--qnc-shell-line);
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.qcombo-footer {
+  flex: 0 0 auto;
+  max-width: min(210px, 30vw);
+  color: var(--qnc-shell-muted);
+}
+
+.qbtn {
+  background: var(--qnc-shell-panel-2);
+  color: var(--qnc-shell-text);
+  border: 1px solid var(--qnc-shell-line);
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.qbtn,
+.qcombo,
+.shell-status,
+.field-row input[type="text"] {
+  border-radius: 0;
+}
+
+.qbtn-primary {
+  background: var(--qnc-shell-white);
+  border-color: var(--qnc-shell-white);
+  color: var(--qnc-shell-black);
+}
+
+.qbtn:hover:enabled {
+  border-color: var(--qnc-shell-white);
+  background: var(--qnc-shell-panel-3);
+  color: var(--qnc-shell-white);
+}
+
+.qbtn-primary:hover:enabled {
+  background: var(--qnc-shell-text);
+  color: var(--qnc-shell-black);
+}
+
+.qbtn:disabled {
+  color: var(--qnc-shell-faint);
+  background: var(--qnc-shell-panel);
+  cursor: not-allowed;
+}
+
+.select-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--qnc-shell-muted);
+  font-size: 13px;
+}
+
+.shell-status.ok,
+.shell-status.busy,
+.shell-status.err {
+  border-color: var(--qnc-shell-line);
+  color: var(--qnc-shell-muted);
+  background: var(--qnc-shell-bg);
+}
+
+.shell-status {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--qnc-shell-muted);
+}
+
+.field-label,
+.field-row label {
+  color: var(--qnc-shell-muted);
+  font-size: 12px;
+}

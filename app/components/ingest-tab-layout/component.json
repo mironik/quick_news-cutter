@@ -1,0 +1,33 @@
+{
+  "component_id": "ingest-tab-layout",
+  "version": "1.1.0",
+  "path": "/app/components/ingest-tab-layout/component.html",
+  "kind": "layout",
+  "description": "Ingest tab — shell-plugin-tab s ingest-workspace u content slotu.",
+  "embeddable": false,
+  "contract": {
+    "version": 1,
+    "inputs": [],
+    "slots": ["content"],
+    "events": [],
+    "backend_actions": [],
+    "requires": ["QNC.componentBus"],
+    "requires_components": [
+      "shell-plugin-tab",
+      "ingest-workspace",
+      "ingest-toolbar",
+      "ingest-source-picker",
+      "ingest-actions",
+      "ingest-clip-grid"
+    ],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/shell-plugin-tab/component.css",
+      "/app/components/ingest-tab-layout/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/ingest-tab-layout"
+}

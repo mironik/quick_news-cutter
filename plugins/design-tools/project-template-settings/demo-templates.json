@@ -1,0 +1,116 @@
+{
+  "templates": [
+    {
+      "template_id": "tpl_breaking_news",
+      "name": "Breaking news",
+      "description": "Najbrži start: proxy ingest, story-first rad i brzi export.",
+      "system": true,
+      "source_template_ids": ["src_card_fx6_private", "src_camera_ftp"],
+      "settings": {
+        "video": {
+          "format": "HD 1080p",
+          "width": 1920,
+          "height": 1080,
+          "fps": 50,
+          "field_order": "progressive",
+          "color_space": "rec709",
+          "timeline_codec": "proxy_h264"
+        },
+        "audio": { "sample_rate": 48000, "channels": 2 },
+        "storage": {
+          "proxy_policy": "copy_to_project",
+          "original_policy": "link_when_available"
+        },
+        "export": { "default_mode": "proxy_fast", "directory": "exports/breaking" },
+        "ai": {
+          "enabled": false,
+          "coverage_suggestions": true,
+          "transcription_enabled": false
+        },
+        "workspace": {
+          "tabs": ["project", "ingest_proxy", "pool", "off", "storyboard", "preview"],
+          "tab_labels": {
+            "ingest_proxy": "Ingest Proxy",
+            "pool": "Media",
+            "off": "OFF",
+            "storyboard": "Story",
+            "preview": "Export"
+          }
+        }
+      }
+    },
+    {
+      "template_id": "tpl_news_package",
+      "name": "News package",
+      "description": "Uravnotežen workflow za izjave, OFF i pokrivanje.",
+      "system": true,
+      "source_template_ids": ["src_card_fx6_private", "src_local_incoming"],
+      "settings": {
+        "video": {
+          "format": "HD 1080i50",
+          "width": 1920,
+          "height": 1080,
+          "fps": 25,
+          "field_order": "upper_first",
+          "color_space": "rec709",
+          "timeline_codec": "xdcam_hd_422"
+        },
+        "audio": { "sample_rate": 48000, "channels": 2 },
+        "storage": {
+          "proxy_policy": "copy_to_project",
+          "original_policy": "link_when_available"
+        },
+        "export": { "default_mode": "xml_master", "directory": "exports/packages" },
+        "ai": {
+          "enabled": false,
+          "coverage_suggestions": true,
+          "transcription_enabled": true
+        },
+        "workspace": {
+          "tabs": ["project", "ingest_proxy", "ingest", "pool", "off", "storyboard", "preview"],
+          "tab_labels": {
+            "ingest_proxy": "Ingest Proxy",
+            "pool": "Media",
+            "off": "OFF",
+            "storyboard": "Story",
+            "preview": "Export"
+          }
+        }
+      }
+    },
+    {
+      "template_id": "tpl_user_demo",
+      "name": "Moj custom tok",
+      "description": "Korisnički template — demo u labu.",
+      "system": false,
+      "source_template_ids": ["tpl_breaking_news"],
+      "settings": {
+        "video": {
+          "format": "UHD 2160p",
+          "width": 3840,
+          "height": 2160,
+          "fps": 25,
+          "field_order": "progressive",
+          "color_space": "rec709",
+          "timeline_codec": "prores_422"
+        },
+        "audio": { "sample_rate": 48000, "channels": 4 },
+        "storage": {
+          "proxy_policy": "link_when_available",
+          "original_policy": "copy_background"
+        },
+        "export": { "default_mode": "broadcast_mxf", "directory": "D:/QNC/Export" },
+        "ai": {
+          "enabled": true,
+          "coverage_suggestions": true,
+          "transcription_enabled": true
+        },
+        "workspace": {
+          "tabs": ["project", "pool", "storyboard", "preview"],
+          "tab_labels": { "pool": "Media", "storyboard": "Story", "preview": "Export" }
+        }
+      }
+    }
+  ],
+  "selected_template_id": "tpl_breaking_news"
+}

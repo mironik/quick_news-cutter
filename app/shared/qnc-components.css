@@ -1,0 +1,329 @@
+/* QNC Components - locked shared controls.
+   Modules may place these controls, but must not redefine their appearance. */
+.qnc-ui-button,
+.qnc-button,
+.qbtn,
+.qnc-ui-input,
+.qnc-input,
+.qnc-ui-select,
+.qnc-select,
+.qnc-ui-textarea,
+.qnc-ui-chip,
+.qnc-chip,
+.qnc-ui-panel,
+.qnc-panel,
+.qnc-ui-status,
+.qnc-status,
+.qnc-ui-card,
+.qnc-ui-picker,
+.qnc-ui-row {
+  border-radius: 0;
+}
+
+.qnc-ui-button,
+.qnc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 7px 12px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-panel-2);
+  color: var(--qnc-text);
+  font: inherit;
+  font-size: var(--qnc-font-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.qnc-ui-button:hover:enabled,
+.qnc-button:hover:enabled {
+  border-color: var(--qnc-white);
+  background: var(--qnc-panel-3);
+  color: var(--qnc-white);
+}
+
+.qnc-ui-button:disabled,
+.qnc-button:disabled {
+  color: var(--qnc-faint);
+  background: var(--qnc-panel);
+  cursor: not-allowed;
+}
+
+.qnc-ui-button-primary,
+.qnc-button-primary {
+  border-color: var(--qnc-white);
+  background: var(--qnc-white);
+  color: var(--qnc-black);
+}
+
+.qnc-ui-button-quiet,
+.qnc-button-quiet {
+  background: transparent;
+}
+
+.qnc-ui-input,
+.qnc-input,
+.qnc-ui-select,
+.qnc-select {
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+  font: inherit;
+  font-size: var(--qnc-font-md);
+}
+
+.qnc-ui-textarea {
+  min-height: 70px;
+  padding: 8px 9px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+  font: inherit;
+  font-size: var(--qnc-font-md);
+  resize: vertical;
+}
+
+.qnc-ui-input:focus,
+.qnc-input:focus,
+.qnc-ui-select:focus,
+.qnc-select:focus,
+.qnc-ui-textarea:focus,
+.qnc-ui-button:focus-visible,
+.qnc-button:focus-visible {
+  outline: 1px solid var(--qnc-focus);
+  outline-offset: 1px;
+}
+
+.qnc-ui-field {
+  display: grid;
+  gap: var(--qnc-space-1);
+  min-width: 0;
+}
+
+.qnc-ui-label,
+.qnc-label {
+  display: block;
+  margin-bottom: var(--qnc-space-1);
+  color: var(--qnc-muted);
+  font-size: var(--qnc-font-sm);
+  text-transform: uppercase;
+}
+
+.qnc-ui-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qnc-space-2);
+  color: var(--qnc-text);
+  font: inherit;
+  font-size: var(--qnc-font-md);
+}
+
+.qnc-ui-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+.qnc-ui-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.qnc-ui-row {
+  display: grid;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+}
+
+.qnc-ui-row:hover {
+  border-color: var(--qnc-line-strong);
+  background: var(--qnc-panel-2);
+}
+
+.qnc-ui-card {
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+}
+
+.qnc-ui-picker {
+  border-bottom: 1px solid var(--qnc-line-soft);
+}
+
+.qnc-ui-picker summary {
+  list-style: none;
+}
+
+.qnc-ui-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.qnc-ui-picker-option {
+  width: 100%;
+  color: var(--qnc-muted);
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--qnc-line-soft);
+  border-radius: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.qnc-ui-picker-option:hover {
+  color: var(--qnc-text-strong);
+}
+
+.qnc-ui-picker-option.is-selected,
+.qnc-ui-row.is-selected,
+.qnc-ui-card.is-selected {
+  border-color: var(--qnc-line-strong);
+  color: var(--qnc-text-strong);
+  background: var(--qnc-panel-2);
+}
+
+.qnc-ui-panel {
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+}
+
+.qnc-ui-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--qnc-space-2);
+  min-width: 0;
+}
+
+.qnc-ui-chip,
+.qnc-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-panel);
+  color: var(--qnc-muted);
+  font-size: var(--qnc-font-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.qnc-ui-chip.is-active,
+.qnc-chip-active {
+  border-color: var(--qnc-white);
+  color: var(--qnc-white);
+}
+
+.qnc-ui-status,
+.qnc-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-bg);
+  color: var(--qnc-muted);
+  font-size: var(--qnc-font-sm);
+}
+
+.qnc-ui-panel,
+.qnc-panel {
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-panel);
+}
+
+.qnc-ui-button.is-disabled,
+.qnc-ui-row.is-disabled,
+.qnc-ui-card.is-disabled,
+.qnc-ui-picker-option.is-disabled,
+.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.is-muted {
+  color: var(--qnc-muted);
+}
+
+.is-error {
+  border-color: var(--qnc-status-error);
+}
+
+.is-warning {
+  border-color: var(--qnc-status-warn);
+}
+
+.is-ok {
+  border-color: var(--qnc-status-ok);
+}
+
+.is-active {
+  border-color: var(--qnc-white);
+}
+
+.qbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 7px 12px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-panel-2);
+  color: var(--qnc-text);
+  font: inherit;
+  font-size: var(--qnc-font-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.qbtn:hover:enabled {
+  border-color: var(--qnc-white);
+  background: var(--qnc-panel-3);
+  color: var(--qnc-white);
+}
+
+.qbtn:disabled {
+  color: var(--qnc-faint);
+  background: var(--qnc-panel);
+  cursor: not-allowed;
+}
+
+.qbtn-primary {
+  border-color: var(--qnc-white);
+  background: var(--qnc-white);
+  color: var(--qnc-black);
+}
+
+.qbtn-success {
+  border-color: var(--qnc-line-strong);
+  background: var(--qnc-panel-3);
+  color: var(--qnc-text-strong);
+}
+
+.qbtn-large {
+  min-height: 40px;
+  padding: 10px 20px;
+  font-weight: 600;
+}
+
+.qnc-empty,
+.qnc-loading,
+.qnc-error {
+  padding: var(--qnc-space-4);
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-bg-elevated);
+  color: var(--qnc-muted);
+  font-size: var(--qnc-font-md);
+  text-align: center;
+}
+
+.qnc-error {
+  border-color: var(--qnc-line-strong);
+  color: var(--qnc-text);
+}

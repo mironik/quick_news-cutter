@@ -1,0 +1,32 @@
+{
+  "component_id": "workspace-split",
+  "kind": "layout",
+  "path": "/app/components/workspace-split/component.html",
+  "description": "Project workspace layout (list + template settings).",
+  "embeddable": false,
+  "contract": {
+    "version": 1,
+    "inputs": [],
+    "slots": [
+      "project-list",
+      "project-template-settings"
+    ],
+    "events": [],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [
+      "project-list",
+      "project-template-settings"
+    ],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/workspace-split/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/workspace-split"
+}

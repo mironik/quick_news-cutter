@@ -1,0 +1,29 @@
+{
+  "component_id": "folder-picker",
+  "kind": "service",
+  "path": "/app/components/folder-picker/component.html",
+  "description": "System service — tamni QNC folder picker (native host dialog).",
+  "embeddable": false,
+  "contract": {
+    "version": 1,
+    "inputs": [],
+    "slots": [],
+    "events": [],
+    "backend_actions": [
+      "shell.pick-directory",
+      "shell.pick-files"
+    ],
+    "requires": [
+      "QNC.api"
+    ],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [],
+    "js": [
+      "/app/components/folder-picker/component.js"
+    ]
+  },
+  "package": "/app/components/folder-picker"
+}

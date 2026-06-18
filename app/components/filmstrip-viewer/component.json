@@ -1,0 +1,45 @@
+{
+  "component_id": "filmstrip-viewer",
+  "global_id": "filmstrip-viewer",
+  "version": "1.0.1",
+  "source_plugin_id": "core",
+  "kind": "panel",
+  "description": "Prenosivi filmstrip viewer — globalna QNC komponenta.",
+  "embeddable": true,
+  "portable": true,
+  "path": "/app/components/filmstrip-viewer/component.html",
+  "variants": {
+    "inline": "/app/components/filmstrip-viewer/component-inline.html",
+    "cover": "/app/components/filmstrip-viewer/component-cover.html"
+  },
+  "assets": {
+    "css": [
+      "/app/components/media-thumb/component.css",
+      "/app/components/filmstrip-viewer/component.css"
+    ],
+    "js": [
+      "/app/components/media-thumb/component.js",
+      "/app/components/filmstrip-viewer/component.js"
+    ]
+  },
+  "package": "/app/components/filmstrip-viewer",
+  "contract": {
+    "version": 1,
+    "inputs": ["clip", "filmstrip"],
+    "slots": ["frames", "filmstrip-status"],
+    "events": [
+      {
+        "action": "filmstrip.seek",
+        "payload": { "clip_id": "string", "seconds": "number" }
+      },
+      {
+        "action": "filmstrip.build",
+        "payload": { "clip_id": "string" }
+      }
+    ],
+    "backend_actions": ["filmstrip.build"],
+    "requires": ["QNC.componentBus"],
+    "requires_components": ["media-thumb"],
+    "owns_state": false
+  }
+}

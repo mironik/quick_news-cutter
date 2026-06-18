@@ -1,0 +1,84 @@
+<section id="panel-design-tools" class="tab-panel design-tools-panel" data-qnc-panel="design-tools">
+  <header class="qnc-design-studio-head">
+    <div>
+      <h1 class="tab-title">Design Studio</h1>
+      <p class="qnc-design-studio-sub muted">Add-on za developere. Mode <code data-qnc-bind="design.mode">open</code>.</p>
+    </div>
+    <span class="qnc-ui-chip" data-qnc-slot="design-status">—</span>
+  </header>
+
+  <nav class="qnc-design-studio-nav" role="tablist" aria-label="Design editori">
+    <button type="button" class="qnc-ui-button qnc-ui-button-primary is-active" data-design-editor="theme">Theme</button>
+    <button type="button" class="qnc-ui-button" data-design-editor="components">Components</button>
+    <button type="button" class="qnc-ui-button" data-design-editor="primitives" disabled>Primitives</button>
+    <button type="button" class="qnc-ui-button" data-design-editor="shell" disabled>Shell</button>
+  </nav>
+
+  <div class="qnc-design-editor-host">
+    <div class="qnc-design-editor" data-design-view="theme">
+      <div class="qnc-design-theme-bar" data-qnc-slot="theme-bar">
+        <label class="qnc-ui-label" for="qnc-design-theme-select">Tema</label>
+        <select id="qnc-design-theme-select" class="qnc-ui-input qnc-design-theme-select" data-design-theme-select>
+          <option value="default">QNC Default</option>
+        </select>
+        <button type="button" class="qnc-ui-button qnc-ui-button-primary" data-design-action="theme-new">+ Nova tema</button>
+      </div>
+
+      <div class="qnc-design-studio-body" data-design-resizable>
+        <aside class="qnc-design-sidebar" data-qnc-slot="token-groups">
+          <p class="muted">Učitavam tokene…</p>
+        </aside>
+        <div class="qnc-design-resize-handle" data-design-resize="col" title="Povuci za širinu"></div>
+        <main class="qnc-design-preview" data-qnc-slot="theme-preview">
+          <section class="qnc-ui-panel qnc-design-preview-card">
+            <h3>Preview</h3>
+            <div class="qnc-layout-row qnc-layout-gap-sm">
+              <button type="button" class="qnc-ui-button">Gumb</button>
+              <button type="button" class="qnc-ui-button qnc-ui-button-primary">Primary</button>
+              <button type="button" class="qnc-ui-button qnc-ui-button-quiet">Quiet</button>
+            </div>
+            <label class="qnc-ui-label">Polje</label>
+            <input class="qnc-ui-input" value="Primjer teksta" />
+            <p class="qnc-muted">Muted tekst — promjene tokena primjenjuju se uživo.</p>
+          </section>
+        </main>
+      </div>
+
+      <footer class="qnc-design-studio-actions">
+        <button type="button" class="qnc-ui-button" data-design-action="reset">Reset override</button>
+        <button type="button" class="qnc-ui-button qnc-ui-button-primary" data-design-action="save">Spremi tokene</button>
+      </footer>
+    </div>
+
+    <div class="qnc-design-editor" data-design-view="components" hidden>
+      <div class="qnc-design-studio-body qnc-design-studio-body--fill" data-design-resizable>
+        <aside class="qnc-design-sidebar" data-qnc-slot="component-controls">
+          <p class="muted">Component lab…</p>
+        </aside>
+        <div class="qnc-design-resize-handle" data-design-resize="col" title="Povuci za širinu"></div>
+        <main class="qnc-design-preview qnc-design-preview--fill" data-qnc-slot="component-preview"></main>
+      </div>
+    </div>
+  </div>
+
+  <div class="qnc-design-overlay" data-qnc-design-overlay hidden>
+    <div class="qnc-design-overlay-backdrop" data-design-overlay-close></div>
+    <div class="qnc-design-overlay-panel qnc-ui-panel" role="dialog" aria-modal="true" aria-labelledby="qnc-design-overlay-title">
+      <header class="qnc-design-overlay-head">
+        <div>
+          <p class="qnc-design-overlay-subtitle muted" data-design-overlay-subtitle hidden></p>
+          <h3 id="qnc-design-overlay-title" data-design-overlay-title>Postavke</h3>
+        </div>
+        <button type="button" class="qnc-ui-button qnc-ui-button-quiet" data-design-overlay-close aria-label="Zatvori">✕</button>
+      </header>
+      <div class="qnc-design-overlay-body" data-design-overlay-body></div>
+      <footer class="qnc-design-overlay-foot">
+        <span class="muted qnc-design-overlay-hint" data-design-overlay-hint>Esc zatvara</span>
+        <div class="qnc-design-overlay-actions">
+          <button type="button" class="qnc-ui-button" data-design-overlay-close>Odustani</button>
+          <button type="button" class="qnc-ui-button qnc-ui-button-primary" data-design-overlay-apply>Primijeni</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+</section>

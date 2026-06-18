@@ -1,0 +1,66 @@
+.qnc-ip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.qnc-ip-actions-primary,
+.qnc-ip-actions-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.qnc-ip-action {
+  padding: 6px 12px;
+  border: 1px solid var(--qnc-ip-border, rgba(255, 255, 255, 0.14));
+  border-radius: 5px;
+  background: var(--qnc-ip-btn-bg, #252525);
+  color: var(--qnc-ip-text, #ebebeb);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.qnc-ip-action:hover {
+  background: var(--qnc-ip-btn-hover, #2e2e2e);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.qnc-ip-action-accent {
+  border-color: var(--qnc-ip-select-ring, #ff9500);
+  background: rgba(255, 149, 0, 0.12);
+  color: #ffd099;
+}
+
+.qnc-ip-action-accent:hover {
+  background: rgba(255, 149, 0, 0.2);
+}
+
+.qnc-ip-action-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--qnc-ip-meta, #86868b);
+}
+
+.qnc-ip-action-ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--qnc-ip-text, #ebebeb);
+}
+
+.qnc-ip-action-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--qnc-ip-meta, #86868b);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.qnc-ip-action-toggle input {
+  accent-color: var(--qnc-ip-select-ring, #ff9500);
+}

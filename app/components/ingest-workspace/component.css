@@ -1,0 +1,30 @@
+.qnc-ip-workspace {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 0;
+  height: 100%;
+  background: var(--qnc-ip-bg, #121212);
+  color: var(--qnc-ip-text, #ebebeb);
+}
+
+.qnc-ip-workspace-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--qnc-ip-border, rgba(255, 255, 255, 0.08));
+  background: var(--qnc-ip-controls-bg, #141414);
+}
+
+.qnc-ip-workspace-grid {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.qnc-ip-workspace-grid .qnc-ip-clip-grid-panel {
+  flex: 1 1 auto;
+}

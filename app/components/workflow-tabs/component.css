@@ -1,0 +1,59 @@
+.qnc-module-flow {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #2c2c2c;
+}
+
+.qnc-module-flow-note {
+  margin: 4px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.qnc-module-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 10px 0 18px;
+}
+
+.qnc-module-check {
+  margin: 0 !important;
+  text-transform: none !important;
+  align-items: flex-start !important;
+}
+
+.qnc-module-check-row {
+  border: 1px solid #303030;
+  background: #141414;
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+
+.qnc-module-check-row.is-disabled {
+  opacity: 0.55;
+}
+
+.qnc-module-check input {
+  width: auto;
+  margin: 3px 0 0;
+  flex: 0 0 auto;
+}
+
+.qnc-module-check-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.qnc-module-check-text strong {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ececec;
+}
+
+.qnc-module-desc {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #9a9a9a;
+}

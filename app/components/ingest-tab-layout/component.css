@@ -1,0 +1,12 @@
+/* Ingest tab — shell-plugin-tab + workspace flex */
+.ingest-panel .qnc-shell-plugin-tab-body {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ingest-panel [data-qnc-panel="ingest-workspace"] {
+  flex: 1 1 auto;
+  min-height: 0;
+}

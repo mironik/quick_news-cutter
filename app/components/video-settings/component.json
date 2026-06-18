@@ -1,0 +1,39 @@
+{
+  "component_id": "video-settings",
+  "kind": "panel",
+  "path": "/app/components/video-settings/component.html",
+  "description": "Reusable project video, audio, storage and export setting controls.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "video_settings",
+      "audio_settings",
+      "storage_settings",
+      "export_settings"
+    ],
+    "slots": [],
+    "events": [
+      {
+        "action": "settings.change",
+        "payload": {
+          "path": "string",
+          "value": "string"
+        }
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/video-settings/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/video-settings"
+}

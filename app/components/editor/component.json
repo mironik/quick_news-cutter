@@ -1,0 +1,44 @@
+{
+  "component_id": "editor",
+  "kind": "panel",
+  "path": "/app/components/editor/component.html",
+  "description": "Composable project creation editor panel.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "templates",
+      "selected_template_id",
+      "project_settings"
+    ],
+    "slots": [
+      "template-picker",
+      "custom-template-save"
+    ],
+    "events": [
+      {
+        "action": "project.create",
+        "payload": {
+          "name": "string",
+          "template_id": "string"
+        }
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [
+      "template-picker",
+      "custom-template-save"
+    ],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/editor/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/editor"
+}

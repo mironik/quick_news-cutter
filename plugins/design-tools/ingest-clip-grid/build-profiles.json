@@ -1,0 +1,109 @@
+{
+  "component_catalog": {
+    "features": [
+      "toolbar",
+      "source_picker",
+      "actions",
+      "duration_badge",
+      "status_dot",
+      "meta_line",
+      "import_chip",
+      "selection_check",
+      "footer_status",
+      "empty_state"
+    ]
+  },
+  "profiles": {
+    "design-lab": {
+      "label": "Design lab — cijeli katalog",
+      "density": "comfortable",
+      "available_features": [
+        "toolbar",
+        "source_picker",
+        "actions",
+        "duration_badge",
+        "status_dot",
+        "meta_line",
+        "import_chip",
+        "selection_check",
+        "footer_status",
+        "empty_state"
+      ],
+      "default_feature_states": {
+        "toolbar": "on",
+        "source_picker": "on",
+        "actions": "on",
+        "duration_badge": "on",
+        "status_dot": "on",
+        "meta_line": "on",
+        "import_chip": "on",
+        "selection_check": "on",
+        "footer_status": "on",
+        "empty_state": "on"
+      },
+      "demo_set": "default"
+    },
+    "fcp11-browser": {
+      "label": "Final Cut 11 — browser grid",
+      "density": "comfortable",
+      "available_features": [
+        "toolbar",
+        "source_picker",
+        "actions",
+        "duration_badge",
+        "status_dot",
+        "meta_line",
+        "selection_check",
+        "footer_status"
+      ],
+      "default_feature_states": {
+        "toolbar": "on",
+        "source_picker": "on",
+        "actions": "on",
+        "duration_badge": "on",
+        "status_dot": "on",
+        "meta_line": "on",
+        "import_chip": "off",
+        "selection_check": "on",
+        "footer_status": "on",
+        "empty_state": "off"
+      },
+      "demo_set": "default"
+    },
+    "compact-grid": {
+      "label": "Kompaktna mreža",
+      "density": "compact",
+      "available_features": [
+        "duration_badge",
+        "selection_check",
+        "footer_status"
+      ],
+      "default_feature_states": {
+        "toolbar": "off",
+        "source_picker": "off",
+        "actions": "off",
+        "duration_badge": "on",
+        "status_dot": "off",
+        "meta_line": "off",
+        "import_chip": "off",
+        "selection_check": "on",
+        "footer_status": "on",
+        "empty_state": "off"
+      },
+      "demo_set": "default"
+    },
+    "empty": {
+      "label": "Prazan grid",
+      "density": "comfortable",
+      "available_features": ["toolbar", "source_picker", "actions", "empty_state", "footer_status"],
+      "default_feature_states": {
+        "toolbar": "on",
+        "source_picker": "on",
+        "actions": "on",
+        "empty_state": "on",
+        "footer_status": "on"
+      },
+      "demo_set": "empty"
+    }
+  }
+}

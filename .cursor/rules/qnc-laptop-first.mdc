@@ -1,0 +1,38 @@
+---
+description: QNC v2 — kod samo na developer stroju (Win/macOS/Linux), nikad Jetson kao write target
+alwaysApply: true
+---
+
+# QNC v2 — laptop-first (obavezno)
+
+## Gdje se piše kod
+
+- **Jedini write target:** folder koji je **otvoren kao Cursor workspace** na developer stroju.
+- **Windows:** npr. `C:\Users\<user>\Projects\quick_news_cutter`
+- **macOS / Linux:** npr. `~/Projects/quick_news_cutter`
+- **Zabranjeno:** pisati na Jetson, edge server, SMB share ili bilo koji stroj koji nije developer PC/Mac.
+
+Ako workspace nije developer folder → **zaustavi se** i reci korisniku da otvori pravi projekt u Cursoru prije ikakvih izmjena.
+
+## Multiplatform (Win / Linux / macOS)
+
+- **Fokus:** tri desktop OS-e — Windows, Linux, macOS. Isti repo; svaki stroj sam builda `qnc-host`.
+- **Komponente:** jednom u `app/components/`, orchestrator po pluginu — ne duplicirati UI u `plugins/`.
+- **Razvoj:** obično na Windowsu; svaka izmjena u `qnc-host/` mora proći `cargo build` na Win i biti kompatibilna s Linux/macOS (bez Win-only pretpostavk u zajedničkom kodu).
+- **Ne** kopirati binary između OS-ova. **Ne** hardcodirati putanje (`/home/mironik/...`, `C:\...` u kodu).
+- **Rust OS branch:** samo `cfg(windows)` / `cfg(not(windows))` gdje nužno (dialogs, itd.).
+- **Ne** Jetson/CUDA/Tegra kao default; `hardware_hints` samo informativno.
+- **Windows:** samo Rust `qnc-host` (`run_host.bat` / `run_host.ps1`). **Ne** koristiti Python, `run_server.sh`, `pytest` ni `uvicorn` na Windowsu.
+- **macOS / Linux:** produkt = Rust `qnc-host`; Python `run_server.sh` = opcionalna dev referenca.
+- **Test:** `.\test.ps1` (Win) / `./test.sh` (Linux/macOS) prije mergea kad diraš host ili boot path.
+
+## Jetson / v1
+
+- Samo **čitanje** za reference — **nikad** commit/write tamo.
+- Ne predlagati `scp` s Jetsona kao način synca.
+
+## Provjera prije rada
+
+1. Workspace path = developer `quick_news_cutter`?
+2. Izmjene su relativne unutar tog repoa?
+3. Test uputa: `run_host.bat` / `run_host.sh` / `run_host.ps1` na tom stroju?

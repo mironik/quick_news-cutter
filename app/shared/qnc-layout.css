@@ -1,0 +1,55 @@
+/* QNC Layout - placement utilities only.
+   No component colors, borders, padding, fonts or interaction states here. */
+.qnc-layout-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.qnc-layout-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.qnc-layout-grid {
+  display: grid;
+  min-width: 0;
+}
+
+.qnc-layout-split {
+  display: grid;
+  grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.qnc-layout-fill {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.qnc-layout-scroll {
+  min-height: 0;
+  overflow: auto;
+}
+
+.qnc-layout-gap-xs {
+  gap: var(--qnc-space-1);
+}
+
+.qnc-layout-gap-sm {
+  gap: var(--qnc-space-2);
+}
+
+.qnc-layout-gap-md {
+  gap: var(--qnc-space-3);
+}
+
+.qnc-layout-tight {
+  margin: 0;
+  padding: 0;
+}
+

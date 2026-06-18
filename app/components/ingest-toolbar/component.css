@@ -1,0 +1,29 @@
+.qnc-ip-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--qnc-ip-border, rgba(255, 255, 255, 0.08));
+  background: var(--qnc-ip-toolbar-bg, #161616);
+}
+
+.qnc-ip-toolbar-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--qnc-ip-text, #ebebeb);
+}
+
+.qnc-ip-toolbar-project {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68rem;
+}
+
+.qnc-ip-toolbar-meta {
+  color: var(--qnc-ip-meta, #86868b);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,11 @@
+{
+  "component_id": "ingest-actions",
+  "version": "1.0.2",
+  "path": "/app/components/ingest-actions/component.html",
+  "kind": "panel",
+  "assets": {
+    "css": ["/app/components/ingest-actions/component.css"],
+    "js": ["/app/components/ingest-actions/component.js"]
+  },
+  "package": "/app/components/ingest-actions"
+}

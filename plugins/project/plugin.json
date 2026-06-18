@@ -1,0 +1,71 @@
+{
+  "plugin_id": "project",
+  "tab_id": "project",
+  "label": "Project",
+  "priority": -1000,
+  "position": "first",
+  "entry_js": "/plugins/project/static/qnc-project.js",
+  "entry_css": "/plugins/project/static/qnc-project.css",
+  "asset_version": 45,
+  "panel_id": "panel-project",
+  "keep_alive": true,
+  "api_namespace": "/api/projects",
+  "storage": "project",
+  "enabled": true,
+  "system": true,
+  "removable": false,
+  "description": "Project tab — shell-plugin-tab + project-list + project-template-settings.",
+  "panel_html": "/app/components/project-tab-layout/component.html",
+  "uses_components": [
+    "shell-plugin-tab",
+    "project-tab-layout",
+    "workspace-split",
+    "project-list",
+    "folder-picker",
+    "project-template-settings"
+  ],
+  "backend": {
+    "implementation": "rust",
+    "host_module": "qnc-host/src/project",
+    "store": {
+      "scope": "project",
+      "path": "project"
+    },
+    "actions": [
+      {
+        "action": "project.create",
+        "method": "POST",
+        "path": "/api/projects/from-template",
+        "writes": [
+          "project.settings",
+          "project.workflow"
+        ]
+      },
+      {
+        "action": "project.open",
+        "method": "POST",
+        "path": "/api/projects/open",
+        "writes": [
+          "project.active"
+        ]
+      },
+      {
+        "action": "project.delete",
+        "method": "POST",
+        "path": "/api/projects/delete",
+        "writes": [
+          "project.index"
+        ]
+      },
+      {
+        "action": "template.save-custom",
+        "method": "POST",
+        "path": "/api/project-templates",
+        "writes": [
+          "project.templates"
+        ]
+      }
+    ],
+    "jobs": []
+  }
+}

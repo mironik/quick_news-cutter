@@ -1,0 +1,25 @@
+{
+  "component_id": "media-pool-clip-list",
+  "global_id": "media-pool-clip-list",
+  "version": "1.1.2",
+  "kind": "panel",
+  "path": "/app/components/media-pool-clip-list/component.html",
+  "assets": {
+    "css": [
+      "/app/components/media-pool-clip-list/component.css"
+    ],
+    "js": [
+      "/app/components/media-pool-clip-list/component.js"
+    ]
+  },
+  "package": "/app/components/media-pool-clip-list",
+  "contract": {
+    "version": 1,
+    "inputs": ["clips", "selected_ids", "current_clip_id", "thumb_rev", "project_id", "row_notes"],
+    "events": [
+      { "action": "clip.toggle", "payload": { "clip_id": "string", "checked": "boolean" } },
+      { "action": "clip.play", "payload": { "clip_id": "string", "edge": "boolean" } }
+    ],
+    "requires_components": ["filmstrip-viewer", "media-thumb"]
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "component_catalog": {
+    "sections": [
+      "header",
+      "template_picker",
+      "project_create",
+      "new_template_action",
+      "ai_settings",
+      "video_format",
+      "export_mode",
+      "export_directory",
+      "workflow_tabs",
+      "advanced_collapsible",
+      "custom_template_save"
+    ]
+  },
+  "profiles": {
+    "design-lab": {
+      "label": "Design lab — cijeli katalog",
+      "available_sections": [
+        "header",
+        "template_picker",
+        "project_create",
+        "new_template_action",
+        "ai_settings",
+        "video_format",
+        "export_mode",
+        "export_directory",
+        "workflow_tabs",
+        "advanced_collapsible",
+        "custom_template_save"
+      ],
+      "default_section_states": {
+        "header": "on",
+        "template_picker": "on",
+        "project_create": "on",
+        "new_template_action": "on",
+        "ai_settings": "on",
+        "video_format": "on",
+        "export_mode": "on",
+        "export_directory": "on",
+        "workflow_tabs": "on",
+        "advanced_collapsible": "on",
+        "custom_template_save": "off"
+      }
+    },
+    "nova-projekta": {
+      "label": "Novi projekt — odabir + postavke",
+      "available_sections": [
+        "header",
+        "template_picker",
+        "project_create",
+        "new_template_action",
+        "ai_settings",
+        "video_format",
+        "export_mode",
+        "export_directory",
+        "workflow_tabs",
+        "advanced_collapsible"
+      ],
+      "default_section_states": {
+        "header": "on",
+        "template_picker": "on",
+        "project_create": "on",
+        "new_template_action": "on",
+        "ai_settings": "on",
+        "video_format": "on",
+        "export_mode": "on",
+        "export_directory": "on",
+        "workflow_tabs": "on",
+        "advanced_collapsible": "on"
+      }
+    },
+    "picker-only": {
+      "label": "Samo odabir templatea",
+      "available_sections": ["header", "template_picker"],
+      "default_section_states": {
+        "header": "on",
+        "template_picker": "on"
+      }
+    },
+    "custom-template": {
+      "label": "Custom template — spremanje",
+      "available_sections": [
+        "header",
+        "template_picker",
+        "project_create",
+        "new_template_action",
+        "ai_settings",
+        "video_format",
+        "export_mode",
+        "export_directory",
+        "workflow_tabs",
+        "advanced_collapsible",
+        "custom_template_save"
+      ],
+      "default_section_states": {
+        "header": "on",
+        "template_picker": "on",
+        "project_create": "on",
+        "new_template_action": "on",
+        "ai_settings": "on",
+        "video_format": "on",
+        "export_mode": "on",
+        "export_directory": "on",
+        "workflow_tabs": "on",
+        "advanced_collapsible": "on",
+        "custom_template_save": "on"
+      }
+    }
+  }
+}

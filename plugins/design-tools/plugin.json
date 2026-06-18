@@ -1,0 +1,19 @@
+{
+  "plugin_id": "design-tools",
+  "tab_id": "design-tools",
+  "label": "Design",
+  "priority": 9500,
+  "position": "last",
+  "entry_js": "/plugins/design-tools/static/qnc-design.js",
+  "entry_css": "/plugins/design-tools/static/qnc-design.css",
+  "asset_version": 53,
+  "panel_id": "panel-design-tools",
+  "panel_html": "/plugins/design-tools/static/panel.html",
+  "api_namespace": "/api/design-tools",
+  "enabled": true,
+  "system": false,
+  "removable": true,
+  "requires_capability": "design_editor",
+  "description": "Samostalan design add-on (Rust host). Theme + component lab.",
+  "uses_components": []
+}

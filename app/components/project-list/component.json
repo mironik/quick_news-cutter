@@ -1,0 +1,46 @@
+{
+  "component_id": "project-list",
+  "kind": "panel",
+  "path": "/app/components/project-list/component.html",
+  "description": "Panel for existing projects and project selection.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "projects",
+      "active_project_id",
+      "selected_project_id"
+    ],
+    "slots": [
+      "project-list",
+      "status"
+    ],
+    "events": [
+      {
+        "action": "project.open",
+        "payload": {
+          "project_id": "string"
+        }
+      },
+      {
+        "action": "project.delete",
+        "payload": {
+          "project_id": "string"
+        }
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/project-list/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/project-list"
+}

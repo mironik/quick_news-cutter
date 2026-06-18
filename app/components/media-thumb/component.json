@@ -1,0 +1,34 @@
+{
+  "component_id": "media-thumb",
+  "global_id": "media-thumb",
+  "version": "1.0.0",
+  "source_plugin_id": "core",
+  "kind": "atom",
+  "description": "Jedna video sličica — poster ili filmstrip frame.",
+  "embeddable": true,
+  "portable": true,
+  "path": "/app/components/media-thumb/component.html",
+  "variants": {},
+  "assets": {
+    "css": ["/app/components/media-thumb/component.css"],
+    "js": ["/app/components/media-thumb/component.js"]
+  },
+  "package": "/app/components/media-thumb",
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "thumb_url",
+      "thumb_status",
+      "thumb_color_a",
+      "thumb_color_b",
+      "variant",
+      "loading"
+    ],
+    "slots": ["frame"],
+    "events": [],
+    "backend_actions": [],
+    "requires": [],
+    "requires_components": [],
+    "owns_state": false
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "component_id": "template-picker",
+  "kind": "panel",
+  "path": "/app/components/template-picker/component.html",
+  "description": "Reusable template picker panel with summary and card slots.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "templates",
+      "selected_template_id"
+    ],
+    "slots": [
+      "summary",
+      "cards"
+    ],
+    "events": [
+      {
+        "action": "template.select",
+        "payload": {
+          "template_id": "string"
+        }
+      },
+      {
+        "action": "template.create-panel.open",
+        "payload": {}
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/template-picker/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/template-picker"
+}

@@ -1,0 +1,39 @@
+{
+  "component_id": "timeline-sequence",
+  "global_id": "timeline-sequence",
+  "version": "1.1.0",
+  "source_plugin_id": "core",
+  "kind": "panel",
+  "description": "Timeline sequence prikaz klipova s filmstripom.",
+  "embeddable": true,
+  "portable": true,
+  "path": "/app/components/timeline-sequence/component.html",
+  "package": "/app/components/timeline-sequence",
+  "assets": {
+    "css": [
+      "/app/components/timeline-sequence/component.css",
+      "/app/components/media-thumb/component.css",
+      "/app/components/filmstrip-viewer/component.css"
+    ],
+    "js": [
+      "/app/components/media-thumb/component.js",
+      "/app/components/filmstrip-viewer/component.js",
+      "/app/components/timeline-sequence/component.js"
+    ]
+  },
+  "variants": {},
+  "contract": {
+    "version": 1,
+    "inputs": ["clips", "selected_ids", "current_clip_id", "thumb_rev", "project_id", "playhead_sec", "duration_sec", "mark_in_sec", "mark_out_sec"],
+    "slots": ["summary", "rows"],
+    "events": [
+      { "action": "clip.toggle", "payload": { "clip_id": "string", "checked": "boolean" } },
+      { "action": "clip.play", "payload": { "clip_id": "string", "edge": "boolean" } },
+      { "action": "filmstrip.seek", "payload": { "clip_id": "string", "seconds": "number" } }
+    ],
+    "backend_actions": [],
+    "requires": ["QNC.componentBus"],
+    "requires_components": ["filmstrip-viewer", "media-thumb"],
+    "owns_state": false
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "component_catalog": {
+    "features": ["header", "delete_button", "meta_id", "meta_created", "footer_status", "empty_state"]
+  },
+  "profiles": {
+    "design-lab": {
+      "label": "Design lab — cijeli katalog",
+      "available_features": ["header", "delete_button", "meta_id", "meta_created", "footer_status", "empty_state"],
+      "default_feature_states": {
+        "header": "on",
+        "delete_button": "on",
+        "meta_id": "on",
+        "meta_created": "on",
+        "footer_status": "on",
+        "empty_state": "on"
+      },
+      "demo_set": "default"
+    },
+    "sidebar-full": {
+      "label": "Sidebar — puni popis",
+      "available_features": ["header", "delete_button", "meta_id", "meta_created", "footer_status"],
+      "default_feature_states": {
+        "header": "on",
+        "delete_button": "on",
+        "meta_id": "on",
+        "meta_created": "on",
+        "footer_status": "on"
+      },
+      "demo_set": "default"
+    },
+    "sidebar-minimal": {
+      "label": "Sidebar — samo imena",
+      "available_features": ["header", "meta_id", "footer_status"],
+      "default_feature_states": {
+        "header": "on",
+        "meta_id": "off",
+        "footer_status": "on"
+      },
+      "demo_set": "default"
+    },
+    "empty": {
+      "label": "Prazan popis",
+      "available_features": ["header", "empty_state", "footer_status"],
+      "default_feature_states": {
+        "header": "on",
+        "empty_state": "on",
+        "footer_status": "on"
+      },
+      "demo_set": "empty"
+    }
+  }
+}

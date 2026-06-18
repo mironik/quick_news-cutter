@@ -1,0 +1,855 @@
+/* Timeline — dizajn u Design pluginu (plugins/design-tools/timeline/) */
+
+.qnc-design-preview--fill {
+  padding: var(--qnc-space-1);
+}
+
+.qnc-design-component-lab {
+  display: grid;
+  gap: var(--qnc-space-3);
+}
+
+.qnc-design-component-lab h4 {
+  margin: 0 0 var(--qnc-space-2);
+  font-size: var(--qnc-font-sm);
+  color: var(--qnc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.qnc-design-track-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--qnc-space-2);
+  align-items: center;
+  margin-bottom: var(--qnc-space-2);
+  font-size: var(--qnc-font-xs);
+}
+
+.qnc-design-track-row--clickable {
+  cursor: pointer;
+  padding: var(--qnc-space-1) var(--qnc-space-2);
+  margin-left: calc(-1 * var(--qnc-space-2));
+  margin-right: calc(-1 * var(--qnc-space-2));
+  border-radius: 4px;
+}
+
+.qnc-design-track-row--clickable:hover {
+  background: color-mix(in srgb, var(--qnc-line-soft) 40%, transparent);
+}
+
+.qnc-design-hint kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--qnc-line);
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: inherit;
+  background: var(--qnc-panel-2);
+  color: var(--qnc-text);
+}
+
+.qnc-design-track-row.is-unavailable {
+  opacity: 0.4;
+}
+
+.qnc-design-track-row code {
+  color: var(--qnc-faint);
+}
+
+.qnc-design-timeline-host {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.qnc-design-timeline-host .qnc-timeline {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+/* --- Timeline root (style tokeni — uređuju se u Design → Components) --- */
+.qnc-timeline {
+  --qnc-timeline-label-w: 152px;
+  --qnc-timeline-row-h-video: 68px;
+  --qnc-timeline-row-h-audio: 34px;
+  --qnc-timeline-row-h-markers: 30px;
+  --qnc-timeline-row-h-stabilization: 28px;
+  --qnc-timeline-row-h-transcript: 36px;
+  --qnc-timeline-row-h-inout: 34px;
+  --qnc-timeline-row-h-compact: 10px;
+  --qnc-timeline-row-h-off: 16px;
+  --qnc-timeline-playhead-color: var(--qnc-accent, #e85d04);
+  --qnc-timeline-label-bg: var(--qnc-bg);
+  --qnc-timeline-lane-bg: var(--qnc-panel);
+  --qnc-timeline-row-stripe: color-mix(in srgb, var(--qnc-line-soft) 10%, transparent);
+  --qnc-timeline-video-slot-bg: linear-gradient(135deg, var(--qnc-bg) 0%, var(--qnc-panel) 100%);
+  --qnc-timeline-video-slot-border: var(--qnc-line-soft);
+  --qnc-timeline-audio-wave-opacity: 0.4;
+  --qnc-timeline-marker-bg: var(--qnc-bg);
+  --qnc-timeline-marker-color: var(--qnc-text);
+  --qnc-timeline-marker-border: var(--qnc-line-strong);
+  --qnc-timeline-stab-bg: color-mix(in srgb, var(--qnc-line-strong) 20%, transparent);
+  --qnc-timeline-stab-border: var(--qnc-line);
+  --qnc-timeline-transcript-font-size: var(--qnc-font-xs);
+  --qnc-timeline-transcript-bg: var(--qnc-panel);
+  --qnc-timeline-transcript-color: var(--qnc-text);
+  --qnc-timeline-transcript-border: var(--qnc-line-soft);
+  --qnc-timeline-inout-range-bg: color-mix(in srgb, var(--qnc-accent, #e85d04) 15%, transparent);
+  --qnc-timeline-inout-handle-color: var(--qnc-accent, #e85d04);
+  --qnc-timeline-inout-range-border: var(--qnc-line);
+  --qnc-timeline-canvas-min-w: 720px;
+  --qnc-timeline-playhead: 0%;
+  --qnc-timeline-in-pct: 15%;
+  --qnc-timeline-out-pct: 75%;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  border: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+}
+
+.qnc-timeline[data-label-display="short"] {
+  --qnc-timeline-label-w: 76px;
+}
+
+.qnc-timeline[data-label-display="icon"] {
+  --qnc-timeline-label-w: 48px;
+}
+
+.qnc-timeline-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--qnc-space-2);
+  padding: var(--qnc-space-1) var(--qnc-space-2);
+  border-bottom: 1px solid var(--qnc-line-soft);
+  flex-shrink: 0;
+}
+
+.qnc-timeline-scroll {
+  min-height: 0;
+  overflow: auto;
+}
+
+.qnc-timeline-canvas {
+  position: relative;
+  min-width: calc(var(--qnc-timeline-label-w) + var(--qnc-timeline-canvas-min-w));
+}
+
+/* --- Jedan red = label + lane (uvijek usklađeno) --- */
+.qnc-timeline-row {
+  display: grid;
+  grid-template-columns: var(--qnc-timeline-label-w) minmax(var(--qnc-timeline-canvas-min-w), 1fr);
+  border-bottom: 1px solid var(--qnc-line-soft);
+  min-height: var(--qnc-timeline-row-h, 32px);
+  height: var(--qnc-timeline-row-h, 32px);
+}
+
+.qnc-timeline-canvas > .qnc-timeline-row:nth-child(even):not([data-track-state="off"]) {
+  background: var(--qnc-timeline-row-stripe);
+}
+
+.qnc-timeline-row[data-track-id="play"],
+.qnc-timeline-row--play {
+  display: none !important;
+}
+
+.qnc-timeline-play-btn {
+  min-width: 28px;
+  padding: 0 var(--qnc-space-1);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.qnc-timeline[data-play-state="playing"] .qnc-timeline-play-btn {
+  color: var(--qnc-text);
+}
+
+.qnc-timeline-row[data-track-id="video"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-video);
+}
+
+.qnc-timeline-row[data-track-id="audio-1"],
+.qnc-timeline-row[data-track-id="audio-2"],
+.qnc-timeline-row[data-track-id="audio-3"],
+.qnc-timeline-row[data-track-id="audio-4"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-audio);
+}
+
+.qnc-timeline-row[data-track-id="markers"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-markers);
+}
+
+.qnc-timeline-row[data-track-id="stabilization"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-stabilization);
+}
+
+.qnc-timeline-row[data-track-id="transcript"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-transcript);
+}
+
+.qnc-timeline-row[data-track-id="inout"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-inout);
+}
+
+.qnc-timeline-row[data-track-state="on-hidden"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-compact);
+  opacity: 0.55;
+}
+
+/* off: traka skrivena, ali red ostaje — korisnik može vratiti vidljivost */
+.qnc-timeline-row[data-track-state="off"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-off);
+  opacity: 0.38;
+  background: color-mix(in srgb, var(--qnc-bg) 80%, transparent);
+}
+
+.qnc-timeline-row[data-track-state="off"] .qnc-timeline-lane {
+  display: none;
+  pointer-events: none;
+}
+
+.qnc-timeline-row[data-track-state="off"] [data-timeline-item] {
+  display: none !important;
+}
+
+.qnc-timeline-row[data-track-state="off"] .qnc-timeline-video-mode,
+.qnc-timeline-row[data-track-state="off"] .qnc-timeline-label-cycle {
+  display: none;
+}
+
+.qnc-timeline-row[data-track-state="off"] .qnc-timeline-label-main {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.qnc-timeline-row.is-selected .qnc-timeline-label {
+  background: color-mix(in srgb, var(--qnc-line-strong) 10%, var(--qnc-bg));
+}
+
+.qnc-timeline:focus {
+  outline: 1px solid var(--qnc-line-strong);
+  outline-offset: -1px;
+}
+
+.qnc-timeline-row[data-track-state="off"] .qnc-timeline-label::after {
+  content: attr(data-short);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--qnc-muted);
+  margin-left: 4px;
+}
+
+.qnc-timeline-row[data-track-unavailable="true"] {
+  display: none !important;
+}
+
+/* Lijevi label — sticky pri horizontalnom scrollu */
+.qnc-timeline-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 var(--qnc-space-1);
+  border-right: 1px solid var(--qnc-line-soft);
+  background: var(--qnc-timeline-label-bg);
+  font-size: var(--qnc-font-xs);
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.qnc-timeline-label.is-play {
+  justify-content: center;
+  font-weight: 600;
+}
+
+.qnc-timeline-label-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  min-width: 0;
+}
+
+.qnc-timeline-label-cycle {
+  flex: 1;
+  min-width: 0;
+  padding: 0 2px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--qnc-font-xs);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.qnc-timeline-label-cycle:hover {
+  background: color-mix(in srgb, var(--qnc-line-soft) 60%, transparent);
+}
+
+.qnc-timeline-label-cycle.is-muted {
+  opacity: 0.45;
+}
+
+.qnc-timeline-label.is-play .qnc-timeline-label-cycle {
+  flex: none;
+  width: 100%;
+  font-weight: 600;
+  text-align: center;
+}
+
+.qnc-timeline-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qnc-timeline-name::before {
+  content: attr(data-full);
+}
+
+.qnc-timeline[data-label-display="short"] .qnc-timeline-name::before {
+  content: attr(data-short);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.qnc-timeline[data-label-display="icon"] .qnc-timeline-name::before {
+  content: attr(data-icon);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--qnc-line);
+  background: var(--qnc-panel);
+  border-radius: 2px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.qnc-timeline[data-label-display="icon"] .qnc-timeline-label-main {
+  justify-content: center;
+  gap: 2px;
+}
+
+.qnc-timeline[data-label-display="icon"] .qnc-timeline-track-state {
+  width: 16px;
+  height: 16px;
+  font-size: 8px;
+  line-height: 16px;
+}
+
+.qnc-timeline[data-label-display="icon"] .qnc-timeline-video-mode,
+.qnc-timeline[data-label-display="short"] .qnc-timeline-video-mode {
+  display: none;
+}
+
+.qnc-timeline-row[data-track-id="video"][data-track-state="on-visible"] .qnc-timeline-label[data-track-id="video"] {
+  position: relative;
+}
+
+.qnc-timeline[data-label-display="full"] .qnc-timeline-row[data-track-id="video"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-video);
+}
+
+.qnc-timeline[data-label-display="short"] .qnc-timeline-row[data-track-id="video"],
+.qnc-timeline[data-label-display="icon"] .qnc-timeline-row[data-track-id="video"] {
+  --qnc-timeline-row-h: var(--qnc-timeline-row-h-audio);
+}
+
+.qnc-timeline-row[data-track-state="on-hidden"] .qnc-timeline-label-main,
+.qnc-timeline-row[data-track-state="on-hidden"] .qnc-timeline-video-mode {
+  display: none;
+}
+
+.qnc-timeline-row[data-track-state="on-hidden"] .qnc-timeline-label::after {
+  content: attr(data-short);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--qnc-muted);
+  letter-spacing: 0.04em;
+}
+
+.qnc-timeline-row[data-track-state="on-hidden"] .qnc-timeline-label {
+  align-items: center;
+}
+
+.qnc-timeline-track-toggle,
+.qnc-timeline-track-state {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--qnc-muted);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.qnc-timeline-track-state {
+  display: inline-block;
+  cursor: default;
+  user-select: none;
+}
+
+.qnc-timeline-track-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qnc-timeline-track-label.is-muted {
+  color: var(--qnc-muted);
+}
+
+.qnc-design-hint {
+  margin: 0 0 var(--qnc-space-2);
+  font-size: var(--qnc-font-xs);
+}
+
+.qnc-timeline-video-mode {
+  width: 100%;
+  max-width: 100%;
+  font-size: 10px;
+  padding: 1px 4px;
+  min-height: 22px;
+}
+
+.qnc-timeline-row[data-track-state="on-hidden"] .qnc-timeline-video-mode {
+  display: none;
+}
+
+/* Desna traka */
+.qnc-timeline-lane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--qnc-timeline-lane-bg);
+  cursor: pointer;
+}
+
+.qnc-timeline-row[data-track-state="on-hidden"] .qnc-timeline-lane {
+  background: var(--qnc-bg);
+}
+
+.qnc-timeline-ruler {
+  cursor: pointer;
+  background: var(--qnc-bg);
+}
+
+.qnc-timeline-ruler-scale {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--qnc-line-soft) 0,
+    var(--qnc-line-soft) 1px,
+    transparent 1px,
+    transparent 48px
+  );
+}
+
+.qnc-timeline-video-strip {
+  display: flex;
+  gap: 3px;
+  height: 100%;
+  align-items: stretch;
+  padding: 3px 6px;
+  box-sizing: border-box;
+}
+
+.qnc-timeline-tl-slot {
+  flex: 0 0 72px;
+  height: calc(100% - 2px);
+  border: 1px solid var(--qnc-timeline-video-slot-border);
+  background: var(--qnc-timeline-video-slot-bg);
+  border-radius: 2px;
+}
+
+.qnc-timeline-video--poster .qnc-timeline-tl-slot:not(:first-child) {
+  display: none;
+}
+
+.qnc-timeline-video--inout .qnc-timeline-tl-slot:not(:first-child):not(:last-child) {
+  display: none;
+}
+
+.qnc-timeline-audio-wave {
+  position: absolute;
+  inset: 4px 8px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--qnc-line) 0,
+    var(--qnc-line) 2px,
+    transparent 2px,
+    transparent 5px
+  );
+  opacity: var(--qnc-timeline-audio-wave-opacity);
+}
+
+.qnc-timeline-markers .qnc-editorial-marker,
+.qnc-timeline-lane-io .qnc-editorial-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--qnc-timeline-marker-bg);
+  color: var(--qnc-timeline-marker-color);
+  border-color: var(--qnc-timeline-marker-border);
+}
+
+.qnc-timeline-stab-segment {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  background: var(--qnc-timeline-stab-bg);
+  border: 1px dashed var(--qnc-timeline-stab-border);
+}
+
+.qnc-timeline-transcript .qnc-editorial-transcript-line {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--qnc-timeline-transcript-font-size);
+  padding: 0 4px;
+  background: var(--qnc-timeline-transcript-bg);
+  color: var(--qnc-timeline-transcript-color);
+  border-color: var(--qnc-timeline-transcript-border);
+}
+
+.qnc-timeline-inout-range {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background: var(--qnc-timeline-inout-range-bg);
+  border: 1px solid var(--qnc-timeline-inout-range-border);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.qnc-timeline-in-handle,
+.qnc-timeline-out-handle {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  margin-left: -2px;
+  background: var(--qnc-timeline-inout-handle-color);
+  cursor: ew-resize;
+  z-index: 2;
+  touch-action: none;
+}
+
+[data-timeline-item] {
+  touch-action: none;
+  user-select: none;
+}
+
+[data-timeline-item='marker'],
+[data-timeline-item='transcript'],
+[data-timeline-item='stab'],
+[data-timeline-item='inout-range'] {
+  cursor: grab;
+}
+
+[data-timeline-item='inout-in'],
+[data-timeline-item='inout-out'] {
+  cursor: ew-resize;
+}
+
+[data-timeline-item].is-item-selected {
+  z-index: 6;
+}
+
+.qnc-timeline-markers [data-timeline-item='marker'].is-item-selected,
+.qnc-timeline-transcript [data-timeline-item='transcript'].is-item-selected {
+  background: color-mix(in srgb, var(--qnc-timeline-playhead-color) 18%, var(--qnc-timeline-marker-bg));
+}
+
+.qnc-timeline-stabilization [data-timeline-item='stab'].is-item-selected {
+  background: color-mix(in srgb, var(--qnc-timeline-playhead-color) 22%, var(--qnc-timeline-stab-bg));
+}
+
+.qnc-timeline-inout [data-timeline-item='inout-range'].is-item-selected {
+  background: color-mix(in srgb, var(--qnc-timeline-playhead-color) 22%, var(--qnc-timeline-inout-range-bg));
+}
+
+.qnc-timeline-inout [data-timeline-item='inout-in'].is-item-selected,
+.qnc-timeline-inout [data-timeline-item='inout-out'].is-item-selected {
+  width: 6px;
+  margin-left: -3px;
+}
+
+[data-timeline-item]:active {
+  cursor: grabbing;
+}
+
+/* Playhead — ista pozicija u svim trakama (% širine lane-a) */
+.qnc-timeline-ruler::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--qnc-timeline-playhead);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--qnc-timeline-playhead-color);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.qnc-timeline-row[data-track-state="on-visible"] .qnc-timeline-lane:not(.qnc-timeline-ruler)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--qnc-timeline-playhead);
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--qnc-timeline-playhead-color);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* In–Out + markeri — po traci (marker traka: razmak između M = in–out) */
+.qnc-timeline-lane-io {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.qnc-timeline-lane-io [data-timeline-item] {
+  pointer-events: auto;
+}
+
+.qnc-timeline-lane-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.qnc-timeline-inout-range--marker-pair {
+  pointer-events: none;
+}
+
+.qnc-timeline-video-strip,
+.qnc-timeline-audio-wave {
+  position: relative;
+  z-index: 0;
+}
+
+.qnc-design-style-group {
+  margin: var(--qnc-space-2) 0 var(--qnc-space-1);
+  font-size: var(--qnc-font-xs);
+  color: var(--qnc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.qnc-design-style-color-wrap {
+  display: flex;
+  gap: var(--qnc-space-1);
+  align-items: center;
+  width: 100%;
+}
+
+.qnc-design-style-color-wrap input[type="text"] {
+  width: auto;
+  font-size: var(--qnc-font-xs);
+}
+
+.qnc-timeline-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--qnc-line-strong) var(--qnc-panel);
+}
+
+/* Editorial overlay — markeri, slotovi, segmenti (nije lane red) */
+.qnc-timeline-editorial-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--qnc-timeline-label-w);
+  right: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.qnc-timeline-editorial-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.qnc-timeline-editorial-layer[hidden],
+.qnc-timeline-editorial-overlay[hidden] {
+  display: none !important;
+}
+
+.qnc-timeline-editorial-layer--segments {
+  z-index: 1;
+}
+
+.qnc-timeline-editorial-layer--slots {
+  z-index: 2;
+}
+
+.qnc-timeline-editorial-layer--virtual-clips {
+  z-index: 3;
+}
+
+.qnc-timeline-editorial-layer--markers {
+  z-index: 4;
+}
+
+.qnc-timeline-segment-block {
+  position: absolute;
+  top: 8%;
+  bottom: 8%;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--qnc-accent, #0078d4) 45%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--qnc-accent, #0078d4) 8%, transparent);
+  pointer-events: auto;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.qnc-timeline-segment-block.type-off {
+  border-color: color-mix(in srgb, var(--qnc-muted) 50%, transparent);
+  background: color-mix(in srgb, var(--qnc-muted) 12%, transparent);
+}
+
+.qnc-timeline-segment-block.is-active {
+  border-color: var(--qnc-accent, #0078d4);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--qnc-accent, #0078d4) 35%, transparent);
+}
+
+.qnc-timeline-segment-block-label {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--qnc-text);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.qnc-timeline-slot-btn {
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  margin: 0;
+  padding: 0;
+  border: 1px dashed color-mix(in srgb, #9cdcfe 55%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, #0078d4 10%, transparent);
+  pointer-events: auto;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.qnc-timeline-slot-btn:hover {
+  background: color-mix(in srgb, #0078d4 18%, transparent);
+}
+
+.qnc-timeline-slot-btn.is-item-selected {
+  border-style: solid;
+  background: color-mix(in srgb, #0078d4 24%, transparent);
+}
+
+.qnc-timeline-editorial-layer--markers .qnc-editorial-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: ew-resize;
+  z-index: 2;
+  background: var(--qnc-timeline-marker-bg);
+  color: var(--qnc-timeline-marker-color);
+  border: 1px solid var(--qnc-timeline-marker-border);
+}
+
+.qnc-timeline-virtual-clip-chip {
+  position: absolute;
+  top: 22%;
+  height: 56%;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--qnc-line-strong) 70%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--qnc-panel-2, var(--qnc-panel)) 90%, transparent);
+  font-size: 9px;
+  line-height: 1.2;
+  padding: 2px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.qnc-timeline-virtual-clip-chip.role-cover {
+  top: 38%;
+  height: 40%;
+  opacity: 0.85;
+  border-style: dashed;
+}
+
+.qnc-timeline-clip-range-dim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.qnc-timeline-clip-range-dim::before,
+.qnc-timeline-clip-range-dim::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--qnc-bg) 55%, transparent);
+}
+
+.qnc-timeline-clip-range-dim::before {
+  left: 0;
+  width: var(--qnc-timeline-clip-dim-left, 0%);
+}
+
+.qnc-timeline-clip-range-dim::after {
+  right: 0;
+  width: var(--qnc-timeline-clip-dim-right, 0%);
+}
+
+.qnc-timeline[data-axis-mode="segment_local"] .qnc-timeline-editorial-layer--segments {
+  display: none;
+}
+
+.qnc-design-overlay-row--overlay {
+  margin-bottom: var(--qnc-space-1);
+}

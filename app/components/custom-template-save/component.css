@@ -1,0 +1,52 @@
+.qnc-custom-template-box {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #2c2c2c;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.qnc-custom-template-box[hidden] {
+  display: none;
+}
+
+.qnc-template-create-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.qnc-template-create-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.qnc-template-create-head h3 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.qnc-template-create-head p {
+  margin: 0;
+  color: #a9a9a9;
+  font-size: 0.88rem;
+}
+
+.qnc-template-create-settings {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 8px;
+}

@@ -1,0 +1,66 @@
+{
+  "plugin_id": "media_pool",
+  "tab_id": "pool",
+  "label": "Media",
+  "priority": 150,
+  "position": "normal",
+  "entry_js": "/plugins/media_pool/static/qnc-media-pool.js",
+  "entry_css": "/plugins/media_pool/static/qnc-media-pool.css",
+  "asset_version": 19,
+  "panel_id": "panel-pool",
+  "api_namespace": "/api/media-pool",
+  "storage": "media_pool",
+  "enabled": true,
+  "system": true,
+  "removable": true,
+  "description": "Media Pool — samostalan tab. Cita uvezene klipove iz projektne baze, prikazuje proxy, filmstrip i virtualne kadrove.",
+  "panel_html": "/app/components/media-pool-tab-layout/component.html",
+  "uses_components": [
+    "shell-plugin-tab",
+    "media-pool-tab-layout",
+    "media-pool-workspace",
+    "media-pool-toolbar",
+    "media-pool-player",
+    "media-pool-transport",
+    "media-pool-actions",
+    "timeline-sequence",
+    "media-pool-virtual-shot-panel",
+    "media-pool-transcript-panel",
+    "filmstrip-viewer"
+  ],
+  "backend": {
+    "implementation": "rust",
+    "host_module": "qnc-host/src/media_pool",
+    "store": {
+      "scope": "project_plugin",
+      "path": "qnc_project.db"
+    },
+    "actions": [
+      {
+        "action": "clips.list",
+        "method": "GET",
+        "path": "/api/media-pool/clips",
+        "reads": ["ingest_assets", "pool_clips", "filmstrips", "filmstrip_frames", "virtual_shots"]
+      },
+      {
+        "action": "filmstrip.build",
+        "method": "POST",
+        "path": "/api/media-pool/timeline/build",
+        "writes": ["filmstrips", "filmstrip_frames"]
+      },
+      {
+        "action": "virtual-shot.create",
+        "method": "POST",
+        "path": "/api/media-pool/virtual-shot",
+        "writes": ["virtual_shots"]
+      }
+    ],
+    "jobs": [
+      {
+        "job_type": "filmstrip_build",
+        "queue": "filmstrip_worker",
+        "status_source": "filmstrips.status"
+      }
+    ]
+  }
+}

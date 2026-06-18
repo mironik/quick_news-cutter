@@ -1,0 +1,31 @@
+{
+  "component_id": "media-pool-workspace",
+  "global_id": "media-pool-workspace",
+  "version": "1.2.1",
+  "source_plugin_id": "media_pool",
+  "path": "/app/components/media-pool-workspace/component.html",
+  "kind": "panel",
+  "assets": {
+    "css": ["/app/components/media-pool-workspace/component.css"],
+    "js": []
+  },
+  "package": "/app/components/media-pool-workspace",
+  "contract": {
+    "version": 1,
+    "inputs": [],
+    "slots": ["toolbar", "viewer", "transport", "actions", "timeline-sequence"],
+    "events": [],
+    "backend_actions": [],
+    "requires": ["QNC.componentBus"],
+    "requires_components": [
+      "media-pool-toolbar",
+      "media-pool-virtual-shot-panel",
+      "media-pool-player",
+      "media-pool-transcript-panel",
+      "media-pool-transport",
+      "media-pool-actions",
+      "timeline-sequence"
+    ],
+    "owns_state": false
+  }
+}

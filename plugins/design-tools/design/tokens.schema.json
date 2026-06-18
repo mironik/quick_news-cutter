@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "description": "Design token schema — editable fields for Theme editor.",
+  "field_types": {
+    "color": { "input": "color", "pattern": "^#[0-9a-fA-F]{3,8}$" },
+    "space": { "input": "text", "pattern": "^\\d+(\\.\\d+)?(px|rem|em|%)$" },
+    "font": { "input": "text", "pattern": "^\\d+(\\.\\d+)?(px|rem|em)$" }
+  },
+  "groups": ["color", "space", "font"]
+}

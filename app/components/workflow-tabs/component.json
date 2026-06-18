@@ -1,0 +1,38 @@
+{
+  "component_id": "workflow-tabs",
+  "kind": "panel",
+  "path": "/app/components/workflow-tabs/component.html",
+  "description": "Reusable workflow tab selection panel for project templates.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "workflow_tabs",
+      "tab_labels"
+    ],
+    "slots": [
+      "module-checks"
+    ],
+    "events": [
+      {
+        "action": "workflow-tabs.change",
+        "payload": {
+          "tabs": "array"
+        }
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/workflow-tabs/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/workflow-tabs"
+}

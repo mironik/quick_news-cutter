@@ -1,0 +1,46 @@
+{
+  "title": "QNC Tab Manifest",
+  "type": "object",
+  "required": ["tab_id", "label", "priority", "entry_js", "entry_css"],
+  "properties": {
+    "tab_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_\\-]*$"
+    },
+    "label": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "integer"
+    },
+    "position": {
+      "type": "string",
+      "enum": ["first", "normal", "last"]
+    },
+    "entry_js": {
+      "type": "string"
+    },
+    "entry_css": {
+      "type": "string"
+    },
+    "panel_id": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "system": {
+      "type": "boolean",
+      "default": false
+    },
+    "removable": {
+      "type": "boolean",
+      "default": true
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

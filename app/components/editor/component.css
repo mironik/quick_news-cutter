@@ -1,0 +1,63 @@
+.qnc-project-editor-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.qnc-project-main-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #2c2c2c;
+}
+
+.qnc-project-main-head h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.qnc-project-main-head p {
+  margin: 2px 0 0;
+  color: #9a9a9a;
+  font-size: 0.86rem;
+}
+
+.qnc-project-form {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  align-content: stretch;
+  padding: 16px 30px 12px;
+  overflow: hidden;
+  height: 100%;
+  max-width: 760px;
+  min-height: 0;
+}
+
+.qnc-project-form label {
+  display: block;
+  margin: 0 0 6px;
+}
+
+.qnc-project-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.qnc-project-form input,
+.qnc-project-form select,
+.qnc-project-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 10px;
+}
+
+.qnc-project-name-row input,
+.qnc-project-name-row button {
+  margin-bottom: 10px;
+}

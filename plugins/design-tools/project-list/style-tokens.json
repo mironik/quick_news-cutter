@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "component": "project-list",
+  "groups": {
+    "panel": {
+      "label": "Panel",
+      "tokens": [
+        "--qnc-project-list-bg",
+        "--qnc-project-list-border",
+        "--qnc-project-list-head-pad"
+      ]
+    },
+    "row": {
+      "label": "Red projekta",
+      "tokens": [
+        "--qnc-project-list-row-pad-y",
+        "--qnc-project-list-row-pad-x",
+        "--qnc-project-list-row-hover-bg",
+        "--qnc-project-list-row-selected-bg",
+        "--qnc-project-list-row-selected-outline"
+      ]
+    },
+    "text": {
+      "label": "Tipografija",
+      "tokens": [
+        "--qnc-project-list-name-color",
+        "--qnc-project-list-name-size",
+        "--qnc-project-list-meta-color",
+        "--qnc-project-list-meta-size"
+      ]
+    },
+    "dot": {
+      "label": "Aktivni projekt",
+      "tokens": ["--qnc-project-list-dot-idle", "--qnc-project-list-dot-active"]
+    }
+  },
+  "defaults": {
+    "--qnc-project-list-bg": "#181818",
+    "--qnc-project-list-border": "#303030",
+    "--qnc-project-list-head-pad": "18px 20px",
+    "--qnc-project-list-row-pad-y": "14px",
+    "--qnc-project-list-row-pad-x": "10px",
+    "--qnc-project-list-row-hover-bg": "#202020",
+    "--qnc-project-list-row-selected-bg": "#242424",
+    "--qnc-project-list-row-selected-outline": "#525252",
+    "--qnc-project-list-name-color": "#e6e6e6",
+    "--qnc-project-list-name-size": "0.92rem",
+    "--qnc-project-list-meta-color": "#858585",
+    "--qnc-project-list-meta-size": "0.74rem",
+    "--qnc-project-list-dot-idle": "#585858",
+    "--qnc-project-list-dot-active": "#d7d7d7"
+  },
+  "labels": {
+    "--qnc-project-list-bg": "Pozadina panela",
+    "--qnc-project-list-border": "Rub panela",
+    "--qnc-project-list-head-pad": "Padding zaglavlja",
+    "--qnc-project-list-row-pad-y": "Red — vertikalni pad",
+    "--qnc-project-list-row-pad-x": "Red — horizontalni pad",
+    "--qnc-project-list-row-hover-bg": "Red — hover",
+    "--qnc-project-list-row-selected-bg": "Red — odabir",
+    "--qnc-project-list-row-selected-outline": "Red — outline odabira",
+    "--qnc-project-list-name-color": "Naziv projekta",
+    "--qnc-project-list-name-size": "Veličina naziva",
+    "--qnc-project-list-meta-color": "Meta tekst",
+    "--qnc-project-list-meta-size": "Veličina meta",
+    "--qnc-project-list-dot-idle": "Točka — neaktivan",
+    "--qnc-project-list-dot-active": "Točka — aktivan"
+  }
+}

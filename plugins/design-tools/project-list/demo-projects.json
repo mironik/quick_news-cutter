@@ -1,0 +1,26 @@
+{
+  "projects": [
+    {
+      "project_id": "breaking_vecer",
+      "name": "Breaking — večernji dio",
+      "created_at": "2026-03-10"
+    },
+    {
+      "project_id": "sport_live",
+      "name": "Sport live",
+      "created_at": "2026-03-08"
+    },
+    {
+      "project_id": "off_nedjelja",
+      "name": "Off — nedjeljno jutro",
+      "created_at": "2026-03-01"
+    },
+    {
+      "project_id": "demo_archive",
+      "name": "Arhiva demo klipova",
+      "created_at": "2026-02-14"
+    }
+  ],
+  "active_project_id": "breaking_vecer",
+  "selected_project_id": "breaking_vecer"
+}

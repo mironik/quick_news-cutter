@@ -1,0 +1,87 @@
+<section class="qnc-advanced-grid" data-qnc-panel="video-settings">
+  <div>
+    <label class="qnc-ui-label">Video format</label>
+    <select class="qnc-ui-select" data-qnc-bind="video.format">
+      <option value="HD 1080p">HD 1080p</option>
+      <option value="HD 1080i50">HD 1080i50</option>
+      <option value="UHD 2160p">UHD 2160p</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Frame rate</label>
+    <select class="qnc-ui-select" data-qnc-bind="video.fps">
+      <option value="25">25 fps</option>
+      <option value="50">50 fps</option>
+      <option value="29.97">29.97 fps</option>
+      <option value="59.94">59.94 fps</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Width</label>
+    <input class="qnc-ui-input" inputmode="numeric" data-qnc-bind="video.width" />
+  </div>
+  <div>
+    <label class="qnc-ui-label">Height</label>
+    <input class="qnc-ui-input" inputmode="numeric" data-qnc-bind="video.height" />
+  </div>
+  <div>
+    <label class="qnc-ui-label">Field order</label>
+    <select class="qnc-ui-select" data-qnc-bind="video.field_order">
+      <option value="progressive">Progressive</option>
+      <option value="upper_first">Interlaced upper first</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Color space</label>
+    <select class="qnc-ui-select" data-qnc-bind="video.color_space">
+      <option value="rec709">Rec.709</option>
+      <option value="slog3_rec709">S-Log3 -> Rec.709</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Audio</label>
+    <select class="qnc-ui-select" data-qnc-bind="audio.sample_rate">
+      <option value="48000">48 kHz</option>
+      <option value="44100">44.1 kHz</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Channels</label>
+    <select class="qnc-ui-select" data-qnc-bind="audio.channels">
+      <option value="2">Stereo / 2ch</option>
+      <option value="4">4ch</option>
+      <option value="8">8ch</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Proxy policy</label>
+    <select class="qnc-ui-select" data-qnc-bind="storage.proxy_policy">
+      <option value="copy_to_project">Copy proxy to project</option>
+      <option value="link_when_available">Link when available</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Original policy</label>
+    <select class="qnc-ui-select" data-qnc-bind="storage.original_policy">
+      <option value="link_when_available">Link original</option>
+      <option value="copy_background">Copy original in background</option>
+      <option value="ignore_for_fast_news">Ignore for fast news</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Export mode</label>
+    <select class="qnc-ui-select" data-qnc-bind="export.default_mode">
+      <option value="proxy_fast">Fast proxy export</option>
+      <option value="xml_master">XML to NLE / master</option>
+      <option value="broadcast_mxf">Broadcast MXF</option>
+    </select>
+  </div>
+  <div>
+    <label class="qnc-ui-label">Timeline codec</label>
+    <select class="qnc-ui-select" data-qnc-bind="video.timeline_codec">
+      <option value="proxy_h264">Proxy H.264</option>
+      <option value="xdcam_hd_422">XDCAM HD 422</option>
+      <option value="prores_422">ProRes 422</option>
+    </select>
+  </div>
+</section>

@@ -1,0 +1,1078 @@
+{
+  "version": 1,
+  "components": {
+    "advanced-video-settings": {
+      "global_id": "advanced-video-settings",
+      "component_id": "advanced-video-settings",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Reusable advanced video/audio/storage/export settings panel.",
+      "embeddable": true,
+      "path": "/app/components/advanced-video-settings/component.html",
+      "package": "/app/components/advanced-video-settings",
+      "assets": {
+        "css": [
+          "/app/components/advanced-video-settings/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "video_settings",
+          "audio_settings",
+          "storage_settings",
+          "export_settings",
+          "workflow_tabs"
+        ],
+        "slots": [
+          "video-settings",
+          "workflow-tabs"
+        ],
+        "events": [],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [
+          "video-settings",
+          "workflow-tabs"
+        ],
+        "owns_state": false
+      }
+    },
+    "ai-settings": {
+      "global_id": "ai-settings",
+      "component_id": "ai-settings",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Reusable AI options panel for project/template workflows.",
+      "embeddable": true,
+      "path": "/app/components/ai/component.html",
+      "package": "/app/components/ai",
+      "assets": {
+        "css": [
+          "/app/components/ai/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "ai_settings"
+        ],
+        "slots": [],
+        "events": [
+          {
+            "action": "ai.toggle",
+            "payload": {
+              "enabled": "boolean"
+            }
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "custom-template-save": {
+      "global_id": "custom-template-save",
+      "component_id": "custom-template-save",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Reusable custom template save panel.",
+      "embeddable": true,
+      "path": "/app/components/custom-template-save/component.html",
+      "package": "/app/components/custom-template-save",
+      "assets": {
+        "css": [
+          "/app/components/custom-template-save/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "template_settings",
+          "ai_settings",
+          "video_settings",
+          "audio_settings",
+          "storage_settings",
+          "export_settings",
+          "workflow_tabs"
+        ],
+        "slots": [
+          "template-base",
+          "ai",
+          "advanced-video-settings"
+        ],
+        "events": [
+          {
+            "action": "template.duplicate",
+            "payload": {
+              "name": "string",
+              "description": "string"
+            }
+          },
+          {
+            "action": "template.create-panel.close",
+            "payload": {}
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [
+          "ai-settings",
+          "advanced-video-settings"
+        ],
+        "owns_state": false
+      }
+    },
+    "shell-plugin-tab": {
+      "global_id": "shell-plugin-tab",
+      "component_id": "shell-plugin-tab",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "layout",
+      "description": "Prazna shell podloga za plugin tab.",
+      "embeddable": false,
+      "path": "/app/components/shell-plugin-tab/component.html",
+      "package": "/app/components/shell-plugin-tab",
+      "assets": {
+        "css": [
+          "/app/components/shell-plugin-tab/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": [
+          "content"
+        ],
+        "events": [],
+        "backend_actions": [],
+        "requires": [],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "editor": {
+      "global_id": "editor",
+      "component_id": "editor",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Composable project creation editor panel.",
+      "embeddable": true,
+      "path": "/app/components/editor/component.html",
+      "package": "/app/components/editor",
+      "assets": {
+        "css": [
+          "/app/components/editor/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "templates",
+          "selected_template_id",
+          "project_settings"
+        ],
+        "slots": [
+          "template-picker",
+          "custom-template-save"
+        ],
+        "events": [
+          {
+            "action": "project.create",
+            "payload": {
+              "name": "string",
+              "template_id": "string"
+            }
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [
+          "template-picker",
+          "custom-template-save"
+        ],
+        "owns_state": false
+      }
+    },
+    "media-thumb": {
+      "global_id": "media-thumb",
+      "component_id": "media-thumb",
+      "version": "1.0.0",
+      "source_plugin_id": "core",
+      "kind": "atom",
+      "description": "Jedna video sličica — poster ili filmstrip frame.",
+      "embeddable": true,
+      "portable": true,
+      "path": "/app/components/media-thumb/component.html",
+      "package": "/app/components/media-thumb",
+      "assets": {
+        "css": ["/app/components/media-thumb/component.css"],
+        "js": ["/app/components/media-thumb/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["thumb_url", "thumb_status", "thumb_color_a", "thumb_color_b", "variant", "loading"],
+        "slots": ["frame"],
+        "events": [],
+        "backend_actions": [],
+        "requires": [],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "filmstrip-viewer": {
+      "global_id": "filmstrip-viewer",
+      "component_id": "filmstrip-viewer",
+      "version": "1.0.1",
+      "source_plugin_id": "core",
+      "kind": "panel",
+      "description": "Prenosivi filmstrip viewer — globalna QNC komponenta.",
+      "embeddable": true,
+      "portable": true,
+      "path": "/app/components/filmstrip-viewer/component.html",
+      "package": "/app/components/filmstrip-viewer",
+      "assets": {
+        "css": [
+          "/app/components/media-thumb/component.css",
+          "/app/components/filmstrip-viewer/component.css"
+        ],
+        "js": [
+          "/app/components/media-thumb/component.js",
+          "/app/components/filmstrip-viewer/component.js"
+        ]
+      },
+      "variants": {
+        "inline": "/app/components/filmstrip-viewer/component-inline.html",
+        "cover": "/app/components/filmstrip-viewer/component-cover.html"
+      },
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "clip",
+          "filmstrip"
+        ],
+        "slots": [
+          "frames",
+          "filmstrip-status"
+        ],
+        "events": [
+          {
+            "action": "filmstrip.seek",
+            "payload": {
+              "clip_id": "string",
+              "seconds": "number"
+            }
+          },
+          {
+            "action": "filmstrip.build",
+            "payload": {
+              "clip_id": "string"
+            }
+          }
+        ],
+        "backend_actions": [
+          "filmstrip.build"
+        ],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [
+          "media-thumb"
+        ],
+        "owns_state": false
+      }
+    },
+    "timeline-sequence": {
+      "global_id": "timeline-sequence",
+      "component_id": "timeline-sequence",
+      "version": "1.1.0",
+      "source_plugin_id": "core",
+      "kind": "panel",
+      "description": "Timeline sequence prikaz klipova s filmstripom.",
+      "embeddable": true,
+      "portable": true,
+      "path": "/app/components/timeline-sequence/component.html",
+      "package": "/app/components/timeline-sequence",
+      "assets": {
+        "css": [
+          "/app/components/timeline-sequence/component.css",
+          "/app/components/media-thumb/component.css",
+          "/app/components/filmstrip-viewer/component.css"
+        ],
+        "js": [
+          "/app/components/media-thumb/component.js",
+          "/app/components/filmstrip-viewer/component.js",
+          "/app/components/timeline-sequence/component.js"
+        ]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "clips",
+          "selected_ids",
+            "current_clip_id",
+            "thumb_rev",
+            "project_id",
+            "playhead_sec",
+            "duration_sec",
+            "mark_in_sec",
+            "mark_out_sec"
+        ],
+        "slots": [
+          "summary",
+          "rows"
+        ],
+        "events": [
+          {
+            "action": "clip.toggle",
+            "payload": {
+              "clip_id": "string",
+              "checked": "boolean"
+            }
+          },
+          {
+            "action": "clip.play",
+            "payload": {
+              "clip_id": "string",
+              "edge": "boolean"
+            }
+          },
+          {
+            "action": "filmstrip.seek",
+            "payload": {
+              "clip_id": "string",
+              "seconds": "number"
+            }
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [
+          "filmstrip-viewer",
+          "media-thumb"
+        ],
+        "owns_state": false
+      }
+    },
+    "folder-picker": {
+      "global_id": "folder-picker",
+      "component_id": "folder-picker",
+      "version": "1.0.0",
+      "source_plugin_id": "core",
+      "kind": "service",
+      "description": "System service — tamni QNC folder picker (native host dialog).",
+      "embeddable": false,
+      "portable": true,
+      "path": "/app/components/folder-picker/component.html",
+      "package": "/app/components/folder-picker",
+      "assets": {
+        "css": [],
+        "js": [
+          "/app/components/folder-picker/component.js"
+        ]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": [],
+        "events": [],
+        "backend_actions": [
+          "shell.pick-directory",
+          "shell.pick-files"
+        ],
+        "requires": [
+          "QNC.api"
+        ],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "project-tab-layout": {
+      "global_id": "project-tab-layout",
+      "component_id": "project-tab-layout",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "layout",
+      "description": "Project tab — shell-plugin-tab s workspace-split u content slotu.",
+      "embeddable": false,
+      "path": "/app/components/project-tab-layout/component.html",
+      "package": "/app/components/project-tab-layout",
+      "assets": {
+        "css": [
+          "/app/components/shell-plugin-tab/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": [
+          "content"
+        ],
+        "events": [],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [
+          "shell-plugin-tab",
+          "workspace-split",
+          "project-list",
+          "project-template-settings"
+        ],
+        "owns_state": false
+      }
+    },
+    "project-list": {
+      "global_id": "project-list",
+      "component_id": "project-list",
+      "version": "1.1.1",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Panel for existing projects and project selection.",
+      "embeddable": true,
+      "path": "/app/components/project-list/component.html",
+      "package": "/app/components/project-list",
+      "assets": {
+        "css": [
+          "/app/components/project-list/component.css"
+        ],
+        "js": [
+          "/app/components/project-list/component.js"
+        ]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "projects",
+          "active_project_id",
+          "selected_project_id"
+        ],
+        "slots": [
+          "project-list",
+          "status"
+        ],
+        "events": [
+          {
+            "action": "project.open",
+            "payload": {
+              "project_id": "string"
+            }
+          },
+          {
+            "action": "project.delete",
+            "payload": {
+              "project_id": "string"
+            }
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "project-template-settings": {
+      "global_id": "project-template-settings",
+      "component_id": "project-template-settings",
+      "version": "1.3.2",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Odabir project templatea, naziv projekta i pregled template postavki.",
+      "embeddable": true,
+      "path": "/app/components/project-template-settings/component.html",
+      "package": "/app/components/project-template-settings",
+      "assets": {
+        "css": [
+          "/app/components/project-template-settings/component.css"
+        ],
+        "js": [
+          "/app/components/project-template-settings/component.js"
+        ]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "templates",
+          "selected_template_id",
+          "project_name",
+          "template_settings"
+        ],
+        "slots": [
+          "template-summary",
+          "template-cards",
+          "ai-settings",
+          "video-format",
+          "export-mode",
+          "export-directory",
+          "projects-root",
+          "workflow-tabs",
+          "custom-template-save",
+          "status"
+        ],
+        "events": [
+          {
+            "action": "template.select",
+            "payload": {
+              "template_id": "string"
+            }
+          },
+          {
+            "action": "project.create",
+            "payload": {
+              "name": "string",
+              "template_id": "string"
+            }
+          },
+          {
+            "action": "template.create-panel.open",
+            "payload": {}
+          },
+          {
+            "action": "template.create-panel.close",
+            "payload": {}
+          },
+          {
+            "action": "template.duplicate",
+            "payload": {
+              "name": "string",
+              "description": "string"
+            }
+          },
+          {
+            "action": "export.directory.pick",
+            "payload": {}
+          },
+          {
+            "action": "projects-root.pick",
+            "payload": {}
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "template-picker": {
+      "global_id": "template-picker",
+      "component_id": "template-picker",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Reusable template picker panel with summary and card slots.",
+      "embeddable": true,
+      "path": "/app/components/template-picker/component.html",
+      "package": "/app/components/template-picker",
+      "assets": {
+        "css": [
+          "/app/components/template-picker/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "templates",
+          "selected_template_id"
+        ],
+        "slots": [
+          "summary",
+          "cards"
+        ],
+        "events": [
+          {
+            "action": "template.select",
+            "payload": {
+              "template_id": "string"
+            }
+          },
+          {
+            "action": "template.create-panel.open",
+            "payload": {}
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "video-settings": {
+      "global_id": "video-settings",
+      "component_id": "video-settings",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Reusable project video, audio, storage and export setting controls.",
+      "embeddable": true,
+      "path": "/app/components/video-settings/component.html",
+      "package": "/app/components/video-settings",
+      "assets": {
+        "css": [
+          "/app/components/video-settings/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "video_settings",
+          "audio_settings",
+          "storage_settings",
+          "export_settings"
+        ],
+        "slots": [],
+        "events": [
+          {
+            "action": "settings.change",
+            "payload": {
+              "path": "string",
+              "value": "string"
+            }
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "workflow-tabs": {
+      "global_id": "workflow-tabs",
+      "component_id": "workflow-tabs",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Reusable workflow tab selection panel for project templates.",
+      "embeddable": true,
+      "path": "/app/components/workflow-tabs/component.html",
+      "package": "/app/components/workflow-tabs",
+      "assets": {
+        "css": [
+          "/app/components/workflow-tabs/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [
+          "workflow_tabs",
+          "tab_labels"
+        ],
+        "slots": [
+          "module-checks"
+        ],
+        "events": [
+          {
+            "action": "workflow-tabs.change",
+            "payload": {
+              "tabs": "array"
+            }
+          }
+        ],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "ingest-actions": {
+      "global_id": "ingest-actions",
+      "component_id": "ingest-actions",
+      "version": "1.0.2",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Ingest action bar.",
+      "embeddable": true,
+      "path": "/app/components/ingest-actions/component.html",
+      "package": "/app/components/ingest-actions",
+      "assets": {
+        "css": ["/app/components/ingest-actions/component.css"],
+        "js": ["/app/components/ingest-actions/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": ["primary", "secondary"],
+        "events": [
+          { "action": "ingest.browse", "payload": {} },
+          { "action": "ingest.discover", "payload": {} },
+          { "action": "ingest.import", "payload": {} },
+          { "action": "ingest.select-all", "payload": {} }
+        ],
+        "backend_actions": [
+          "ingest.browse",
+          "ingest.discover",
+          "ingest.import"
+        ],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "ingest-clip-grid": {
+      "global_id": "ingest-clip-grid",
+      "component_id": "ingest-clip-grid",
+      "version": "1.0.3",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Ingest clip browser grid (FCP 11 style).",
+      "embeddable": true,
+      "path": "/app/components/ingest-clip-grid/component.html",
+      "package": "/app/components/ingest-clip-grid",
+      "assets": {
+        "css": ["/app/components/ingest-clip-grid/component.css"],
+        "js": ["/app/components/ingest-clip-grid/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["clips", "selected_clip_ids", "features"],
+        "slots": ["clip-grid", "empty", "status"],
+        "events": [{ "action": "clip.toggle", "payload": { "clip_id": "string" } }],
+        "backend_actions": ["clip.toggle", "ingest.select-all"],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "ingest-source-picker": {
+      "global_id": "ingest-source-picker",
+      "component_id": "ingest-source-picker",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Ingest source picker.",
+      "embeddable": true,
+      "path": "/app/components/ingest-source-picker/component.html",
+      "package": "/app/components/ingest-source-picker",
+      "assets": {
+        "css": ["/app/components/ingest-source-picker/component.css"],
+        "js": ["/app/components/ingest-source-picker/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["sources", "active_source_id"],
+        "slots": ["source-select", "source-path"],
+        "events": [{ "action": "source.change", "payload": { "source_id": "string" } }],
+        "backend_actions": ["source.change"],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "ingest-tab-layout": {
+      "global_id": "ingest-tab-layout",
+      "component_id": "ingest-tab-layout",
+      "version": "1.1.0",
+      "source_plugin_id": "app",
+      "kind": "layout",
+      "description": "Ingest tab — shell-plugin-tab s ingest-workspace u content slotu.",
+      "embeddable": false,
+      "path": "/app/components/ingest-tab-layout/component.html",
+      "package": "/app/components/ingest-tab-layout",
+      "assets": {
+        "css": [
+          "/app/components/shell-plugin-tab/component.css",
+          "/app/components/ingest-tab-layout/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": ["content"],
+        "events": [],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [
+          "shell-plugin-tab",
+          "ingest-workspace",
+          "ingest-toolbar",
+          "ingest-source-picker",
+          "ingest-actions",
+          "ingest-clip-grid"
+        ],
+        "owns_state": false
+      }
+    },
+    "ingest-toolbar": {
+      "global_id": "ingest-toolbar",
+      "component_id": "ingest-toolbar",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "panel",
+      "description": "Ingest tab toolbar.",
+      "embeddable": true,
+      "path": "/app/components/ingest-toolbar/component.html",
+      "package": "/app/components/ingest-toolbar",
+      "assets": {
+        "css": ["/app/components/ingest-toolbar/component.css"],
+        "js": ["/app/components/ingest-toolbar/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["project_name", "summary"],
+        "slots": ["project-label", "summary"],
+        "events": [],
+        "backend_actions": [],
+        "requires": [],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "ingest-workspace": {
+      "global_id": "ingest-workspace",
+      "component_id": "ingest-workspace",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "layout",
+      "description": "Ingest tab workspace.",
+      "embeddable": false,
+      "path": "/app/components/ingest-workspace/component.html",
+      "package": "/app/components/ingest-workspace",
+      "assets": {
+        "css": ["/app/components/ingest-workspace/component.css"],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": ["toolbar", "source-picker", "actions", "clip-grid"],
+        "events": [],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [
+          "ingest-toolbar",
+          "ingest-source-picker",
+          "ingest-actions",
+          "ingest-clip-grid"
+        ],
+        "owns_state": false
+      }
+    },
+    "workspace-split": {
+      "global_id": "workspace-split",
+      "component_id": "workspace-split",
+      "version": "1.0.0",
+      "source_plugin_id": "app",
+      "kind": "layout",
+      "description": "Project workspace layout (list + template settings).",
+      "embeddable": false,
+      "path": "/app/components/workspace-split/component.html",
+      "package": "/app/components/workspace-split",
+      "assets": {
+        "css": [
+          "/app/components/workspace-split/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": [
+          "project-list",
+          "project-template-settings"
+        ],
+        "events": [],
+        "backend_actions": [],
+        "requires": [
+          "QNC.componentBus"
+        ],
+        "requires_components": [
+          "project-list",
+          "project-template-settings"
+        ],
+        "owns_state": false
+      }
+    },
+    "media-pool-tab-layout": {
+      "global_id": "media-pool-tab-layout",
+      "component_id": "media-pool-tab-layout",
+      "version": "1.0.0",
+      "source_plugin_id": "media_pool",
+      "kind": "layout",
+      "description": "Media Pool tab layout.",
+      "embeddable": false,
+      "path": "/app/components/media-pool-tab-layout/component.html",
+      "package": "/app/components/media-pool-tab-layout",
+      "assets": {
+        "css": [
+          "/app/components/shell-plugin-tab/component.css",
+          "/app/components/media-pool-tab-layout/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": ["content"],
+        "events": [],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [
+          "shell-plugin-tab",
+          "media-pool-workspace",
+          "filmstrip-viewer"
+        ],
+        "owns_state": false
+      }
+    },
+    "media-pool-workspace": {
+      "global_id": "media-pool-workspace",
+      "component_id": "media-pool-workspace",
+      "version": "1.2.1",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "path": "/app/components/media-pool-workspace/component.html",
+      "package": "/app/components/media-pool-workspace",
+      "assets": {
+        "css": ["/app/components/media-pool-workspace/component.css"],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": ["toolbar", "viewer", "transport", "actions", "timeline-sequence"],
+        "events": [],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [
+          "media-pool-toolbar",
+          "media-pool-virtual-shot-panel",
+          "media-pool-player",
+          "media-pool-transcript-panel",
+          "media-pool-transport",
+          "media-pool-actions",
+          "timeline-sequence"
+        ],
+        "owns_state": false
+      }
+    },
+    "media-pool-toolbar": {
+      "global_id": "media-pool-toolbar",
+      "component_id": "media-pool-toolbar",
+      "version": "1.0.0",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "path": "/app/components/media-pool-toolbar/component.html",
+      "package": "/app/components/media-pool-toolbar",
+      "assets": { "css": ["/app/components/media-pool-toolbar/component.css"], "js": [] },
+      "variants": {},
+      "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
+    },
+    "media-pool-player": {
+      "global_id": "media-pool-player",
+      "component_id": "media-pool-player",
+      "version": "1.0.0",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "path": "/app/components/media-pool-player/component.html",
+      "package": "/app/components/media-pool-player",
+      "assets": { "css": [], "js": [] },
+      "variants": {},
+      "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
+    },
+    "media-pool-transport": {
+      "global_id": "media-pool-transport",
+      "component_id": "media-pool-transport",
+      "version": "1.0.0",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "path": "/app/components/media-pool-transport/component.html",
+      "package": "/app/components/media-pool-transport",
+      "assets": { "css": [], "js": [] },
+      "variants": {},
+      "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
+    },
+    "media-pool-actions": {
+      "global_id": "media-pool-actions",
+      "component_id": "media-pool-actions",
+      "version": "1.0.0",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "path": "/app/components/media-pool-actions/component.html",
+      "package": "/app/components/media-pool-actions",
+      "assets": { "css": [], "js": [] },
+      "variants": {},
+      "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
+    },
+    "media-pool-virtual-shot-panel": {
+      "global_id": "media-pool-virtual-shot-panel",
+      "component_id": "media-pool-virtual-shot-panel",
+      "version": "1.0.0",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "path": "/app/components/media-pool-virtual-shot-panel/component.html",
+      "package": "/app/components/media-pool-virtual-shot-panel",
+      "assets": { "css": [], "js": [] },
+      "variants": {},
+      "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
+    },
+    "media-pool-transcript-panel": {
+      "global_id": "media-pool-transcript-panel",
+      "component_id": "media-pool-transcript-panel",
+      "version": "1.0.0",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "path": "/app/components/media-pool-transcript-panel/component.html",
+      "package": "/app/components/media-pool-transcript-panel",
+      "assets": { "css": [], "js": [] },
+      "variants": {},
+      "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
+    }
+  }
+}

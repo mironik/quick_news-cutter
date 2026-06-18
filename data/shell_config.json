@@ -1,0 +1,9 @@
+{
+  "api_port": 8001,
+  "server_label": "QNC server",
+  "network_presets": [],
+  "design_editor": {
+    "mode": "open",
+    "default_enabled": true
+  }
+}

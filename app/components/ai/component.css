@@ -1,0 +1,24 @@
+.qnc-ai-settings {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+}
+
+.qnc-ai-options {
+  display: grid;
+  gap: 5px;
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+}
+
+.qnc-ai-option {
+  margin: 0 !important;
+  color: #d8d8d8;
+  text-transform: none !important;
+}
+
+.qnc-ai-option input {
+  width: auto;
+  margin: 0;
+}

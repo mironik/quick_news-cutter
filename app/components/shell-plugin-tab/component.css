@@ -1,0 +1,17 @@
+/* Prazna podloga za plugin tab — slot content puni layout komponenta ili orchestrator. */
+.qnc-shell-plugin-tab {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.qnc-shell-plugin-tab-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}

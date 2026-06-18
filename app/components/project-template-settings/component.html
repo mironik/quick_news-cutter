@@ -1,0 +1,69 @@
+<section class="qnc-pts-panel" data-qnc-panel="project-template-settings">
+  <header class="qnc-pts-head" data-pts-section="header">
+    <h2 class="qnc-pts-title">Postavke</h2>
+    <p class="qnc-pts-sub muted">Odaberi radni tok i pregledaj postavke projekta.</p>
+  </header>
+
+  <div class="qnc-pts-fixed">
+    <div class="qnc-pts-block" data-pts-section="template_picker">
+      <details class="qnc-pts-picker" data-pts-picker>
+        <summary class="qnc-pts-picker-summary">
+          <span class="qnc-pts-picker-heading">Radni tok</span>
+          <span class="qnc-pts-summary" data-qnc-slot="template-summary"></span>
+        </summary>
+        <div class="qnc-pts-picker-body">
+          <div class="qnc-pts-cards" data-qnc-slot="template-cards" role="list"></div>
+        </div>
+      </details>
+    </div>
+    <div class="qnc-pts-block qnc-pts-project-create" data-pts-section="project_create">
+      <label class="qnc-ui-label" for="qnc-pts-project-name">Naziv projekta</label>
+      <div class="qnc-pts-name-row">
+        <input id="qnc-pts-project-name" class="qnc-ui-input" data-qnc-bind="project.name" type="text" placeholder="Naziv novog projekta" />
+        <button type="button" class="qnc-ui-button qnc-pts-btn" data-qnc-action="project.create">Novi projekt</button>
+      </div>
+      <div class="qnc-pts-action-buttons">
+        <button type="button" class="qnc-ui-button qnc-pts-btn" data-pts-section="new_template_action" data-qnc-action="template.create-panel.open">
+          Novi template
+        </button>
+        <button type="button" class="qnc-ui-button qnc-pts-btn qnc-pts-btn--quiet" data-qnc-action="template.create-panel.close">Odustani</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="qnc-pts-scroll">
+    <div class="qnc-pts-group" data-pts-section="ai_settings" data-qnc-slot="ai-settings"></div>
+    <div class="qnc-pts-group" data-pts-section="projects_root" data-qnc-slot="projects-root"></div>
+    <div class="qnc-pts-group" data-pts-section="export_directory" data-qnc-slot="export-directory"></div>
+
+    <details class="qnc-pts-advanced" data-pts-advanced data-pts-section="advanced_collapsible">
+      <summary class="qnc-pts-advanced-summary">Advanced postavke</summary>
+      <div class="qnc-pts-advanced-body qnc-pts-groups-stack">
+        <div class="qnc-pts-group" data-pts-section="video_format" data-qnc-slot="video-format"></div>
+        <div class="qnc-pts-group" data-pts-section="export_mode" data-qnc-slot="export-mode"></div>
+        <div class="qnc-pts-group" data-pts-section="workflow_tabs" data-qnc-slot="workflow-tabs">
+          <h3 class="qnc-pts-group-title">Plugin tabovi u workflowu</h3>
+          <p class="muted qnc-pts-workflow-note">Odaberi module za novi template — footer tabovi dolaze iz baze nakon otvaranja projekta.</p>
+          <div class="qnc-pts-plugin-tabs-zone" data-pts-plugin-tabs-zone hidden>
+            <div class="qnc-pts-plugin-tabs-zone-label">Područje prikaza</div>
+            <div class="qnc-pts-plugin-tabs-grid" data-qnc-slot="workflow-module-checks"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <section class="qnc-pts-group qnc-pts-custom-save" data-pts-section="custom_template_save" data-qnc-slot="custom-template-save" hidden>
+      <h3 class="qnc-pts-group-title">Novi template</h3>
+      <p class="muted qnc-pts-custom-base-line">Baza: <span data-qnc-slot="template-base">—</span></p>
+      <input class="qnc-ui-input" data-qnc-bind="template.name" placeholder="Naziv novog templatea" />
+      <textarea class="qnc-ui-textarea" data-qnc-bind="template.description" rows="2" placeholder="Kratki opis"></textarea>
+      <div class="qnc-pts-custom-actions">
+        <button type="button" class="qnc-ui-button qnc-pts-btn" data-qnc-action="template.duplicate">Spremi novi template</button>
+      </div>
+    </section>
+  </div>
+
+  <footer class="qnc-pts-foot">
+    <span class="qnc-pts-status muted" data-qnc-slot="status">Spreman.</span>
+  </footer>
+</section>

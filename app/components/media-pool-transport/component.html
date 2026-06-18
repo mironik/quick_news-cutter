@@ -1,0 +1,26 @@
+<section class="qnc-component qnc-media-transport-block" data-qnc-panel="media-pool-transport">
+  <div class="pool-transport">
+    <span data-qnc-ref="time-current" data-qnc-slot="time-current">0:00</span>
+    <div class="pool-cut-timeline">
+      <div class="pool-cut-selection" data-qnc-ref="cut-selection" hidden></div>
+      <div class="pool-cut-marker in" data-qnc-ref="cut-in" hidden>IN</div>
+      <div class="pool-cut-marker out" data-qnc-ref="cut-out" hidden>OUT</div>
+      <input data-qnc-ref="scrubber" type="range" min="0" max="0" value="0" step="0.1" />
+    </div>
+    <span data-qnc-ref="time-total" data-qnc-slot="time-total">0:00</span>
+  </div>
+  <div class="pool-mark-bar">
+    <span class="pool-mark-spacer" aria-hidden="true"></span>
+    <div class="pool-mark-center">
+      <div class="pool-mark-actions">
+        <span class="pool-mark-val muted" data-qnc-ref="mark-in-val" data-qnc-slot="mark-in">-</span>
+        <button type="button" class="qnc-ui-button pool-mark-btn" data-qnc-ref="mark-in" data-qnc-action="mark.in">IN</button>
+        <button type="button" class="qnc-ui-button pool-mark-btn" data-qnc-ref="mark-out" data-qnc-action="mark.out">OUT</button>
+        <span class="pool-mark-val muted" data-qnc-ref="mark-out-val" data-qnc-slot="mark-out">-</span>
+        <button type="button" class="qnc-ui-button qnc-ui-button-primary pool-mark-btn" data-qnc-ref="save-inout" data-qnc-action="virtual-shot.create" title="Enter">Spremi</button>
+        <span class="pool-mark-val pool-mark-duration muted" data-qnc-ref="mark-duration" data-qnc-slot="duration">-</span>
+      </div>
+    </div>
+    <span class="pool-mark-spacer" aria-hidden="true"></span>
+  </div>
+</section>

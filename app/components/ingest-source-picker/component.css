@@ -1,0 +1,35 @@
+.qnc-ip-source-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.qnc-ip-source-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--qnc-ip-meta, #86868b);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.qnc-ip-source-select {
+  min-width: 180px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--qnc-ip-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  background: var(--qnc-ip-field-bg, #1e1e1e);
+  color: var(--qnc-ip-text, #ebebeb);
+  font-size: 0.75rem;
+}
+
+.qnc-ip-source-path {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,239 @@
+/* Ingest Proxy clip grid — Final Cut Pro 11 browser aesthetic */
+@import url('/app/components/media-thumb/component.css');
+.qnc-ip-clip-grid-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--qnc-ip-bg, #121212);
+  color: var(--qnc-ip-text, #ebebeb);
+}
+
+.qnc-ip-clip-grid-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--qnc-ip-grid-pad, 14px 16px);
+}
+
+.qnc-ip-clip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--qnc-ip-cell-w, 148px), 1fr));
+  gap: var(--qnc-ip-grid-gap, 12px);
+  align-content: start;
+}
+
+.qnc-ip-clip-grid-panel[data-density="compact"] {
+  --qnc-ip-cell-w: 128px;
+  --qnc-ip-grid-gap: 8px;
+}
+
+.qnc-ip-clip-grid-panel[data-density="comfortable"] {
+  --qnc-ip-cell-w: 168px;
+  --qnc-ip-grid-gap: 14px;
+}
+
+.qnc-ip-clip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--qnc-ip-card-radius, 6px);
+  outline: none;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.qnc-ip-clip:focus,
+.qnc-ip-clip:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.qnc-ip-clip-thumb-wrap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--qnc-ip-thumb-radius, 4px);
+  background: var(--qnc-ip-thumb-bg, #0a0a0a);
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.qnc-ip-clip-thumb-wrap .qnc-media-thumb {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.qnc-ip-clip.is-imported .qnc-ip-clip-thumb-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(48, 209, 88, 0.12));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.qnc-ip-clip-duration {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: var(--qnc-ip-duration-bg, rgba(0, 0, 0, 0.72));
+  color: var(--qnc-ip-duration-text, #f5f5f7);
+  font-size: 0.62rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.qnc-ip-clip-status {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--qnc-ip-status-idle, #636366);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+.qnc-ip-clip-status[data-status="ready"] {
+  background: var(--qnc-ip-status-ready, #30d158);
+}
+
+.qnc-ip-clip-status[data-status="pending"] {
+  background: var(--qnc-ip-status-pending, #ffd60a);
+}
+
+.qnc-ip-clip-status[data-status="error"] {
+  background: var(--qnc-ip-status-error, #ff453a);
+}
+
+.qnc-ip-clip-check {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.qnc-ip-clip.is-selected .qnc-ip-clip-check,
+.qnc-ip-clip-grid-panel[data-feature-selection="on"] .qnc-ip-clip:hover .qnc-ip-clip-check {
+  opacity: 1;
+}
+
+.qnc-ip-clip.is-selected .qnc-ip-clip-check {
+  border-color: var(--qnc-ip-select-ring, #ff9500);
+  background: var(--qnc-ip-select-ring, #ff9500);
+}
+
+.qnc-ip-clip.is-selected .qnc-ip-clip-check::after {
+  content: "";
+  display: block;
+  width: 5px;
+  height: 9px;
+  margin: 1px auto 0;
+  border: solid #1a1a1a;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.qnc-ip-clip-name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--qnc-ip-name, #f5f5f7);
+  font-size: var(--qnc-ip-name-size, 0.72rem);
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qnc-ip-clip-meta {
+  margin: 0;
+  overflow: hidden;
+  color: var(--qnc-ip-meta, #86868b);
+  font-size: var(--qnc-ip-meta-size, 0.62rem);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qnc-ip-clip-chip {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--qnc-ip-chip-bg, rgba(255, 255, 255, 0.08));
+  color: var(--qnc-ip-chip-text, #aeaeb2);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.qnc-ip-clip-grid-empty {
+  margin: 2rem auto;
+  max-width: 28rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.qnc-ip-clip-grid-foot {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-top: 1px solid var(--qnc-ip-border, rgba(255, 255, 255, 0.08));
+  background: var(--qnc-ip-foot-bg, #161616);
+}
+
+.qnc-ip-clip-grid-status {
+  color: var(--qnc-ip-meta, #86868b);
+  font-size: 0.72rem;
+}
+
+.qnc-ip-clip-grid-panel[data-feature-footer="off"] .qnc-ip-clip-grid-foot {
+  display: none;
+}
+
+.qnc-ip-clip-grid-panel[data-feature-empty="off"] .qnc-ip-clip-grid-empty {
+  display: none !important;
+}
+
+.qnc-ip-clip-grid-panel[data-feature-duration="off"] .qnc-ip-clip-duration {
+  display: none;
+}
+
+.qnc-ip-clip-grid-panel[data-feature-status="off"] .qnc-ip-clip-status {
+  display: none;
+}
+
+.qnc-ip-clip-grid-panel[data-feature-meta="off"] .qnc-ip-clip-meta {
+  display: none;
+}
+
+.qnc-ip-clip-grid-panel[data-feature-import-chip="off"] .qnc-ip-clip-chip {
+  display: none;
+}
+
+.qnc-ip-clip-grid-panel[data-feature-selection="off"] .qnc-ip-clip-check {
+  display: none;
+}

@@ -1,0 +1,28 @@
+/* Project workspace layout — unutar shell-plugin-tab content slota. */
+.qnc-project-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 32%) minmax(420px, 1fr);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background: #151515;
+  color: #e6e6e6;
+}
+
+.qnc-project-workspace .qnc-project-list-panel,
+.qnc-project-workspace .qnc-pts-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .qnc-project-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 42%) minmax(0, 1fr);
+  }
+
+  .qnc-project-workspace .qnc-project-list-panel {
+    border-right: 0;
+    border-bottom: 1px solid #303030;
+  }
+}

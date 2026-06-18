@@ -1,0 +1,87 @@
+{
+  "component_catalog": {
+    "tracks": ["play", "video", "audio-1", "audio-2", "audio-3", "audio-4"],
+    "layers": ["inout", "transcript", "stabilization", "markers"]
+  },
+  "profiles": {
+    "design-lab": {
+      "label": "Design lab — cijeli katalog",
+      "segment_type": "izjava",
+      "primary_track": "video",
+      "available_tracks": ["play", "video", "audio-1", "audio-2", "audio-3", "audio-4"],
+      "available_layers": ["inout", "transcript", "stabilization", "markers"],
+      "default_track_states": {
+        "video": "on-visible",
+        "audio-1": "on-visible",
+        "audio-2": "on-hidden",
+        "audio-3": "off",
+        "audio-4": "off"
+      },
+      "default_audio_wave_states": {
+        "audio-1": true,
+        "audio-2": false,
+        "audio-3": false,
+        "audio-4": false
+      },
+      "default_layer_states": {
+        "inout": "on-visible",
+        "transcript": "off",
+        "stabilization": "off",
+        "markers": "off"
+      },
+      "demo_duration_sec": 45
+    },
+    "izjava": {
+      "label": "Izjava — polazište video",
+      "segment_type": "izjava",
+      "primary_track": "video",
+      "available_tracks": ["play", "video", "audio-1", "audio-2", "audio-3", "audio-4"],
+      "available_layers": ["inout", "transcript", "stabilization"],
+      "default_track_states": {
+        "video": "on-visible",
+        "audio-1": "on-visible",
+        "audio-2": "on-hidden",
+        "audio-3": "off",
+        "audio-4": "off"
+      },
+      "default_audio_wave_states": {
+        "audio-1": true,
+        "audio-2": false,
+        "audio-3": false,
+        "audio-4": false
+      },
+      "default_layer_states": {
+        "inout": "on-visible",
+        "transcript": "off",
+        "stabilization": "off"
+      },
+      "demo_duration_sec": 45
+    },
+    "off": {
+      "label": "Off — polazište ton",
+      "segment_type": "off",
+      "primary_track": "audio-1",
+      "available_tracks": ["play", "video", "audio-1", "audio-2", "audio-3", "audio-4"],
+      "available_layers": ["inout", "transcript", "stabilization"],
+      "default_track_states": {
+        "video": "on-hidden",
+        "audio-1": "on-visible",
+        "audio-2": "off",
+        "audio-3": "off",
+        "audio-4": "off"
+      },
+      "default_audio_wave_states": {
+        "audio-1": true,
+        "audio-2": false,
+        "audio-3": false,
+        "audio-4": false
+      },
+      "default_layer_states": {
+        "inout": "on-visible",
+        "transcript": "off",
+        "stabilization": "off"
+      },
+      "demo_duration_sec": 18
+    }
+  }
+}

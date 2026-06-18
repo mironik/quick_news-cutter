@@ -1,0 +1,14 @@
+{
+  "component_id": "media-pool-tab-layout",
+  "version": "1.0.0",
+  "path": "/app/components/media-pool-tab-layout/component.html",
+  "kind": "layout",
+  "assets": {
+    "css": [
+      "/app/components/shell-plugin-tab/component.css",
+      "/app/components/media-pool-tab-layout/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/media-pool-tab-layout"
+}

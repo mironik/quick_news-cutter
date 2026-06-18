@@ -1,0 +1,91 @@
+{
+  "project_id": "projekt_11_06_2026_ai_story_express_1781209402",
+  "project_name": "Projekt 11. 06. 2026. ai story express",
+  "active_source_id": "src_card_fx6_private",
+  "sources": [
+    { "source_template_id": "src_card_fx6_private", "name": "Card reader incoming", "path": "incoming/card" },
+    { "source_template_id": "src_camera_ftp", "name": "Kamera / FTP incoming", "path": "incoming/ftp" }
+  ],
+  "selected_clip_ids": ["Mironik_0943", "Mironik_0945"],
+  "clips": [
+    {
+      "clip_id": "Mironik_0943",
+      "name": "Mironik_0943",
+      "media_id": "med_0943",
+      "duration_sec": 84,
+      "resolution": "1920×1080",
+      "codec": "H.264 proxy",
+      "fps": 50,
+      "proxy_status": "ready",
+      "import_status": "done",
+      "thumb_color_a": "#3a3a3c",
+      "thumb_color_b": "#1c1c1e"
+    },
+    {
+      "clip_id": "Mironik_0944",
+      "name": "Mironik_0944",
+      "media_id": "med_0944",
+      "duration_sec": 126,
+      "resolution": "1920×1080",
+      "codec": "H.264 proxy",
+      "fps": 50,
+      "proxy_status": "ready",
+      "import_status": "queued",
+      "thumb_color_a": "#48484a",
+      "thumb_color_b": "#2c2c2e"
+    },
+    {
+      "clip_id": "Mironik_0945",
+      "name": "Mironik_0945",
+      "media_id": "med_0945",
+      "duration_sec": 52,
+      "resolution": "1920×1080",
+      "codec": "H.264 proxy",
+      "fps": 50,
+      "proxy_status": "ready",
+      "import_status": "",
+      "thumb_color_a": "#636366",
+      "thumb_color_b": "#3a3a3c"
+    },
+    {
+      "clip_id": "Mironik_0946",
+      "name": "Mironik_0946",
+      "media_id": "med_0946",
+      "duration_sec": 203,
+      "resolution": "1920×1080",
+      "codec": "H.264 proxy",
+      "fps": 50,
+      "proxy_status": "pending",
+      "import_status": "",
+      "thumb_color_a": "#2c2c2e",
+      "thumb_color_b": "#141416"
+    },
+    {
+      "clip_id": "Mironik_0947",
+      "name": "Mironik_0947",
+      "media_id": "med_0947",
+      "duration_sec": 67,
+      "resolution": "1920×1080",
+      "codec": "H.264 proxy",
+      "fps": 50,
+      "proxy_status": "error",
+      "import_status": "error",
+      "error": "Proxy missing",
+      "thumb_color_a": "#3a2a2a",
+      "thumb_color_b": "#1a1010"
+    },
+    {
+      "clip_id": "Mironik_0948",
+      "name": "Mironik_0948",
+      "media_id": "med_0948",
+      "duration_sec": 311,
+      "resolution": "1920×1080",
+      "codec": "H.264 proxy",
+      "fps": 50,
+      "proxy_status": "ready",
+      "import_status": "done",
+      "thumb_color_a": "#404042",
+      "thumb_color_b": "#242426"
+    }
+  ]
+}

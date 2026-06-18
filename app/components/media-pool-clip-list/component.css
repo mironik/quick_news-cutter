@@ -1,0 +1,19 @@
+@import url('/app/components/media-pool-workspace/component.css');
+@import url('/app/components/filmstrip-viewer/component.css');
+
+.qnc-media-clip-list .timeline-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 64px;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--qnc-border, #222);
+}
+
+.qnc-media-clip-list .timeline-row.pool-row-active {
+  background: rgba(80, 120, 200, 0.08);
+}
+
+.qnc-media-clip-list .grid-empty {
+  padding: 1rem;
+}

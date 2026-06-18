@@ -1,0 +1,28 @@
+.qnc-project-advanced {
+  margin-top: 6px;
+  border-top: 1px solid #2c2c2c;
+  padding-top: 8px;
+}
+
+.qnc-project-advanced summary {
+  cursor: default;
+  margin-bottom: 8px;
+}
+
+.qnc-advanced-body {
+  max-width: 760px;
+}
+
+.qnc-project-advanced:not([open]) .qnc-advanced-body {
+  display: none;
+}
+
+.qnc-project-advanced[open] .qnc-advanced-body {
+  padding-right: 8px;
+}
+
+.qnc-advanced-note {
+  margin: 0 0 8px;
+  color: #9a9a9a;
+  font-size: 0.86rem;
+}

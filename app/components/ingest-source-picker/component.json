@@ -1,0 +1,11 @@
+{
+  "component_id": "ingest-source-picker",
+  "version": "1.0.0",
+  "path": "/app/components/ingest-source-picker/component.html",
+  "kind": "panel",
+  "assets": {
+    "css": ["/app/components/ingest-source-picker/component.css"],
+    "js": ["/app/components/ingest-source-picker/component.js"]
+  },
+  "package": "/app/components/ingest-source-picker"
+}

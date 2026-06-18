@@ -1,0 +1,17 @@
+<div class="qnc-project-editor-panel" data-qnc-panel="editor">
+  <div class="qnc-project-main-head">
+    <div>
+      <h1>Novi projekt</h1>
+      <p>Odaberi radni tok, upiši naziv i kreni.</p>
+    </div>
+  </div>
+  <div class="qnc-project-form">
+    <div data-qnc-slot="template-picker" data-qnc-component="template-picker"></div>
+    <label class="qnc-ui-label">Naziv projekta</label>
+    <div class="qnc-project-name-row">
+      <input class="qnc-ui-input" data-qnc-bind="project.name" />
+      <button type="button" class="qnc-ui-button qnc-ui-button-primary" data-qnc-action="project.create">Kreiraj projekt</button>
+    </div>
+    <div data-qnc-slot="custom-template-save" data-qnc-component="custom-template-save"></div>
+  </div>
+</div>

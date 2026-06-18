@@ -1,0 +1,8 @@
+{
+  "api_port": 8001,
+  "server_label": "QNC Studio",
+  "network_presets": [
+    { "label": "Studio server", "host": "192.168.1.10" },
+    { "label": "Lokalno", "host": "127.0.0.1" }
+  ]
+}

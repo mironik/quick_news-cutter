@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "component": "project-template-settings",
+  "groups": {
+    "panel": {
+      "label": "Panel",
+      "tokens": ["--qnc-pts-bg", "--qnc-pts-border", "--qnc-pts-pad"]
+    },
+    "picker": {
+      "label": "Template picker",
+      "tokens": ["--qnc-pts-summary-color", "--qnc-pts-card-hover-bg"]
+    },
+    "settings": {
+      "label": "Postavke",
+      "tokens": ["--qnc-pts-section-gap", "--qnc-pts-label-color"]
+    }
+  },
+  "defaults": {
+    "--qnc-pts-bg": "#181818",
+    "--qnc-pts-border": "#2c2c2c",
+    "--qnc-pts-pad": "16px 24px",
+    "--qnc-pts-summary-color": "#a9a9a9",
+    "--qnc-pts-card-hover-bg": "#202020",
+    "--qnc-pts-section-gap": "14px",
+    "--qnc-pts-label-color": "#c8c8c8"
+  },
+  "labels": {
+    "--qnc-pts-bg": "Pozadina panela",
+    "--qnc-pts-border": "Rubovi",
+    "--qnc-pts-pad": "Padding panela",
+    "--qnc-pts-summary-color": "Sažetak templatea",
+    "--qnc-pts-card-hover-bg": "Kartica — hover",
+    "--qnc-pts-section-gap": "Razmak sekcija",
+    "--qnc-pts-label-color": "Label boja"
+  }
+}

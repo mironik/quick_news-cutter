@@ -1,0 +1,11 @@
+{
+  "component_id": "ingest-toolbar",
+  "version": "1.0.0",
+  "path": "/app/components/ingest-toolbar/component.html",
+  "kind": "panel",
+  "assets": {
+    "css": ["/app/components/ingest-toolbar/component.css"],
+    "js": ["/app/components/ingest-toolbar/component.js"]
+  },
+  "package": "/app/components/ingest-toolbar"
+}

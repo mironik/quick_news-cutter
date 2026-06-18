@@ -1,0 +1,27 @@
+{
+  "component_id": "project-tab-layout",
+  "kind": "layout",
+  "path": "/app/components/project-tab-layout/component.html",
+  "description": "Project tab — shell-plugin-tab s workspace-split u content slotu.",
+  "embeddable": false,
+  "contract": {
+    "version": 1,
+    "inputs": [],
+    "slots": ["content"],
+    "events": [],
+    "backend_actions": [],
+    "requires": ["QNC.componentBus"],
+    "requires_components": [
+      "shell-plugin-tab",
+      "workspace-split",
+      "project-list",
+      "project-template-settings"
+    ],
+    "owns_state": false
+  },
+  "assets": {
+    "css": ["/app/components/shell-plugin-tab/component.css"],
+    "js": []
+  },
+  "package": "/app/components/project-tab-layout"
+}

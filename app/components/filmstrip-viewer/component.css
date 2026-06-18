@@ -1,0 +1,81 @@
+@import url('/app/components/media-thumb/component.css');
+
+.qnc-filmstrip-viewer {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.thumbnail-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.thumbnail-strip button.thumb-btn,
+.thumbnail-strip .qnc-media-thumb-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #e6e6e6;
+  padding: 0;
+  min-height: 54px;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none;
+  width: 100%;
+}
+
+.thumbnail-strip .qnc-media-thumb {
+  width: 100%;
+}
+
+.thumbnail-strip.loading .qnc-media-thumb.is-loading {
+  opacity: 0.45;
+}
+
+.thumbnail-placeholder {
+  grid-column: 1 / -1;
+  padding: 10px 8px;
+  color: #888;
+  font-size: 0.78rem;
+  border: 1px dashed #333;
+  background: #101010;
+}
+
+@keyframes qnc-filmstrip-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.qnc-filmstrip-inline {
+  display: block;
+  min-width: 0;
+}
+
+.qnc-filmstrip-cover {
+  display: block;
+  min-width: 0;
+  height: 100%;
+}
+
+.qnc-filmstrip-cover .story-cover-strip {
+  display: flex;
+  height: 100%;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.qnc-filmstrip-cover .story-cover-strip > img {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  object-fit: cover;
+}

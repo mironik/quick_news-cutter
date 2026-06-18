@@ -1,0 +1,76 @@
+{
+  "plugin_id": "ingest",
+  "tab_id": "ingest",
+  "label": "Ingest",
+  "priority": 100,
+  "position": "normal",
+  "entry_js": "/plugins/ingest/static/qnc-ingest.js",
+  "entry_css": "/plugins/ingest/static/qnc-ingest.css",
+  "asset_version": 22,
+  "panel_id": "panel-ingest",
+  "api_namespace": "/api/ingest",
+  "storage": "ingest",
+  "enabled": true,
+  "system": true,
+  "removable": false,
+  "description": "Ingest tab — Rust host, bez Pythona. shell-plugin-tab + ingest-workspace komponente.",
+  "panel_html": "/app/components/ingest-tab-layout/component.html",
+  "uses_components": [
+    "shell-plugin-tab",
+    "ingest-tab-layout",
+    "ingest-workspace",
+    "ingest-toolbar",
+    "ingest-source-picker",
+    "ingest-actions",
+    "folder-picker",
+    "media-thumb",
+    "ingest-clip-grid"
+  ],
+  "backend": {
+    "implementation": "rust",
+    "host_module": "qnc-host/src/ingest",
+    "store": {
+      "scope": "project",
+      "path": "ingest"
+    },
+    "actions": [
+      {
+        "action": "ingest.discover",
+        "method": "POST",
+        "path": "/api/ingest/discover",
+        "writes": ["ingest.clips"]
+      },
+      {
+        "action": "ingest.import",
+        "method": "POST",
+        "path": "/api/ingest/import",
+        "writes": ["ingest.import"]
+      },
+      {
+        "action": "source.change",
+        "method": "POST",
+        "path": "/api/ingest/source",
+        "writes": ["ingest.source"]
+      },
+      {
+        "action": "clip.toggle",
+        "method": "POST",
+        "path": "/api/ingest/selection/toggle",
+        "writes": ["ingest.selection"]
+      },
+      {
+        "action": "ingest.select-all",
+        "method": "POST",
+        "path": "/api/ingest/selection/select-all",
+        "writes": ["ingest.selection"]
+      },
+      {
+        "action": "ingest.browse",
+        "method": "POST",
+        "path": "/api/ingest/browse",
+        "writes": ["ingest.browse_path"]
+      }
+    ],
+    "jobs": []
+  }
+}

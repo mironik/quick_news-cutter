@@ -1,0 +1,35 @@
+{
+  "component_id": "ai-settings",
+  "kind": "panel",
+  "path": "/app/components/ai/component.html",
+  "description": "Reusable AI options panel for project/template workflows.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "ai_settings"
+    ],
+    "slots": [],
+    "events": [
+      {
+        "action": "ai.toggle",
+        "payload": {
+          "enabled": "boolean"
+        }
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/ai/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/ai"
+}

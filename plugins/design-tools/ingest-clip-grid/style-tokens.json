@@ -1,0 +1,66 @@
+{
+  "component": "ingest-clip-grid",
+  "label": "Ingest Proxy — FCP 11 clip grid",
+  "groups": [
+    {
+      "id": "surface",
+      "label": "Površina",
+      "tokens": ["--qnc-ip-bg", "--qnc-ip-toolbar-bg", "--qnc-ip-controls-bg", "--qnc-ip-foot-bg", "--qnc-ip-border"]
+    },
+    {
+      "id": "grid",
+      "label": "Mreža",
+      "tokens": ["--qnc-ip-cell-w", "--qnc-ip-grid-gap", "--qnc-ip-grid-pad", "--qnc-ip-card-radius", "--qnc-ip-thumb-radius"]
+    },
+    {
+      "id": "clip",
+      "label": "Klip",
+      "tokens": [
+        "--qnc-ip-text",
+        "--qnc-ip-name",
+        "--qnc-ip-name-size",
+        "--qnc-ip-meta",
+        "--qnc-ip-meta-size",
+        "--qnc-ip-select-ring",
+        "--qnc-ip-duration-bg",
+        "--qnc-ip-duration-text"
+      ]
+    },
+    {
+      "id": "status",
+      "label": "Status",
+      "tokens": ["--qnc-ip-status-ready", "--qnc-ip-status-pending", "--qnc-ip-status-error"]
+    }
+  ],
+  "defaults": {
+    "--qnc-ip-bg": "#121212",
+    "--qnc-ip-toolbar-bg": "#161616",
+    "--qnc-ip-controls-bg": "#141414",
+    "--qnc-ip-foot-bg": "#161616",
+    "--qnc-ip-border": "rgba(255, 255, 255, 0.08)",
+    "--qnc-ip-cell-w": "148px",
+    "--qnc-ip-grid-gap": "12px",
+    "--qnc-ip-grid-pad": "14px 16px",
+    "--qnc-ip-card-radius": "6px",
+    "--qnc-ip-thumb-radius": "4px",
+    "--qnc-ip-text": "#ebebeb",
+    "--qnc-ip-name": "#f5f5f7",
+    "--qnc-ip-name-size": "0.72rem",
+    "--qnc-ip-meta": "#86868b",
+    "--qnc-ip-meta-size": "0.62rem",
+    "--qnc-ip-select-ring": "#ff9500",
+    "--qnc-ip-duration-bg": "rgba(0, 0, 0, 0.72)",
+    "--qnc-ip-duration-text": "#f5f5f7",
+    "--qnc-ip-status-ready": "#30d158",
+    "--qnc-ip-status-pending": "#ffd60a",
+    "--qnc-ip-status-error": "#ff453a"
+  },
+  "labels": {
+    "--qnc-ip-bg": "Pozadina panela",
+    "--qnc-ip-select-ring": "FCP odabir (orange ring)",
+    "--qnc-ip-cell-w": "Minimalna širina ćelije",
+    "--qnc-ip-grid-gap": "Razmak mreže",
+    "--qnc-ip-name": "Naziv klipa",
+    "--qnc-ip-meta": "Meta tekst"
+  }
+}

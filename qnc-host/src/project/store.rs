@@ -1,0 +1,283 @@
+use std::collections::HashSet;
+use std::fs;
+use std::path::Path;
+use std::thread;
+use std::time::Duration;
+
+use rusqlite::{Connection, params};
+use serde_json::{Value, json};
+
+use super::db::{
+    ProjectPaths, ensure_project_dirs, ensure_project_store, export_projects_json, get_setting,
+    now_str, project_dir_in_root, set_setting, slug_id,
+};
+
+pub fn get_active_project_id(conn: &Connection) -> rusqlite::Result<String> {
+    ensure_project_store(conn)?;
+    let active = get_setting(conn, "active_project_id", "")?;
+    let active = active.trim();
+    if active.is_empty() {
+        return Ok(String::new());
+    }
+    let exists: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM projects WHERE project_id = ?1",
+        params![active],
+        |r| r.get(0),
+    )?;
+    if exists > 0 {
+        Ok(active.to_string())
+    } else {
+        Ok(String::new())
+    }
+}
+
+pub fn set_active_project_id(conn: &Connection, project_id: &str) -> rusqlite::Result<()> {
+    let pid = project_id.trim();
+    if pid.is_empty() {
+        set_setting(conn, "active_project_id", "")?;
+        return Ok(());
+    }
+    set_setting(conn, "active_project_id", pid)?;
+    Ok(())
+}
+
+pub fn record_project_opened(conn: &Connection, project_id: &str) -> rusqlite::Result<()> {
+    let pid = project_id.trim();
+    if pid.is_empty() {
+        return Ok(());
+    }
+    let now = now_str();
+    conn.execute(
+        "UPDATE projects SET last_opened_at = ?2, updated_at = ?2 WHERE project_id = ?1",
+        params![pid, now],
+    )?;
+    Ok(())
+}
+
+pub fn list_projects(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
+    ensure_project_store(conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT project_id, name, project_dir, created_at, last_opened_at FROM projects ORDER BY project_id",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        Ok(json!({
+            "project_id": r.get::<_, String>(0)?,
+            "name": r.get::<_, String>(1)?,
+            "project_dir": r.get::<_, Option<String>>(2)?,
+            "created_at": r.get::<_, Option<String>>(3)?,
+            "last_opened_at": r.get::<_, Option<String>>(4)?,
+        }))
+    })?;
+    rows.collect()
+}
+
+pub fn upsert_project_meta(
+    conn: &Connection,
+    project_id: &str,
+    name: &str,
+    created_at: Option<&str>,
+    project_dir: Option<&Path>,
+) -> rusqlite::Result<()> {
+    let now = now_str();
+    let existing: Option<(Option<String>, Option<String>)> = conn
+        .query_row(
+            "SELECT created_at, project_dir FROM projects WHERE project_id = ?1",
+            params![project_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .ok();
+    let existing_created = existing.as_ref().and_then(|v| v.0.clone());
+    let existing_dir = existing.and_then(|v| v.1);
+    let created = created_at
+        .map(str::to_string)
+        .or(existing_created)
+        .unwrap_or_else(|| now.clone());
+    let dir = project_dir
+        .map(|p| p.to_string_lossy().to_string())
+        .or(existing_dir)
+        .unwrap_or_default();
+    conn.execute(
+        "INSERT INTO projects (project_id, name, project_dir, created_at, updated_at, last_opened_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?5)
+         ON CONFLICT(project_id) DO UPDATE SET
+            name = excluded.name,
+            project_dir = CASE
+                WHEN excluded.project_dir IS NULL OR excluded.project_dir = '' THEN projects.project_dir
+                ELSE excluded.project_dir
+            END,
+            updated_at = excluded.updated_at",
+        params![project_id, name, dir, created, now],
+    )?;
+    Ok(())
+}
+
+pub fn delete_project_row(conn: &Connection, project_id: &str) -> rusqlite::Result<()> {
+    conn.execute("DELETE FROM projects WHERE project_id = ?", params![project_id])?;
+    Ok(())
+}
+
+pub fn create_project(conn: &Connection, paths: &ProjectPaths, name: Option<&str>) -> rusqlite::Result<Value> {
+    let list = list_projects(conn)?;
+    let label = name
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("Projekt {}", list.len() + 1));
+    let project_id = slug_id(&label);
+    let created_at = now_str();
+    let project_dir = project_dir_in_root(&paths.projects_root, &project_id);
+    ensure_project_dirs(paths, &project_id).ok();
+    upsert_project_meta(conn, &project_id, &label, Some(&created_at), Some(&project_dir))?;
+    record_project_opened(conn, &project_id)?;
+    set_active_project_id(conn, &project_id)?;
+    export_projects_json(paths, conn);
+    Ok(json!({
+        "project_id": project_id,
+        "name": label,
+        "created_at": created_at,
+        "last_opened_at": created_at,
+    }))
+}
+
+pub fn open_project(conn: &Connection, paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Option<Value>> {
+    let pid = project_id.trim();
+    for p in list_projects(conn)? {
+        if p.get("project_id").and_then(|v| v.as_str()) == Some(pid) {
+            set_active_project_id(conn, pid)?;
+            record_project_opened(conn, pid)?;
+            export_projects_json(paths, conn);
+            return Ok(Some(p));
+        }
+    }
+    Ok(None)
+}
+
+/// Uklanja projekte: red u globalnoj bazi + cijeli projektni direktorij.
+pub fn delete_projects(
+    conn: &Connection,
+    paths: &ProjectPaths,
+    project_ids: &[String],
+) -> rusqlite::Result<(Vec<String>, Vec<String>)> {
+    let remove: Vec<String> = project_ids
+        .iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if remove.is_empty() {
+        return Ok((vec![], vec![]));
+    }
+    let before = list_projects(conn)?;
+    let after: Vec<Value> = before
+        .iter()
+        .filter(|p| {
+            let id = p.get("project_id").and_then(|v| v.as_str()).unwrap_or("");
+            !remove.contains(&id.to_string())
+        })
+        .cloned()
+        .collect();
+    let mut leftovers = Vec::new();
+    for pid in &remove {
+        let dir = paths.project_dir(pid);
+        if dir.exists() {
+            remove_project_dir(&dir).map_err(|e| {
+                rusqlite::Error::SqliteFailure(
+                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_IOERR),
+                    Some(format!(
+                        "{} — zatvori QNC host i pokušaj ponovo.",
+                        e
+                    )),
+                )
+            })?;
+            if dir.exists() {
+                leftovers.push(pid.clone());
+                continue;
+            }
+        }
+        delete_project_row(conn, pid)?;
+    }
+    if !leftovers.is_empty() {
+        let msg = format!(
+            "Projekt folder još postoji (datoteke su zaključane): {}. Zatvori qnc-host i obriši ručno ili ponovi brisanje.",
+            leftovers.join(", ")
+        );
+        return Err(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_IOERR),
+            Some(msg),
+        ));
+    }
+    let mut active = get_active_project_id(conn)?;
+    if active.is_empty() || remove.contains(&active) {
+        active = after
+            .first()
+            .and_then(|p| p.get("project_id").and_then(|v| v.as_str()))
+            .unwrap_or("")
+            .to_string();
+        set_active_project_id(conn, &active)?;
+    }
+    export_projects_json(paths, conn);
+    Ok((remove, vec![]))
+}
+
+fn remove_project_dir(dir: &Path) -> Result<(), String> {
+    if !dir.exists() {
+        return Ok(());
+    }
+    const ATTEMPTS: usize = 6;
+    let mut last_err = String::new();
+    for attempt in 0..ATTEMPTS {
+        match fs::remove_dir_all(dir) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                last_err = format!("Ne mogu obrisati {}: {}", dir.display(), e);
+                if attempt + 1 < ATTEMPTS {
+                    thread::sleep(Duration::from_millis(300 * (attempt as u64 + 1)));
+                }
+            }
+        }
+    }
+    Err(last_err)
+}
+
+/// Direktoriji u `Projekti/` koji nemaju red u globalnoj bazi.
+pub fn orphan_project_dir_names(conn: &Connection, paths: &ProjectPaths) -> rusqlite::Result<Vec<String>> {
+    let projects = list_projects(conn)?;
+    let known: HashSet<String> = projects
+        .iter()
+        .filter_map(|p| p.get("project_id").and_then(|v| v.as_str()))
+        .map(|id| paths.project_dir(id))
+        .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+        .collect();
+    let mut orphans = Vec::new();
+    if let Ok(entries) = fs::read_dir(&paths.projects_root) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().to_string();
+            if !known.contains(&name) {
+                orphans.push(name);
+            }
+        }
+    }
+    Ok(orphans)
+}
+
+/// Briše orphan direktorije (nema reda u bazi). Vraća uklonjene nazive foldera.
+pub fn cleanup_orphan_project_dirs(
+    conn: &Connection,
+    paths: &ProjectPaths,
+) -> rusqlite::Result<(Vec<String>, Vec<String>)> {
+    let orphans = orphan_project_dir_names(conn, paths)?;
+    let mut removed = Vec::new();
+    let mut leftovers = Vec::new();
+    for name in orphans {
+        let dir = paths.projects_root.join(&name);
+        if remove_project_dir(&dir).is_ok() && !dir.exists() {
+            removed.push(name);
+        } else if dir.exists() {
+            leftovers.push(name);
+        }
+    }
+    Ok((removed, leftovers))
+}

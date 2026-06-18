@@ -1,0 +1,123 @@
+.qnc-project-list-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid var(--qnc-project-list-border, #303030);
+  background: var(--qnc-project-list-bg, #181818);
+  color: #e6e6e6;
+}
+
+.qnc-project-list-head {
+  padding: var(--qnc-project-list-head-pad, 18px 20px);
+  border-bottom: 1px solid #2c2c2c;
+}
+
+.qnc-project-list-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f0f0f0;
+}
+
+.qnc-project-list-items {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+}
+
+.qnc-project-list-items li {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) 24px;
+  gap: 10px;
+  align-items: center;
+  padding: var(--qnc-project-list-row-pad-y, 14px) var(--qnc-project-list-row-pad-x, 10px);
+  border-bottom: 1px solid #252525;
+  cursor: default;
+}
+
+.qnc-project-list-panel[data-feature-delete='off'] .qnc-project-list-items li {
+  grid-template-columns: 12px minmax(0, 1fr);
+}
+
+.qnc-project-list-items li:hover {
+  background: var(--qnc-project-list-row-hover-bg, #202020);
+}
+
+.qnc-project-list-items li.selected-row {
+  background: var(--qnc-project-list-row-selected-bg, #242424);
+  outline: 1px solid var(--qnc-project-list-row-selected-outline, #525252);
+}
+
+.qnc-project-list-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--qnc-project-list-dot-idle, #585858);
+}
+
+.qnc-project-list-items li.active-project-row .qnc-project-list-dot {
+  background: var(--qnc-project-list-dot-active, #d7d7d7);
+}
+
+.qnc-project-list-text {
+  min-width: 0;
+}
+
+.qnc-project-list-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--qnc-project-list-name-color, #e6e6e6);
+  font-size: var(--qnc-project-list-name-size, 0.92rem);
+  font-weight: 500;
+}
+
+.qnc-project-list-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 3px;
+  color: var(--qnc-project-list-meta-color, #858585);
+  font-size: var(--qnc-project-list-meta-size, 0.74rem);
+}
+
+.qnc-project-list-delete {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: #8f8f8f;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  font-size: 0.9rem;
+  line-height: 20px;
+  cursor: default;
+}
+
+.qnc-project-list-delete:hover {
+  color: #f0f0f0;
+  border-color: #555;
+  background: #242424;
+}
+
+.qnc-project-list-empty {
+  grid-column: 1 / -1;
+  padding: 24px 12px;
+  text-align: center;
+  border: 0;
+}
+
+.qnc-project-list-foot {
+  display: flex;
+  align-items: center;
+  padding: 18px 20px;
+  border-top: 1px solid #2c2c2c;
+}
+
+.qnc-project-list-status {
+  font-size: var(--qnc-font-sm, 0.82rem);
+  color: #9a9a9a;
+}

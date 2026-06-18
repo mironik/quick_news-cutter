@@ -1,0 +1,107 @@
+/* QNC Cards - shared clip/shot/segment visual language. */
+.qnc-card,
+.qnc-row,
+.qnc-shot-card {
+  border: 1px solid var(--qnc-line-soft);
+  border-radius: 0;
+  background: var(--qnc-panel);
+  color: var(--qnc-text);
+}
+
+.qnc-card {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: var(--qnc-space-2);
+  min-width: 0;
+  padding: var(--qnc-space-2);
+}
+
+.qnc-shot-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qnc-space-2);
+  min-width: 0;
+  padding: var(--qnc-space-2);
+}
+
+.qnc-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: var(--qnc-space-3);
+  align-items: center;
+  min-width: 0;
+  padding: var(--qnc-space-2);
+}
+
+.qnc-card:hover,
+.qnc-row:hover,
+.qnc-shot-card:hover {
+  border-color: var(--qnc-line-strong);
+}
+
+.qnc-card-thumb,
+.qnc-thumb {
+  width: 112px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--qnc-black);
+  border: 1px solid var(--qnc-line-soft);
+}
+
+.qnc-card-body {
+  min-width: 0;
+}
+
+.qnc-card-title,
+.qnc-row-title {
+  overflow: hidden;
+  color: var(--qnc-text-strong);
+  font-size: var(--qnc-font-md);
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qnc-card-meta,
+.qnc-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qnc-space-1);
+  margin-top: var(--qnc-space-1);
+  color: var(--qnc-muted);
+  font-size: var(--qnc-font-xs);
+}
+
+.qnc-card-actions,
+.qnc-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--qnc-space-1);
+}
+
+.qnc-state-selected {
+  border-color: var(--qnc-white);
+  background: var(--qnc-panel-2);
+}
+
+.qnc-state-active {
+  border-color: var(--qnc-white);
+}
+
+.qnc-select-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--qnc-line-strong);
+  background: var(--qnc-black);
+  color: var(--qnc-white);
+  font-size: var(--qnc-font-xs);
+  line-height: 1;
+}
+
+.qnc-state-selected .qnc-select-indicator::before {
+  content: "✓";
+}

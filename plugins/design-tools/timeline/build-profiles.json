@@ -1,0 +1,106 @@
+{
+  "profiles": {
+    "design-lab": {
+      "label": "Design lab — sve opcije",
+      "axis_mode": "montage_global",
+      "available_tracks": [
+        "play",
+        "video",
+        "audio-1",
+        "audio-2",
+        "audio-3",
+        "audio-4",
+        "stabilization",
+        "transcript",
+        "inout"
+      ],
+      "available_overlays": ["segments", "virtual_clips", "markers", "slots"],
+      "default_track_states": {
+        "video": "on-visible",
+        "audio-1": "on-visible",
+        "audio-2": "on-hidden",
+        "audio-3": "off",
+        "audio-4": "off",
+        "stabilization": "off",
+        "transcript": "off",
+        "inout": "on-visible"
+      },
+      "default_overlay_states": {
+        "segments": "on-visible",
+        "virtual_clips": "on-visible",
+        "markers": "on-visible",
+        "slots": "on-visible"
+      },
+      "default_video_presentation": "filmstrip"
+    },
+    "media-pool": {
+      "label": "Media pool — source klip",
+      "axis_mode": "source_clip",
+      "available_tracks": ["play", "video", "audio-1", "audio-2", "inout"],
+      "available_overlays": ["virtual_clips"],
+      "default_track_states": {
+        "video": "on-visible",
+        "audio-1": "on-visible",
+        "audio-2": "on-hidden",
+        "inout": "on-visible"
+      },
+      "default_overlay_states": {
+        "virtual_clips": "on-visible"
+      },
+      "default_video_presentation": "filmstrip"
+    },
+    "off": {
+      "label": "OFF — trim + transkript",
+      "axis_mode": "source_clip",
+      "available_tracks": ["play", "video", "audio-1", "transcript", "inout"],
+      "available_overlays": ["virtual_clips"],
+      "default_track_states": {
+        "video": "on-visible",
+        "audio-1": "on-visible",
+        "transcript": "on-visible",
+        "inout": "on-visible"
+      },
+      "default_overlay_states": {
+        "virtual_clips": "on-visible"
+      },
+      "default_video_presentation": "inout-thumbs"
+    },
+    "story-montage": {
+      "label": "Story — virtualni timeline",
+      "axis_mode": "montage_global",
+      "available_tracks": ["play", "video", "audio-1", "stabilization", "transcript"],
+      "available_overlays": ["segments", "markers", "slots", "virtual_clips"],
+      "default_track_states": {
+        "video": "on-visible",
+        "audio-1": "on-visible",
+        "stabilization": "on-hidden",
+        "transcript": "on-hidden"
+      },
+      "default_overlay_states": {
+        "segments": "on-visible",
+        "markers": "on-visible",
+        "slots": "on-visible",
+        "virtual_clips": "on-hidden"
+      },
+      "default_video_presentation": "poster"
+    },
+    "story-segment": {
+      "label": "Story — segment (lokalni pogled)",
+      "axis_mode": "segment_local",
+      "available_tracks": ["play", "video", "audio-1", "stabilization", "transcript"],
+      "available_overlays": ["virtual_clips", "markers", "slots"],
+      "default_track_states": {
+        "video": "on-visible",
+        "audio-1": "on-visible",
+        "stabilization": "on-hidden",
+        "transcript": "on-visible"
+      },
+      "default_overlay_states": {
+        "virtual_clips": "on-visible",
+        "markers": "on-visible",
+        "slots": "on-visible"
+      },
+      "default_video_presentation": "poster"
+    }
+  }
+}

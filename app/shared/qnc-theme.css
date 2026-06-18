@@ -1,0 +1,55 @@
+/* QNC Theme - shared offline tokens.
+   UI palette is black/gray/white. Color belongs only to markers/status semantics. */
+:root {
+  --qnc-black: #000;
+  --qnc-white: #fff;
+
+  --qnc-bg: #101010;
+  --qnc-bg-elevated: #141414;
+  --qnc-panel: #181818;
+  --qnc-panel-2: #202020;
+  --qnc-panel-3: #242424;
+
+  --qnc-line: #333;
+  --qnc-line-soft: #262626;
+  --qnc-line-strong: #4a4a4a;
+
+  --qnc-text: #e6e6e6;
+  --qnc-text-strong: #fff;
+  --qnc-muted: #9a9a9a;
+  --qnc-faint: #6f6f6f;
+
+  --qnc-space-1: 4px;
+  --qnc-space-2: 8px;
+  --qnc-space-3: 12px;
+  --qnc-space-4: 16px;
+  --qnc-space-5: 20px;
+
+  --qnc-font-xs: 11px;
+  --qnc-font-sm: 12px;
+  --qnc-font-md: 13px;
+  --qnc-font-lg: 15px;
+
+  --qnc-focus: #f2f2f2;
+  --qnc-status-ok: #dcdcdc;
+  --qnc-status-warn: #c9c9c9;
+  --qnc-status-error: #f0f0f0;
+}
+
+.qnc-text {
+  color: var(--qnc-text);
+}
+
+.qnc-muted {
+  color: var(--qnc-muted);
+}
+
+.qnc-faint {
+  color: var(--qnc-faint);
+}
+
+.qnc-divider {
+  border: 0;
+  border-top: 1px solid var(--qnc-line-soft);
+  margin: var(--qnc-space-3) 0;
+}

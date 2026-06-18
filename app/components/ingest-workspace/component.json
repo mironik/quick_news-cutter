@@ -1,0 +1,18 @@
+{
+  "component_id": "ingest-workspace",
+  "version": "1.0.0",
+  "path": "/app/components/ingest-workspace/component.html",
+  "kind": "layout",
+  "description": "Ingest tab workspace.",
+  "assets": {
+    "css": ["/app/components/ingest-workspace/component.css"],
+    "js": []
+  },
+  "package": "/app/components/ingest-workspace",
+  "requires_components": [
+    "ingest-toolbar",
+    "ingest-source-picker",
+    "ingest-actions",
+    "ingest-clip-grid"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "component_id": "shell-plugin-tab",
+  "kind": "layout",
+  "path": "/app/components/shell-plugin-tab/component.html",
+  "description": "Prazna shell podloga za plugin tab — bez poslovne logike.",
+  "embeddable": false,
+  "contract": {
+    "version": 1,
+    "inputs": [],
+    "slots": [
+      "content"
+    ],
+    "events": [],
+    "backend_actions": [],
+    "requires": [],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/shell-plugin-tab/component.css"
+    ],
+    "js": []
+  },
+  "package": "/app/components/shell-plugin-tab"
+}

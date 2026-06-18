@@ -1,0 +1,82 @@
+{
+  "component_id": "project-template-settings",
+  "version": "1.3.2",
+  "kind": "panel",
+  "path": "/app/components/project-template-settings/component.html",
+  "description": "Odabir project templatea, naziv projekta i pregled template postavki.",
+  "embeddable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [
+      "templates",
+      "selected_template_id",
+      "project_name",
+      "template_settings"
+    ],
+    "slots": [
+      "template-summary",
+      "template-cards",
+      "ai-settings",
+      "video-format",
+      "export-mode",
+      "export-directory",
+      "projects-root",
+      "workflow-tabs",
+      "custom-template-save",
+      "status"
+    ],
+    "events": [
+      {
+        "action": "template.select",
+        "payload": {
+          "template_id": "string"
+        }
+      },
+      {
+        "action": "project.create",
+        "payload": {
+          "name": "string",
+          "template_id": "string"
+        }
+      },
+      {
+        "action": "template.create-panel.open",
+        "payload": {}
+      },
+      {
+        "action": "template.create-panel.close",
+        "payload": {}
+      },
+      {
+        "action": "template.duplicate",
+        "payload": {
+          "name": "string",
+          "description": "string"
+        }
+      },
+      {
+        "action": "export.directory.pick",
+        "payload": {}
+      },
+      {
+        "action": "projects-root.pick",
+        "payload": {}
+      }
+    ],
+    "backend_actions": [],
+    "requires": [
+      "QNC.componentBus"
+    ],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": [
+      "/app/components/project-template-settings/component.css"
+    ],
+    "js": [
+      "/app/components/project-template-settings/component.js"
+    ]
+  },
+  "package": "/app/components/project-template-settings"
+}
