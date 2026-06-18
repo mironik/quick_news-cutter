@@ -15,6 +15,7 @@ struct FilmstripJob {
     project_id: String,
     clip_id: String,
     media_path: PathBuf,
+    frames: u32,
 }
 
 #[derive(Clone)]
@@ -65,7 +66,7 @@ impl FilmstripWorker {
             .contains(project_id)
     }
 
-    pub fn enqueue(&self, project_id: &str, clip_id: &str, media_path: &Path) {
+    pub fn enqueue(&self, project_id: &str, clip_id: &str, media_path: &Path, frames: u32) {
         let pid = project_id.trim();
         let cid = clip_id.trim();
         if pid.is_empty() || cid.is_empty() || !media_path.is_file() {
@@ -81,6 +82,7 @@ impl FilmstripWorker {
                 project_id: pid.to_string(),
                 clip_id: cid.to_string(),
                 media_path: media_path.to_path_buf(),
+                frames,
             });
     }
 
@@ -110,9 +112,10 @@ impl FilmstripWorker {
                 let pid = job.project_id;
                 let cid = job.clip_id;
                 let media = job.media_path;
+                let frames = job.frames;
                 in_flight.fetch_add(1, Ordering::AcqRel);
                 let result = tokio::task::spawn_blocking(move || {
-                    build_for_clip(&worker.paths, &pid, &cid, &media, 10)
+                    build_for_clip(&worker.paths, &pid, &cid, &media, frames)
                 })
                 .await;
                 in_flight.fetch_sub(1, Ordering::AcqRel);

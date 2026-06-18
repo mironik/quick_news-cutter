@@ -55,6 +55,17 @@ fn default_frames() -> u32 {
     10
 }
 
+const MAX_TIMELINE_FRAMES: u32 = 24;
+
+/// 0 or missing (serde default) → 10; otherwise clamp to 1..=24.
+fn timeline_build_frames(raw: u32) -> u32 {
+    if raw == 0 {
+        default_frames()
+    } else {
+        raw.clamp(1, MAX_TIMELINE_FRAMES)
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct VirtualShotBody {
     #[serde(default)]
@@ -142,6 +153,7 @@ async fn api_timeline_build(
     if clip_id.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "clip_id je prazan".into()));
     }
+    let frames = timeline_build_frames(body.frames);
     if let Some(existing) = get_filmstrip(&app.project.paths, &pid, clip_id) {
         let st = existing
             .get("status")
@@ -162,7 +174,7 @@ async fn api_timeline_build(
             }
             .filter(|p| p.is_file());
             if let Some(path) = media {
-                app.filmstrip.enqueue(&pid, clip_id, &path);
+                app.filmstrip.enqueue(&pid, clip_id, &path, frames);
             }
             return Ok(Json(json!({
                 "status": "building",
@@ -178,7 +190,7 @@ async fn api_timeline_build(
     .filter(|p| p.is_file())
     .ok_or((StatusCode::NOT_FOUND, format!("nema medija za '{clip_id}'")))?;
     mark_filmstrip_building(&app.project.paths, &pid, clip_id).map_err(internal)?;
-    app.filmstrip.enqueue(&pid, clip_id, &media);
+    app.filmstrip.enqueue(&pid, clip_id, &media, frames);
     Ok(Json(json!({
         "status": "queued",
         "clip_id": clip_id,
