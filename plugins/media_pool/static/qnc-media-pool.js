@@ -1,4 +1,4 @@
-/* Media Pool — Plugin SDK v1 orchestrator (WIP). Clips/virtual_shots/summary iz ctx.store snapshot; UI state lokalno. */
+/* Media Pool — Plugin SDK v1. Clips/virtual_shots/workflow iz ctx.store; samo UI cache lokalno. */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
@@ -22,18 +22,14 @@ window.QNC = window.QNC || {};
   };
 
   const pool = {
-    selected: new Set(),
     timelines: {},
     lastSignature: '',
-    currentClipId: null,
-    markIn: null,
-    markOut: null,
-    activeVirtualShotId: null,
     transcripts: {},
     rowNote: {},
     thumbRev: 0,
     pollTimer: null,
     buildingTimeline: new Set(),
+    liveTranscriptClip: null,
   };
 
   function snap(ctx) {
@@ -53,8 +49,44 @@ window.QNC = window.QNC || {};
     return snap(ctx).summary || {};
   }
 
+  function snapWorkflow(ctx) {
+    return snap(ctx).workflow || {};
+  }
+
+  function workflowSelectedIds(ctx) {
+    const c = ctx || sdkCtx;
+    return (snapWorkflow(c).selected_clip_ids || []).map(String).filter(Boolean);
+  }
+
+  function wfCurrentClipId(ctx) {
+    const id = String(snapWorkflow(ctx || sdkCtx).current_clip_id || '').trim();
+    return id || null;
+  }
+
+  function wfMarkIn(ctx) {
+    const v = snapWorkflow(ctx || sdkCtx).mark_in_sec;
+    return v == null || v === undefined ? null : Number(v);
+  }
+
+  function wfMarkOut(ctx) {
+    const v = snapWorkflow(ctx || sdkCtx).mark_out_sec;
+    return v == null || v === undefined ? null : Number(v);
+  }
+
+  function wfActiveVirtualShotId(ctx) {
+    const id = String(snapWorkflow(ctx || sdkCtx).active_virtual_shot_id || '').trim();
+    return id || null;
+  }
+
+  async function writeWorkflow(ctx, patch) {
+    const activeCtx = ctx || sdkCtx;
+    if (!activeCtx?.action) throw new Error('[Media Pool] SDK nije spreman');
+    await activeCtx.action('workflow.patch', { project_id: poolProjectId(), ...(patch || {}) });
+    return activeCtx.store.reload('media_pool.clips');
+  }
+
   function shotsForCurrentClip(ctx, allShots) {
-    const clipId = pool.currentClipId;
+    const clipId = wfCurrentClipId(ctx);
     if (!clipId) return [];
     const source = allShots || snapVirtualShots(ctx);
     return source.filter((s) => String(s.clip_id || '') === clipId);
@@ -97,11 +129,11 @@ window.QNC = window.QNC || {};
       {
         clips: snapClips(),
         selected_ids: selectedIds(),
-        current_clip_id: pool.currentClipId,
+        current_clip_id: wfCurrentClipId(),
         playhead_sec: player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
         duration_sec: player && Number.isFinite(player.duration) ? player.duration : 0,
-        mark_in_sec: pool.markIn,
-        mark_out_sec: pool.markOut,
+        mark_in_sec: wfMarkIn(),
+        mark_out_sec: wfMarkOut(),
         thumb_rev: pool.thumbRev,
         project_id: poolProjectId(),
         thumbUrl: (id, sec) => thumbUrl(id, sec),
@@ -118,11 +150,11 @@ window.QNC = window.QNC || {};
     const player = $('pool-player');
     api.updatePlayback(panel, {
       clips: snapClips(),
-      current_clip_id: pool.currentClipId,
+      current_clip_id: wfCurrentClipId(),
       playhead_sec: player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
       duration_sec: player && Number.isFinite(player.duration) ? player.duration : 0,
-      mark_in_sec: pool.markIn,
-      mark_out_sec: pool.markOut,
+      mark_in_sec: wfMarkIn(),
+      mark_out_sec: wfMarkOut(),
     });
   }
 
@@ -236,12 +268,12 @@ window.QNC = window.QNC || {};
 
   function rowHtml(c) {
     const id = c.clip_id || '';
-    const sel = pool.selected.has(id);
+    const sel = workflowSelectedIds().includes(id);
     const st = transcriptStatus(c);
     const dur = clipDuration(c);
     const rowCls =
       'timeline-row' +
-      (pool.currentClipId === id ? ' pool-row-active' : '') +
+      (wfCurrentClipId() === id ? ' pool-row-active' : '') +
       (st === 'complete' ? ' pool-row-ok' : '') +
       (st === 'failed' ? ' pool-row-err' : '');
     const note = clipNote(id, c);
@@ -286,21 +318,21 @@ window.QNC = window.QNC || {};
     if (chk) {
       chk.addEventListener('click', (e) => e.stopPropagation());
       chk.addEventListener('change', () => {
-        if (chk.checked) pool.selected.add(id);
-        else pool.selected.delete(id);
-        updateUi();
+        writeWorkflow(sdkCtx, { toggle_clip_id: id, clip_selected: chk.checked })
+          .then(() => updateUi())
+          .catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
       });
     }
     row.addEventListener('click', (ev) => {
       if (ev.target.closest('.pool-row-chk, .clip-edge-btn, .thumb-btn, .qnc-media-thumb-btn')) return;
-      playClip(clip, 0);
+      playClip(clip, 0).catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
     });
     syncFilmstripForClip(clip, row);
     const edge = row.querySelector('.clip-edge-btn[data-id="' + CSS.escape(id) + '"]');
     if (edge) {
       edge.onclick = () => {
         const d = clipDuration(clip);
-        playClip(clip, Math.max(0, d - 0.5));
+        playClip(clip, Math.max(0, d - 0.5)).catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
       };
     }
   }
@@ -517,7 +549,7 @@ window.QNC = window.QNC || {};
   }
 
   function selectedIds() {
-    return ids().filter((id) => pool.selected.has(id));
+    return workflowSelectedIds().filter((id) => ids().includes(id));
   }
 
   function clipById(id) {
@@ -568,17 +600,17 @@ window.QNC = window.QNC || {};
     const cutOut = $('pool-cut-out');
     if (!player || !cutSel) return;
     const dur = Number.isFinite(player.duration) ? player.duration : 0;
-    const hasIn = pool.markIn != null;
-    const hasOut = pool.markOut != null;
+    const hasIn = wfMarkIn() != null;
+    const hasOut = wfMarkOut() != null;
     if (cutIn) cutIn.hidden = !hasIn;
     if (cutOut) cutOut.hidden = !hasOut;
-    if (hasIn && cutIn) cutIn.style.left = markerPct(pool.markIn, dur) + '%';
-    if (hasOut && cutOut) cutOut.style.left = markerPct(pool.markOut, dur) + '%';
-    const showSel = hasIn && hasOut && pool.markOut > pool.markIn;
+    if (hasIn && cutIn) cutIn.style.left = markerPct(wfMarkIn(), dur) + '%';
+    if (hasOut && cutOut) cutOut.style.left = markerPct(wfMarkOut(), dur) + '%';
+    const showSel = hasIn && hasOut && wfMarkOut() > wfMarkIn();
     cutSel.hidden = !showSel;
     if (showSel) {
-      const a = markerPct(pool.markIn, dur);
-      const b = markerPct(pool.markOut, dur);
+      const a = markerPct(wfMarkIn(), dur);
+      const b = markerPct(wfMarkOut(), dur);
       cutSel.style.left = a + '%';
       cutSel.style.width = Math.max(0, b - a) + '%';
     }
@@ -600,14 +632,14 @@ window.QNC = window.QNC || {};
     if (cur) cur.textContent = formatDuration(t);
     if (tot) tot.textContent = formatDuration(dur);
     if (markInVal) {
-      markInVal.textContent = pool.markIn == null ? '-' : formatDuration(pool.markIn);
+      markInVal.textContent = wfMarkIn() == null ? '-' : formatDuration(wfMarkIn());
     }
     if (markOutVal) {
-      markOutVal.textContent = pool.markOut == null ? '-' : formatDuration(pool.markOut);
+      markOutVal.textContent = wfMarkOut() == null ? '-' : formatDuration(wfMarkOut());
     }
     if (markDur) {
-      if (pool.markIn != null && pool.markOut != null && pool.markOut > pool.markIn) {
-        markDur.textContent = formatDuration(pool.markOut - pool.markIn);
+      if (wfMarkIn() != null && wfMarkOut() != null && wfMarkOut() > wfMarkIn()) {
+        markDur.textContent = formatDuration(wfMarkOut() - wfMarkIn());
       } else {
         markDur.textContent = '-';
       }
@@ -695,7 +727,7 @@ window.QNC = window.QNC || {};
       hud.hidden = true;
       return;
     }
-    const clip = pool.currentClipId ? clipById(pool.currentClipId) : null;
+    const clip = wfCurrentClipId() ? clipById(wfCurrentClipId()) : null;
     const fps = fpsForClip(clip);
     const start = Number(chunk.dataset.start || 0);
     const parts = formatSpanSfParts(start, fps);
@@ -708,9 +740,9 @@ window.QNC = window.QNC || {};
     const chunkStart = Number(chunk.dataset.start || 0);
     const chunkEnd = Number(chunk.dataset.end || chunkStart);
     const hasIn =
-      pool.markIn != null && chunkStart <= pool.markIn && chunkEnd > pool.markIn;
+      wfMarkIn() != null && chunkStart <= wfMarkIn() && chunkEnd > wfMarkIn();
     const hasOut =
-      pool.markOut != null && chunkStart < pool.markOut && chunkEnd >= pool.markOut;
+      wfMarkOut() != null && chunkStart < wfMarkOut() && chunkEnd >= wfMarkOut();
     if (inMark) inMark.classList.toggle('is-on', hasIn);
     if (outMark) outMark.classList.toggle('is-on', hasOut);
     const top = chunk.offsetTop - hud.offsetHeight - 6;
@@ -723,8 +755,8 @@ window.QNC = window.QNC || {};
   function updateTranscriptChunkMarkers() {
     const body = transcriptBody();
     if (!body) return;
-    const inT = pool.markIn;
-    const outT = pool.markOut;
+    const inT = wfMarkIn();
+    const outT = wfMarkOut();
     body.querySelectorAll('.transcript-chunk').forEach((chunk) => {
       const start = Number(chunk.dataset.start || 0);
       const end = Number(chunk.dataset.end || start);
@@ -841,7 +873,7 @@ window.QNC = window.QNC || {};
     const pid = poolProjectId();
     const cacheKey = pid + '::' + clipId;
     if (transcript) pool.transcripts[cacheKey] = transcript;
-    if (pool.currentClipId === clipId) {
+    if (wfCurrentClipId() === clipId) {
       renderTranscriptPanel(pool.transcripts[cacheKey] || transcript);
     }
   }
@@ -949,7 +981,7 @@ window.QNC = window.QNC || {};
 
   function updatePlayerChrome() {
     const label = $('pool-current-clip');
-    const c = pool.currentClipId ? clipById(pool.currentClipId) : null;
+    const c = wfCurrentClipId() ? clipById(wfCurrentClipId()) : null;
     if (label) {
       label.textContent = c ? c.clip_id : 'Klikni sličicu za odabir clipa';
     }
@@ -1013,7 +1045,7 @@ window.QNC = window.QNC || {};
     const box = $('pool-virtual-shots');
     if (!box) return;
     const shots = shotsForCurrentClip(undefined, allVirtualShots);
-    if (!pool.currentClipId) {
+    if (!wfCurrentClipId()) {
       box.innerHTML = '<span class="muted">Odaberi clip.</span>';
       return;
     }
@@ -1021,11 +1053,11 @@ window.QNC = window.QNC || {};
       box.innerHTML = '<span class="muted">Nema virtualnih kadrova — IN, OUT, Enter.</span>';
       return;
     }
-    const clip = pool.currentClipId ? clipById(pool.currentClipId) : null;
+    const clip = wfCurrentClipId() ? clipById(wfCurrentClipId()) : null;
     const fps = fpsForClip(clip);
     box.innerHTML = shots
       .map((shot) => {
-        const active = pool.activeVirtualShotId === shot.id ? ' pool-vshot-active' : '';
+        const active = wfActiveVirtualShotId() === shot.id ? ' pool-vshot-active' : '';
         const originClass = shot.source === 'ai' ? ' pool-vshot-ai' : ' pool-vshot-manual';
         const dur = formatSpanSfParts(virtualShotDuration(shot), fps);
         return (
@@ -1063,28 +1095,31 @@ window.QNC = window.QNC || {};
     });
   }
 
-  function playVirtualShot(shot) {
+  async function playVirtualShot(shot) {
     const clip = clipById(shot.clip_id);
     if (!clip) return;
-    pool.markIn = Number(shot.in_seconds);
-    pool.markOut = Number(shot.out_seconds);
-    pool.activeVirtualShotId = shot.id;
-    playClip(clip, pool.markIn, false);
+    const inSec = Number(shot.in_seconds);
+    await writeWorkflow(sdkCtx, {
+      mark_in_sec: inSec,
+      mark_out_sec: Number(shot.out_seconds),
+      active_virtual_shot_id: shot.id,
+      current_clip_id: clip.clip_id,
+    });
+    playClip(clip, inSec, false);
     syncTransport();
     renderVirtualShots();
   }
 
-  function playClip(clip, startAt, resetMarks) {
+  async function playClip(clip, startAt, resetMarks) {
     const player = $('pool-player');
     if (!player || !clip?.clip_id) return;
-    if (resetMarks !== false) {
-      pool.markIn = null;
-      pool.markOut = null;
-      pool.activeVirtualShotId = null;
-    }
     const seekSec = Number(startAt || 0);
-    const sameClip = pool.currentClipId === clip.clip_id && player.src;
-    pool.currentClipId = clip.clip_id;
+    const patch = { current_clip_id: clip.clip_id };
+    if (resetMarks !== false) {
+      patch.clear_marks = true;
+    }
+    await writeWorkflow(sdkCtx, patch);
+    const sameClip = wfCurrentClipId() === clip.clip_id && player.src;
     const applySeek = () => {
       player.currentTime = seekSec;
       syncTransport();
@@ -1191,7 +1226,6 @@ window.QNC = window.QNC || {};
     const activeCtx = ctx || sdkCtx;
     activeCtx?.store?.invalidate?.('media_pool.clips');
     pool.timelines = {};
-    pool.currentClipId = null;
     pool.buildingTimeline.clear();
   }
 
@@ -1202,7 +1236,7 @@ window.QNC = window.QNC || {};
   }
 
   function fpsForCurrentClip() {
-    return fpsForClip(pool.currentClipId ? clipById(pool.currentClipId) : null);
+    return fpsForClip(wfCurrentClipId() ? clipById(wfCurrentClipId()) : null);
   }
 
   function snapToFrame(seconds, clip) {
@@ -1242,52 +1276,61 @@ window.QNC = window.QNC || {};
     return kind === 'out' ? end : start;
   }
 
-  function setMarkIn() {
+  async function setMarkIn() {
     const player = $('pool-player');
-    const clip = pool.currentClipId ? clipById(pool.currentClipId) : null;
+    const clip = wfCurrentClipId() ? clipById(wfCurrentClipId()) : null;
     if (!player?.src || !clip) {
       QNC.setBox('Prvo odaberi clip (klik na sličicu).', 'err');
       return;
     }
     const fromTx = markTimeFromTranscript('in');
-    pool.markIn = snapToFrame(fromTx != null ? fromTx : player.currentTime || 0, clip);
-    if (pool.markOut != null && pool.markOut <= pool.markIn) pool.markOut = null;
-    pool.activeVirtualShotId = null;
+    const markIn = snapToFrame(fromTx != null ? fromTx : player.currentTime || 0, clip);
+    const patch = {
+      mark_in_sec: markIn,
+      active_virtual_shot_id: '',
+    };
+    if (wfMarkOut() != null && wfMarkOut() <= markIn) {
+      patch.mark_out_sec = null;
+    }
+    await writeWorkflow(sdkCtx, patch);
     syncTransport();
     updateTranscriptChunkMarkers();
     renderVirtualShots();
   }
 
-  function setMarkOut() {
+  async function setMarkOut() {
     const player = $('pool-player');
-    const clip = pool.currentClipId ? clipById(pool.currentClipId) : null;
+    const clip = wfCurrentClipId() ? clipById(wfCurrentClipId()) : null;
     if (!player?.src || !clip) {
       QNC.setBox('Prvo odaberi clip (klik na sličicu).', 'err');
       return;
     }
     const fromTx = markTimeFromTranscript('out');
-    pool.markOut = snapToFrame(fromTx != null ? fromTx : player.currentTime || 0, clip);
-    if (pool.markIn == null) QNC.setBox('Prvo označi IN (I).', 'err');
-    if (pool.markOut <= pool.markIn) QNC.setBox('OUT mora biti poslije IN točke.', 'err');
-    pool.activeVirtualShotId = null;
+    const markOut = snapToFrame(fromTx != null ? fromTx : player.currentTime || 0, clip);
+    if (wfMarkIn() == null) QNC.setBox('Prvo označi IN (I).', 'err');
+    if (markOut <= wfMarkIn()) QNC.setBox('OUT mora biti poslije IN točke.', 'err');
+    await writeWorkflow(sdkCtx, {
+      mark_out_sec: markOut,
+      active_virtual_shot_id: '',
+    });
     syncTransport();
     updateTranscriptChunkMarkers();
     renderVirtualShots();
   }
 
   async function saveInOut() {
-    const clip = pool.currentClipId ? clipById(pool.currentClipId) : null;
+    const clip = wfCurrentClipId() ? clipById(wfCurrentClipId()) : null;
     if (!clip?.clip_id) {
       QNC.setBox('Prvo odaberi clip (klik na sličicu).', 'err');
       return;
     }
-    if (pool.markIn == null || pool.markOut == null || pool.markOut <= pool.markIn) {
+    if (wfMarkIn() == null || wfMarkOut() == null || wfMarkOut() <= wfMarkIn()) {
       QNC.setBox('Označi ispravan IN i OUT prije spremanja.', 'err');
       return;
     }
     const fps = fpsForClip(clip);
-    const inSec = snapToFrame(pool.markIn, clip);
-    const outSec = snapToFrame(pool.markOut, clip);
+    const inSec = snapToFrame(wfMarkIn(), clip);
+    const outSec = snapToFrame(wfMarkOut(), clip);
     if (outSec <= inSec) {
       QNC.setBox('OUT mora biti poslije IN točke.', 'err');
       return;
@@ -1295,27 +1338,21 @@ window.QNC = window.QNC || {};
     const pid = poolProjectId();
     try {
       QNC.setBox('Spremam virtualni kadar…', 'busy');
-      const d = sdkCtx
-        ? await sdkCtx.action('virtual-shot.create', {
-            project_id: pid,
-            clip_id: clip.clip_id,
-            in_seconds: inSec,
-            out_seconds: outSec,
-            windows_original_path: clip.windows_original_path || null,
-          })
-        : await QNC.api('POST', '/api/media-pool/virtual-shot', {
-            project_id: pid,
-            clip_id: clip.clip_id,
-            in_seconds: inSec,
-            out_seconds: outSec,
-            windows_original_path: clip.windows_original_path || null,
-          });
-      applyVirtualShots(d.virtual_shots || snapVirtualShots(), { force: true });
+      const d = await sdkCtx.action('virtual-shot.create', {
+        project_id: pid,
+        clip_id: clip.clip_id,
+        in_seconds: inSec,
+        out_seconds: outSec,
+        windows_original_path: clip.windows_original_path || null,
+      });
+      await sdkCtx.store.reload('media_pool.clips');
+      applyVirtualShots(snapVirtualShots(), { force: true });
       pool.thumbRev++;
-      pool.activeVirtualShotId = d.shot?.id || null;
+      await writeWorkflow(sdkCtx, {
+        active_virtual_shot_id: d?.shot?.id || '',
+        clear_marks: true,
+      });
       markTranscriptIzrez();
-      pool.markIn = null;
-      pool.markOut = null;
       updateTranscriptChunkMarkers();
       syncTransport();
       QNC.setBox('Virtualni kadar spremljen (trajno u projektu).', 'ok');
@@ -1392,7 +1429,7 @@ window.QNC = window.QNC || {};
       const clipId = event.payload?.clip_id || event.root?.dataset?.clipId;
       const sec = Number(event.payload?.seconds);
       const clip = clipId ? clipById(clipId) : null;
-      if (clip && Number.isFinite(sec)) playClip(clip, sec);
+      if (clip && Number.isFinite(sec)) playClip(clip, sec).catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
     });
     ctx.on('mark.in', setMarkIn);
     ctx.on('mark.out', setMarkOut);
@@ -1402,9 +1439,9 @@ window.QNC = window.QNC || {};
     ctx.on('clip.toggle', (event) => {
       const id = String(event.payload?.clip_id || '').trim();
       if (!id) return;
-      if (event.payload?.checked) pool.selected.add(id);
-      else pool.selected.delete(id);
-      updateUi();
+      writeWorkflow(ctx, { toggle_clip_id: id, clip_selected: !!event.payload?.checked })
+        .then(() => updateUi())
+        .catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
     });
     ctx.on('clip.play', (event) => {
       const id = String(event.payload?.clip_id || '').trim();
@@ -1412,22 +1449,21 @@ window.QNC = window.QNC || {};
       if (!clip) return;
       const d = clipDuration(clip);
       const start = event.payload?.edge ? Math.max(0, d - 0.5) : 0;
-      playClip(clip, start);
+      playClip(clip, start).catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
     });
     ctx.on('clips.select-all', (event) => {
       const checked = !!event?.payload?.checked;
-      ids().forEach((id) => (checked ? pool.selected.add(id) : pool.selected.delete(id)));
-      renderRows();
+      writeWorkflow(ctx, { selected_clip_ids: checked ? ids() : [] })
+        .then(() => renderRows())
+        .catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
     });
     busInstalled = true;
   }
 
   async function refresh() {
     try {
-      const keep = new Set(selectedIds());
       pool.lastSignature = '';
       const d = await loadPool();
-      pool.selected = new Set([...keep].filter((id) => ids().includes(id)));
       updateUi();
       if (snapClips().length) {
         QNC.setBox('Media pool: ' + snapClips().length + ' clipova', 'ok');
@@ -1471,7 +1507,7 @@ window.QNC = window.QNC || {};
         renderRows();
         if (clip) {
           beginLiveTranscript(id);
-          playClip(clip, 0, true);
+          playClip(clip, 0, true).catch(() => {});
         }
         try {
           const last = await transcribeClipStream(id, pid);
@@ -1534,7 +1570,7 @@ window.QNC = window.QNC || {};
       });
 
       renderRows();
-      QNC.log('[Media Pool] SDK modul spreman (WIP)', 'ok');
+      QNC.log('[Media Pool] SDK modul spreman', 'ok');
     },
 
     onShow(ctx) {
@@ -1568,6 +1604,4 @@ window.QNC = window.QNC || {};
   });
 
   app.register();
-
-  QNC.mediaPool = pool;
 })(window.QNC);

@@ -6,7 +6,7 @@
   "position": "normal",
   "entry_js": "/plugins/media_pool/static/qnc-media-pool.js",
   "entry_css": "/plugins/media_pool/static/qnc-media-pool.css",
-  "asset_version": 20,
+  "asset_version": 21,
   "panel_id": "panel-pool",
   "api_namespace": "/api/media-pool",
   "storage": "media_pool",
@@ -63,6 +63,12 @@
       "path": "qnc_project.db"
     },
     "actions": [
+      {
+        "action": "workflow.patch",
+        "method": "POST",
+        "path": "/api/media-pool/workflow",
+        "writes": ["media_pool.clips"]
+      },
       {
         "action": "clips.list",
         "method": "GET",

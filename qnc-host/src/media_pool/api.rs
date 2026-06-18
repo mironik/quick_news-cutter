@@ -13,6 +13,7 @@ use crate::ingest::thumb::extract_poster_jpeg_at_seek;
 use crate::media_pool::db::{add_virtual_shot, list_virtual_shots};
 use crate::media_pool::ingest_db::proxy_path_for_clip;
 use crate::media_pool::store::{list_clips_enriched, mark_filmstrip_building};
+use crate::media_pool::workflow::{get_workflow, patch_workflow};
 
 #[derive(serde::Deserialize)]
 struct ProjectQuery {
@@ -79,6 +80,7 @@ struct VirtualShotBody {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/media-pool/clips", get(api_clips))
+        .route("/api/media-pool/workflow", post(api_workflow_patch))
         .route("/api/media-pool/media", get(api_media))
         .route("/api/media-pool/thumbnail", get(api_thumbnail))
         .route("/api/media-pool/timeline/build", post(api_timeline_build))
@@ -92,11 +94,31 @@ async fn api_clips(
     let pid = resolve_project_id(&app, &q.project_id)?;
     let data = list_clips_enriched(&app.project.paths, &pid).map_err(internal)?;
     let virtual_shots = list_virtual_shots(&app.project.paths, &pid).map_err(internal)?;
+    let workflow = get_workflow(&app.project.paths, &pid).map_err(internal)?;
     Ok(Json(json!({
         "project_id": pid,
         "clips": data.get("clips").cloned().unwrap_or(json!([])),
         "summary": data.get("summary").cloned().unwrap_or(json!({})),
         "virtual_shots": virtual_shots,
+        "workflow": workflow,
+    })))
+}
+
+async fn api_workflow_patch(
+    State(app): State<AppState>,
+    Json(body): Json<Value>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(
+        &app,
+        body.get("project_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
+    )?;
+    let workflow = patch_workflow(&app.project.paths, &pid, &body).map_err(internal)?;
+    Ok(Json(json!({
+        "status": "ok",
+        "project_id": pid,
+        "workflow": workflow,
     })))
 }
 

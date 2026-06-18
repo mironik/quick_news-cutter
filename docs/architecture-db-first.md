@@ -132,7 +132,7 @@ These violate this contract until migrated (see roadmap in audit / Phase 1–5):
 | Area | Current | Target |
 |------|---------|--------|
 | Module enable | ~~`data/shell_module_state.json`~~ → **`project_store.db` `module_state`** (Phase 1 ✓) |
-| media_pool | `pool.selected`, marks, player context, transcripts in JS | Per-project tables + unified snapshot |
+| media_pool | ~~`pool.selected`, marks, player context~~ → **Phase 3 ✓** `media_pool_workflow` in `qnc_project.db` |
 | project tab | ~~Large `state` object cache~~ → **Phase 2 ✓** SDK snapshots (`project.index`, `project.templates`, `project.modules`, `project.ui`) |
 | design-tools | Theme/lab state in JSON overrides | SQLite or isolated non-prod addon |
 | sdk_demo | In-memory Rust map | SQLite table or explicit `@non-production` only |
@@ -159,7 +159,7 @@ New features **must not** add rows to this gap list.
 |--------|-----------------|
 | **ingest** | **Reference** — workflow in SQLite; SDK snapshot + reload |
 | **sdk_demo** | Pattern reference only; backend intentionally non-SQLite until rework |
-| **media_pool** | **Non-compliant** — clips in snapshot (A1); workflow fields still in `pool` |
+| **media_pool** | **SDK v1** — clips + workflow in snapshot (`media_pool_workflow` table); ephemeral: transcripts cache, ASR rowNote, player element |
 | **project** | **SDK v1** — index/templates/modules/ui via `ctx.store`; ephemeral runtime only (`openingId`, collab session handle) |
 | **design-tools** | Add-on; JSON runtime state — not production workflow |
 

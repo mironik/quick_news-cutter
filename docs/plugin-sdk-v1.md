@@ -9,7 +9,7 @@
 | **Source of truth** | **SQLite / API snapshots** — not component-local state, not helper JSON files, not orchestrator JS objects. See [architecture-db-first.md](architecture-db-first.md) |
 | **Reference implementation** | [`plugins/ingest/static/qnc-ingest.js`](../plugins/ingest/static/qnc-ingest.js) + [`plugins/ingest/plugin.json`](../plugins/ingest/plugin.json) |
 | **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, in-memory Rust API; tab disabled by default (`enabled: false`). **How to clone:** [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) |
-| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle; **non-compliant** with DB-first until `pool` workflow fields migrate to SQLite |
+| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle + DB workflow snapshot; transcript cache ephemeral |
 | **Not SDK yet** | `design-tools` — legacy orchestrators; do not migrate them in the same pass |
 | **SDK v1 (project)** | [`plugins/project`](../plugins/project/) — multi-snapshot orchestrator; collab session handle ephemeral in JS |
 

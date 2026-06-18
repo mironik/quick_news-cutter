@@ -13,7 +13,7 @@ pub fn media_pool_dir(paths: &ProjectPaths, project_id: &str) -> PathBuf {
     paths.project_dir(project_id).join("media_pool")
 }
 
-fn open_db(paths: &ProjectPaths, project_id: &str) -> Result<Connection, String> {
+pub(crate) fn open_db(paths: &ProjectPaths, project_id: &str) -> Result<Connection, String> {
     let root = media_pool_dir(paths, project_id);
     fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     let conn = open_project(paths, project_id).map_err(|e| e.to_string())?;
@@ -32,6 +32,11 @@ fn open_db(paths: &ProjectPaths, project_id: &str) -> Result<Connection, String>
             duration_seconds REAL NOT NULL DEFAULT 0,
             data_json TEXT NOT NULL DEFAULT '{}',
             created_at TEXT,
+            updated_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS media_pool_workflow (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            state_json TEXT NOT NULL DEFAULT '{}',
             updated_at TEXT
         );",
     )
