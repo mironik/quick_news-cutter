@@ -6,7 +6,7 @@
   "position": "first",
   "entry_js": "/plugins/project/static/qnc-project.js",
   "entry_css": "/plugins/project/static/qnc-project.css",
-  "asset_version": 45,
+  "asset_version": 46,
   "panel_id": "panel-project",
   "keep_alive": true,
   "api_namespace": "/api/projects",
@@ -24,6 +24,33 @@
     "folder-picker",
     "project-template-settings"
   ],
+  "sdk_version": 1,
+  "state": {
+    "snapshots": [
+      {
+        "key": "project.index",
+        "method": "GET",
+        "path": "/api/projects"
+      },
+      {
+        "key": "project.templates",
+        "method": "GET",
+        "path": "/api/project-templates"
+      },
+      {
+        "key": "project.modules",
+        "method": "GET",
+        "path": "/api/modules",
+        "pick": "modules"
+      },
+      {
+        "key": "project.ui",
+        "method": "GET",
+        "path": "/api/projects/ui-state",
+        "pick": "ui_state"
+      }
+    ]
+  },
   "backend": {
     "implementation": "rust",
     "host_module": "qnc-host/src/project",
@@ -33,37 +60,34 @@
     },
     "actions": [
       {
+        "action": "project.ui.patch",
+        "method": "POST",
+        "path": "/api/projects/ui-state",
+        "writes": ["project.ui"]
+      },
+      {
         "action": "project.create",
         "method": "POST",
         "path": "/api/projects/from-template",
-        "writes": [
-          "project.settings",
-          "project.workflow"
-        ]
+        "writes": ["project.index", "project.ui"]
       },
       {
         "action": "project.open",
         "method": "POST",
         "path": "/api/projects/open",
-        "writes": [
-          "project.active"
-        ]
+        "writes": ["project.index"]
       },
       {
         "action": "project.delete",
         "method": "POST",
         "path": "/api/projects/delete",
-        "writes": [
-          "project.index"
-        ]
+        "writes": ["project.index", "project.ui"]
       },
       {
         "action": "template.save-custom",
         "method": "POST",
         "path": "/api/project-templates",
-        "writes": [
-          "project.templates"
-        ]
+        "writes": ["project.templates", "project.ui"]
       }
     ],
     "jobs": []

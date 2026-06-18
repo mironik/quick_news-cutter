@@ -10,7 +10,8 @@
 | **Reference implementation** | [`plugins/ingest/static/qnc-ingest.js`](../plugins/ingest/static/qnc-ingest.js) + [`plugins/ingest/plugin.json`](../plugins/ingest/plugin.json) |
 | **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, in-memory Rust API; tab disabled by default (`enabled: false`). **How to clone:** [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) |
 | **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle; **non-compliant** with DB-first until `pool` workflow fields migrate to SQLite |
-| **Not SDK yet** | `project`, `design-tools` — legacy orchestrators; do not migrate them in the same pass |
+| **Not SDK yet** | `design-tools` — legacy orchestrators; do not migrate them in the same pass |
+| **SDK v1 (project)** | [`plugins/project`](../plugins/project/) — multi-snapshot orchestrator; collab session handle ephemeral in JS |
 
 SDK v1 helps plugin authors build tabs as **lego compositions** of `app/components`, with a thin orchestrator file. The host does not enforce manifest schemas beyond loading tabs; the SDK reads `plugin.json` `state.snapshots` and `backend.actions` when present.
 
