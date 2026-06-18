@@ -21,7 +21,7 @@ window.QNC = window.QNC || {};
     thumbRev: 0,
     pollTimer: null,
     buildingTimeline: new Set(),
-    transcribingClips: new Set(),
+    transcribingClips: new Set(), // in-flight mutex only — not used for transcript UI status
     liveTranscriptClip: null,
   };
 
@@ -488,9 +488,7 @@ window.QNC = window.QNC || {};
   function transcriptStatus(c) {
     if (c.has_transcript || c.transcript_status === 'complete') return 'complete';
     if (c.transcript_status === 'failed') return 'failed';
-    if (handles.transcribingClips.has(c.clip_id) || c.transcript_status === 'pending') {
-      return 'pending';
-    }
+    if (c.transcript_status === 'pending') return 'pending';
     return 'none';
   }
 
@@ -1430,16 +1428,17 @@ window.QNC = window.QNC || {};
     try {
       for (let i = 0; i < list.length; i++) {
         const id = list[i];
+        if (handles.transcribingClips.has(id)) continue;
         const clip = clipById(id);
         QNC.setBox('Transkripcija ' + (i + 1) + '/' + list.length + ': ' + id, 'busy');
         handles.transcribingClips.add(id);
-        renderRows();
         if (clip) {
           beginLiveTranscript(id);
           playClip(clip, 0, true).catch(() => {});
         }
         try {
           await persistTranscript(id, 'pending', { text: '', segments: [] });
+          renderRows();
           const last = await transcribeClipStream(id, pid);
           if (last?.type === 'complete') {
             await persistTranscript(id, 'complete', last.transcript || { text: '', segments: [] });
