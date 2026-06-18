@@ -8,7 +8,7 @@
 | **Script** | `/app/shell/qnc-plugin-sdk.js` (loaded before plugin `entry_js`, after `qnc-tab-registry.js`) |
 | **Source of truth** | **SQLite / API snapshots** — not component-local state, not helper JSON files |
 | **Reference implementation** | [`plugins/ingest/static/qnc-ingest.js`](../plugins/ingest/static/qnc-ingest.js) + [`plugins/ingest/plugin.json`](../plugins/ingest/plugin.json) |
-| **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, in-memory Rust API; tab disabled by default (`enabled: false`) |
+| **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, in-memory Rust API; tab disabled by default (`enabled: false`). **How to clone:** [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) |
 | **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle + `ctx.action`; player/scrubber/selection still local |
 | **Not SDK yet** | `project`, `design-tools` — legacy orchestrators; do not migrate them in the same pass |
 
@@ -23,7 +23,7 @@ SDK v1 helps plugin authors build tabs as **lego compositions** of `app/componen
 - **No** direct plugin-to-plugin JS imports or API calls.
 - **Cross-tab coordination:** shell bus (`QNC.bus`), shared project id, DB reads, snapshot invalidation.
 
-See also [developer-components.md](developer-components.md) for component contracts and [shell-spec-v1.md](shell-spec-v1.md) for shell behavior.
+See also [developer-components.md](developer-components.md) for component contracts, [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) for cloning sdk_demo into a new tab, and [shell-spec-v1.md](shell-spec-v1.md) for shell behavior.
 
 ---
 
@@ -412,4 +412,5 @@ Informational only in v1 (document for future tooling): `consumes`, `events`, `p
 - [shell-spec-v1.md](shell-spec-v1.md) — shell tabs, buses, project context
 - Reference code: `plugins/ingest/static/qnc-ingest.js`, `plugins/ingest/plugin.json`
 - Minimal demo: `plugins/sdk_demo/static/qnc-sdk-demo.js`, `plugins/sdk_demo/plugin.json`
+- Clone guide: [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md)
 - Partial reference: `plugins/media_pool/static/qnc-media-pool.js`, `plugins/media_pool/plugin.json`
