@@ -10,11 +10,11 @@ It demonstrates the full golden path:
 
 | Aspect | sdk_demo | Production plugins (e.g. ingest) |
 |--------|----------|----------------------------------|
-| State | In-memory `HashMap` in Rust (`persistence: "in_memory_demo"`) | SQLite / project DB via API snapshots |
+| State | Project DB / SQLite (`sdk_demo_state` in `qnc_project.db`) | SQLite / project DB via API snapshots |
 | UI | One panel (`sdk-demo-panel`) | Multi-panel layout |
 | Tab visibility | `enabled: false` by default | Usually always on |
 
-Use sdk_demo to **bootstrap a new tab**. Replace in-memory state with SQLite/API persistence before shipping.
+Use sdk_demo to **bootstrap a new tab**. It already persists via project DB; follow the same SQLite/API pattern for production plugins.
 
 Further reading: [plugin-sdk-v1.md](plugin-sdk-v1.md), [developer-components.md](developer-components.md).
 
@@ -88,7 +88,7 @@ app/components/<plugin>-panel/
 
 qnc-host/src/<module>/
   mod.rs                         # pub use api::router;
-  store.rs                       # read/write state (SQLite or in-memory)
+  store.rs                       # read/write state (SQLite / project DB)
   api.rs                         # Axum routes
 
 app/components/registry.json     # entries for layout + panel
@@ -221,10 +221,9 @@ Rust module under `qnc-host/src/<module>/`:
 
 | Persistence | When |
 |-------------|------|
-| In-memory (`OnceLock` + `HashMap`) | **Removed** — sdk_demo now uses `qnc_project.db` (`sdk_demo_state`) |
-| SQLite / project DB | **Production** — follow `ingest` store layer; required by [architecture-db-first.md](architecture-db-first.md) |
+| SQLite / project DB | **Required** — sdk_demo uses `qnc_project.db` (`sdk_demo_state`); production plugins follow `ingest` store layer per [architecture-db-first.md](architecture-db-first.md) |
 
-sdk_demo state persists in per-project `qnc_project.db` (`sdk_demo_state` table). Counter survives host restart for the same project.
+sdk_demo counter survives host restart for the same project. Do not use in-memory stores or plugin-local objects as workflow state.
 
 ---
 
@@ -267,13 +266,13 @@ Do not commit `data/project_store.db`, `data/projects.json`, or other runtime `d
 |------|-----------|
 | Minimal single-panel plugin | **sdk_demo** — copy this guide |
 | Production multi-panel tab | **ingest** — [`plugins/ingest`](../plugins/ingest/), [plugin-sdk-v1.md](plugin-sdk-v1.md) |
-| Partial SDK migration (local player state OK) | **media_pool** — read only; do not copy as primary template yet |
+| Partial SDK migration (known JS cache gaps) | **media_pool** — read only; do not copy as primary template yet |
 | Component contracts | [developer-components.md](developer-components.md) |
 | Shell tabs / buses | [shell-spec-v1.md](shell-spec-v1.md) |
 
 Suggested path after your first sdk_demo clone:
 
 1. Get snapshot + one write action working end-to-end.
-2. Swap in-memory store for SQLite (ingest `store.rs` pattern).
+2. Wire SQLite persistence from the start (ingest `store.rs` pattern).
 3. Add panels incrementally; keep orchestrator thin.
 4. Enable tab (`enabled: true` or module API) when ready for users.

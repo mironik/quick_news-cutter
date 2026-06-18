@@ -8,10 +8,10 @@
 | **Script** | `/app/shell/qnc-plugin-sdk.js` (loaded before plugin `entry_js`, after `qnc-tab-registry.js`) |
 | **Source of truth** | **SQLite / API snapshots** — not component-local state, not helper JSON files, not orchestrator JS objects. See [architecture-db-first.md](architecture-db-first.md) |
 | **Reference implementation** | [`plugins/ingest/static/qnc-ingest.js`](../plugins/ingest/static/qnc-ingest.js) + [`plugins/ingest/plugin.json`](../plugins/ingest/plugin.json) |
-| **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, in-memory Rust API; tab disabled by default (`enabled: false`). **How to clone:** [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) |
-| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle + DB workflow snapshot; transcript cache ephemeral |
+| **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, project DB-backed minimal SDK reference (`sdk_demo_state` in `qnc_project.db`); tab disabled by default (`enabled: false`). **How to clone:** [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) |
+| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle + DB workflow snapshot; remaining JS caches under audit (see architecture doc) |
 | **Not SDK yet** | `design-tools` — legacy orchestrators; do not migrate them in the same pass |
-| **SDK v1 (project)** | [`plugins/project`](../plugins/project/) — multi-snapshot orchestrator; collab session handle ephemeral in JS |
+| **SDK v1 (project)** | [`plugins/project`](../plugins/project/) — multi-snapshot orchestrator; collab session id is a technical handle only |
 
 SDK v1 helps plugin authors build tabs as **lego compositions** of `app/components`, with a thin orchestrator file. The host does not enforce manifest schemas beyond loading tabs; the SDK reads `plugin.json` `state.snapshots` and `backend.actions` when present.
 
@@ -269,7 +269,7 @@ await ctx.action('filmstrip.build', { clip_id: 'abc123', frames: 10 });
 const data = await ctx.api.get('/clips', { project_id: ctx.projectId });
 ```
 
-Media pool uses this in `loadPool()` instead of `ctx.store.load('media_pool.clips')` — valid during partial migration; prefer store snapshots in Phase 2.
+Media pool reads clips via `ctx.store.reload('media_pool.clips')`. Use store snapshots for all authoritative reads; do not treat local JS caches as workflow state.
 
 ### GET action limitation
 
@@ -337,25 +337,27 @@ Available in shell (`qnc-core.js`); less documented than Patterns A/B. Useful fo
 
 ---
 
-## Partial migration guidance
+## SDK adoption guidance
 
 Migrate one plugin at a time. Legacy orchestrators without SDK continue to work.
 
 | Phase | Goal |
 |-------|------|
 | **1 — Lifecycle + actions** | Replace `QNC.tabs.register` with `createPluginApp`; use `ctx.action` for writes |
-| **2 — Store snapshots** | Move API reads into `ctx.store.load/reload`; remove duplicate fetch helpers where possible |
+| **2 — Store snapshots** | Move API reads into `ctx.store.load/reload`; remove duplicate fetch helpers |
 | **3 — bindComponent** | Simplify single-panel bindings where manual mount/update is noisy |
 
-**Allowed local state:** ephemeral UI — player current time, scrubber, row selection cache, busy flags, poll timers. **Not allowed as source of truth:** clip lists, project settings, import status, anything persisted in SQLite.
+**DB-first rule:** SQLite / Rust API is the only source of truth. `ctx.store` is a short-lived cache of API snapshots. Plugin JS, component JS, DOM, and runtime JSON objects must not own workflow state.
+
+**Allowed locally (technical handles only):** poll timers, in-flight request dedup flags, live-stream session handles, DOM refs, player `currentTime` scrubber position. Recompute or reload from snapshots instead of retaining derived data (clip lists, selection, marks, transcripts, job status).
 
 | Plugin | SDK status |
 |--------|------------|
 | `ingest` | Full production reference |
-| `sdk_demo` | Minimal golden-path demo (in-memory; enable via Modules API) |
-| `media_pool` | Partial — Phase 1–2 in progress; large local `pool` object for player |
-| `project` | Not SDK — planned later |
-| `design-tools` | Not SDK — standalone add-on |
+| `sdk_demo` | Minimal golden-path demo (project DB; enable via Modules API) |
+| `media_pool` | Partial — workflow in snapshot; JS render caches still being removed |
+| `project` | SDK v1 multi-snapshot orchestrator |
+| `design-tools` | Not SDK — standalone add-on (`non_production`) |
 
 ---
 

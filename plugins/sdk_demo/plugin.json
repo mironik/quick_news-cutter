@@ -19,7 +19,7 @@
   "enabled": false,
   "system": false,
   "removable": true,
-  "description": "Minimal Plugin SDK v1 golden-path demo (in-memory Rust state).",
+  "description": "Minimal Plugin SDK v1 golden-path demo (project DB / SQLite state).",
   "state": {
     "snapshots": [
       {
@@ -39,7 +39,7 @@
     "host_module": "qnc-host/src/sdk_demo",
     "store": {
       "scope": "project",
-      "persistence": "in_memory_demo"
+      "persistence": "project_db"
     },
     "actions": [
       {

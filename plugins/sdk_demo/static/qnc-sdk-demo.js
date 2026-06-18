@@ -1,4 +1,4 @@
-/* SDK Demo tab — minimal Plugin SDK v1 golden path (in-memory Rust state). */
+/* SDK Demo tab — minimal Plugin SDK v1 golden path (project DB / SQLite). */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
@@ -49,11 +49,11 @@ window.QNC = window.QNC || {};
       {
         counter: db.counter ?? 0,
         project_id: db.project_id || ctx.projectId || '',
-        persistence: db.persistence || 'in_memory_demo',
+        persistence: db.persistence || 'project_db',
         updated_at: db.updated_at || '—',
         busy: runtime.busy,
         status_note: open
-          ? 'Stanje je u Rust hostu (in_memory_demo). Restart hosta resetira brojač.'
+          ? 'Stanje je u projektnoj bazi (qnc_project.db / sdk_demo_state).'
           : 'Otvori projekt na Project tabu da koristiš SDK Demo.',
       },
       PLUGIN_CTX

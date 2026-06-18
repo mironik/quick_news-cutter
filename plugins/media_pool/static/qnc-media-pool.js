@@ -1,4 +1,4 @@
-/* Media Pool — Plugin SDK v1. Clips/virtual_shots/workflow iz ctx.store; samo UI cache lokalno. */
+/* Media Pool — Plugin SDK v1. Clips/virtual_shots/workflow iz ctx.store; samo tehnički handle-i lokalno. */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
@@ -17,18 +17,11 @@ window.QNC = window.QNC || {};
   const THUMB_GAP = 3;
   const THUMB_MAX_FRAMES = 24;
 
-  const runtime = {
-    lastVirtualSignature: '',
-  };
-
-  const pool = {
-    timelines: {},
-    lastSignature: '',
-    transcripts: {},
-    rowNote: {},
+  const handles = {
     thumbRev: 0,
     pollTimer: null,
     buildingTimeline: new Set(),
+    transcribingClips: new Set(),
     liveTranscriptClip: null,
   };
 
@@ -134,7 +127,7 @@ window.QNC = window.QNC || {};
         duration_sec: player && Number.isFinite(player.duration) ? player.duration : 0,
         mark_in_sec: wfMarkIn(),
         mark_out_sec: wfMarkOut(),
-        thumb_rev: pool.thumbRev,
+        thumb_rev: handles.thumbRev,
         project_id: poolProjectId(),
         thumbUrl: (id, sec) => thumbUrl(id, sec),
       },
@@ -161,7 +154,7 @@ window.QNC = window.QNC || {};
   function thumbUrl(clipId, seek) {
     if (QNC.filmstrip?.thumbUrl) {
       return QNC.filmstrip.thumbUrl(clipId, seek, {
-        thumbRev: pool.thumbRev,
+        thumbRev: handles.thumbRev,
         thumbW: THUMB_W,
         projectId: poolProjectId(),
       });
@@ -176,7 +169,7 @@ window.QNC = window.QNC || {};
       '&project_id=' +
       encodeURIComponent(poolProjectId()) +
       '&r=' +
-      pool.thumbRev
+      handles.thumbRev
     );
   }
 
@@ -199,20 +192,15 @@ window.QNC = window.QNC || {};
 
   function seeksForDisplay(clipId) {
     const slots = stripSlotCount();
-    let seeks = pool.timelines[clipId];
-    if (seeks === null || seeks === undefined) {
-      const clip = clipById(clipId);
-      if (clip?.timeline_seeks?.length) {
-        seeks = clip.timeline_seeks;
-        pool.timelines[clipId] = seeks;
-      } else {
-        return { slots, list: null };
-      }
+    const clip = clipById(clipId);
+    const seeks = clip?.timeline_seeks;
+    if (!seeks?.length) {
+      return { slots, list: null };
     }
     if (!QNC.filmstrip?.seeksFromTimeline) {
-      return { slots, list: (seeks || []).slice(0, slots) };
+      return { slots, list: seeks.slice(0, slots) };
     }
-    return { slots, list: QNC.filmstrip.seeksFromTimeline(seeks || [], slots) };
+    return { slots, list: QNC.filmstrip.seeksFromTimeline(seeks, slots) };
   }
 
   function filmstripPanelForRow(row) {
@@ -243,7 +231,7 @@ window.QNC = window.QNC || {};
       loading: list === null,
       slots,
       durationSec: clip.timeline_duration_sec || clipDuration(clip),
-      thumbRev: pool.thumbRev,
+      thumbRev: handles.thumbRev,
       thumbUrl: (id, sec) => thumbUrl(id, sec),
       formatDuration,
       snapFn: (sec) => snapToFrame(sec, clip),
@@ -359,19 +347,6 @@ window.QNC = window.QNC || {};
     updateUi();
   }
 
-  function pruneTimelines() {
-    const inPool = new Set(ids());
-    Object.keys(pool.timelines).forEach((id) => {
-      if (!inPool.has(id)) delete pool.timelines[id];
-    });
-  }
-
-  function applyTimelinesFromClips(clipList) {
-    clipList.forEach((c) => {
-      if (c.timeline_seeks?.length) pool.timelines[c.clip_id] = c.timeline_seeks;
-    });
-  }
-
   function timelineKey(clip) {
     return (clip.timeline_seeks || []).join(',');
   }
@@ -390,10 +365,7 @@ window.QNC = window.QNC || {};
       (oldIds.length !== nextIds.length ||
         nextIds.slice(0, oldIds.length).some((id, idx) => id !== oldIds[idx]));
 
-    applyVirtualShots(nextVirtualShots, { force: false });
-    applyTimelinesFromClips(nextClips);
-    pruneTimelines();
-    pruneTranscripts();
+    applyVirtualShots(nextVirtualShots);
 
     if (updateTimelineSequence()) {
       updateUi();
@@ -452,28 +424,12 @@ window.QNC = window.QNC || {};
     if (d.project_id && QNC.setActiveProjectId) QNC.setActiveProjectId(d.project_id);
     const nextClips = d.clips || [];
     const nextVirtualShots = d.virtual_shots || [];
-    const signature = JSON.stringify({
-      clips: nextClips.map((c) => [
-        c.clip_id,
-        c.transferred,
-        c.has_transcript,
-        c.filmstrip_status || 'missing',
-        c.filmstrip_error || '',
-        (c.timeline_seeks || []).length,
-        c.timeline_duration_sec || 0,
-      ]),
-      virtual: virtualShotsSignature(nextVirtualShots),
-    });
-    if (signature === pool.lastSignature) return d;
-    pool.lastSignature = signature;
     reconcileClipRows(oldClips, nextClips, nextVirtualShots);
     requestMissingTimelines();
     return d;
   }
 
   function clipNote(clipId, c) {
-    const note = pool.rowNote[clipId] || '';
-    if (note) return note;
     const parts = [];
     if (c.transferred) parts.push('u projektu');
     else if (c.discovered) parts.push('na SD');
@@ -530,9 +486,8 @@ window.QNC = window.QNC || {};
   }
 
   function transcriptStatus(c) {
-    if (pool.rowNote[c.clip_id]?.indexOf('greška') >= 0) return 'failed';
     if (c.has_transcript) return 'complete';
-    if (pool.rowNote[c.clip_id]?.indexOf('ASR') >= 0) return 'pending';
+    if (handles.transcribingClips.has(c.clip_id)) return 'pending';
     return 'none';
   }
 
@@ -832,10 +787,7 @@ window.QNC = window.QNC || {};
   }
 
   function beginLiveTranscript(clipId) {
-    const pid = poolProjectId();
-    const cacheKey = pid + '::' + clipId;
-    pool.transcripts[cacheKey] = { segments: [], text: '', words: [] };
-    pool.liveTranscriptClip = clipId;
+    handles.liveTranscriptClip = clipId;
     const box = $('pool-active-transcript');
     if (!box) return;
     box.classList.remove('muted');
@@ -850,7 +802,7 @@ window.QNC = window.QNC || {};
 
   function appendTranscriptSegment(clipId, seg) {
     const box = $('pool-active-transcript');
-    if (!box || pool.liveTranscriptClip !== clipId) return;
+    if (!box || handles.liveTranscriptClip !== clipId) return;
     const body = transcriptBody() || ensureTranscriptShell(box).querySelector('.pool-transcript-body');
     if (!body) return;
     const hint = body.querySelector('.transcript-live-hint');
@@ -858,30 +810,19 @@ window.QNC = window.QNC || {};
     body.appendChild(createTranscriptChunk(seg));
     const scroll = box.querySelector('.pool-transcript-scroll');
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
-
-    const pid = poolProjectId();
-    const cacheKey = pid + '::' + clipId;
-    const tr = pool.transcripts[cacheKey] || { segments: [], text: '', words: [] };
-    tr.segments = tr.segments || [];
-    tr.segments.push(seg);
-    tr.text = (tr.text ? tr.text + ' ' : '') + (seg.text || '');
-    pool.transcripts[cacheKey] = tr;
   }
 
-  function finishLiveTranscript(clipId, transcript) {
-    pool.liveTranscriptClip = null;
-    const pid = poolProjectId();
-    const cacheKey = pid + '::' + clipId;
-    if (transcript) pool.transcripts[cacheKey] = transcript;
+  function finishLiveTranscript(clipId) {
+    handles.liveTranscriptClip = null;
     if (wfCurrentClipId() === clipId) {
-      renderTranscriptPanel(pool.transcripts[cacheKey] || transcript);
+      loadTranscript(clipId);
     }
   }
 
   function renderTranscriptPanel(transcript) {
     const box = $('pool-active-transcript');
     if (!box) return;
-    if (pool.liveTranscriptClip) return;
+    if (handles.liveTranscriptClip) return;
     if (!transcript) {
       box.innerHTML = 'Nema transkripta — označi clip i pokreni transkripciju.';
       box.classList.add('muted');
@@ -957,13 +898,8 @@ window.QNC = window.QNC || {};
   }
 
   async function loadTranscript(clipId) {
-    if (pool.liveTranscriptClip === clipId) return;
+    if (handles.liveTranscriptClip === clipId) return;
     const pid = poolProjectId();
-    const cacheKey = pid + '::' + clipId;
-    if (pool.transcripts[cacheKey]) {
-      renderTranscriptPanel(pool.transcripts[cacheKey]);
-      return;
-    }
     try {
       const d = await QNC.api(
         'GET',
@@ -972,8 +908,7 @@ window.QNC = window.QNC || {};
           '?project_id=' +
           encodeURIComponent(pid)
       );
-      pool.transcripts[cacheKey] = d.transcript || null;
-      renderTranscriptPanel(pool.transcripts[cacheKey]);
+      renderTranscriptPanel(d.transcript || null);
     } catch {
       renderTranscriptPanel(null);
     }
@@ -985,8 +920,7 @@ window.QNC = window.QNC || {};
     if (label) {
       label.textContent = c ? c.clip_id : 'Klikni sličicu za odabir clipa';
     }
-    const txKey = c?.clip_id && poolProjectId() + '::' + c.clip_id;
-    if (c?.has_transcript || (txKey && pool.transcripts[txKey])) {
+    if (c?.has_transcript) {
       loadTranscript(c.clip_id);
     } else {
       renderTranscriptPanel(null);
@@ -1005,7 +939,7 @@ window.QNC = window.QNC || {};
       '&kind=' +
       encodeURIComponent(kind || 'in') +
       '&r=' +
-      pool.thumbRev
+      handles.thumbRev
     );
   }
 
@@ -1017,28 +951,8 @@ window.QNC = window.QNC || {};
     return outSec > inSec ? outSec - inSec : 0;
   }
 
-  function virtualShotsSignature(shots) {
-    return JSON.stringify(
-      (shots || []).map((s) => [
-        s.id,
-        s.clip_id,
-        s.in_seconds,
-        s.out_seconds,
-        s.duration_seconds,
-        s.source,
-      ])
-    );
-  }
-
-  function applyVirtualShots(nextVirtualShots, options) {
-    const force = !!(options && options.force);
-    const shots = nextVirtualShots || snapVirtualShots();
-    const sig = virtualShotsSignature(shots);
-    const changed = force || sig !== runtime.lastVirtualSignature;
-    if (changed) {
-      runtime.lastVirtualSignature = sig;
-      renderVirtualShots(shots);
-    }
+  function applyVirtualShots(nextVirtualShots) {
+    renderVirtualShots(nextVirtualShots || snapVirtualShots());
   }
 
   function renderVirtualShots(allVirtualShots) {
@@ -1141,14 +1055,6 @@ window.QNC = window.QNC || {};
     loadTranscript(clip.clip_id);
   }
 
-  function pruneTranscripts() {
-    const inPool = new Set(ids());
-    Object.keys(pool.transcripts).forEach((key) => {
-      const clipId = key.includes('::') ? key.split('::').slice(1).join('::') : key;
-      if (!inPool.has(clipId)) delete pool.transcripts[key];
-    });
-  }
-
   function requestMissingTimelines() {
     if (QNC.getActiveTab?.() !== 'pool') return;
     const missing = snapClips()
@@ -1161,11 +1067,11 @@ window.QNC = window.QNC || {};
           status !== 'ready'
         );
       })
-      .filter((clip) => !pool.buildingTimeline.has(clip.clip_id))
+      .filter((clip) => !handles.buildingTimeline.has(clip.clip_id))
       .slice(0, 1);
     missing.forEach((clip) => {
       const pid = poolProjectId();
-      pool.buildingTimeline.add(clip.clip_id);
+      handles.buildingTimeline.add(clip.clip_id);
       const buildReq = sdkCtx
         ? sdkCtx.action('filmstrip.build', {
             clip_id: clip.clip_id,
@@ -1181,28 +1087,28 @@ window.QNC = window.QNC || {};
           });
       buildReq
         .then(() => {
-          pool.buildingTimeline.delete(clip.clip_id);
+          handles.buildingTimeline.delete(clip.clip_id);
           return loadPool();
         })
         .catch((e) => {
-          pool.buildingTimeline.delete(clip.clip_id);
+          handles.buildingTimeline.delete(clip.clip_id);
           QNC.log('[Media Pool] film-strip: ' + e.message, 'err');
         });
     });
   }
 
   function startPoolPolling() {
-    if (pool.pollTimer) return;
-    pool.pollTimer = setInterval(() => {
+    if (handles.pollTimer) return;
+    handles.pollTimer = setInterval(() => {
       if (QNC.getActiveTab?.() !== 'pool') return;
       loadPool().catch((e) => QNC.log('[Media Pool] auto refresh: ' + e.message, 'err'));
     }, 2000);
   }
 
   function stopPoolPolling() {
-    if (!pool.pollTimer) return;
-    clearInterval(pool.pollTimer);
-    pool.pollTimer = null;
+    if (!handles.pollTimer) return;
+    clearInterval(handles.pollTimer);
+    handles.pollTimer = null;
   }
 
   /** Oslobodi proxy stream prije brisanja projekta (Windows drži lock na open file). */
@@ -1221,12 +1127,10 @@ window.QNC = window.QNC || {};
   function releaseProjectHold(ctx) {
     stopPoolPolling();
     releasePlayerMedia();
-    pool.lastSignature = '';
-    runtime.lastVirtualSignature = '';
     const activeCtx = ctx || sdkCtx;
     activeCtx?.store?.invalidate?.('media_pool.clips');
-    pool.timelines = {};
-    pool.buildingTimeline.clear();
+    handles.buildingTimeline.clear();
+    handles.transcribingClips.clear();
   }
 
   function fpsForClip(clip) {
@@ -1346,8 +1250,8 @@ window.QNC = window.QNC || {};
         windows_original_path: clip.windows_original_path || null,
       });
       await sdkCtx.store.reload('media_pool.clips');
-      applyVirtualShots(snapVirtualShots(), { force: true });
-      pool.thumbRev++;
+      applyVirtualShots(snapVirtualShots());
+      handles.thumbRev++;
       await writeWorkflow(sdkCtx, {
         active_virtual_shot_id: d?.shot?.id || '',
         clear_marks: true,
@@ -1462,7 +1366,6 @@ window.QNC = window.QNC || {};
 
   async function refresh() {
     try {
-      pool.lastSignature = '';
       const d = await loadPool();
       updateUi();
       if (snapClips().length) {
@@ -1502,8 +1405,7 @@ window.QNC = window.QNC || {};
         const id = list[i];
         const clip = clipById(id);
         QNC.setBox('Transkripcija ' + (i + 1) + '/' + list.length + ': ' + id, 'busy');
-        pool.rowNote[id] = 'ASR…';
-        delete pool.transcripts[pid + '::' + id];
+        handles.transcribingClips.add(id);
         renderRows();
         if (clip) {
           beginLiveTranscript(id);
@@ -1512,28 +1414,26 @@ window.QNC = window.QNC || {};
         try {
           const last = await transcribeClipStream(id, pid);
           if (last?.type === 'complete') {
-            finishLiveTranscript(id, last.transcript || null);
-            pool.rowNote[id] = 'transkript ✓';
+            finishLiveTranscript(id);
             ok++;
           } else {
-            finishLiveTranscript(id, null);
-            pool.rowNote[id] = 'greška';
+            finishLiveTranscript(id);
             fail++;
           }
         } catch (e) {
-          finishLiveTranscript(id, null);
-          pool.rowNote[id] = 'greška';
+          finishLiveTranscript(id);
           fail++;
           if (QNC.getActiveTab && QNC.getActiveTab() === 'pool') {
             QNC.setBox('Transkripcija: ' + (e.message || 'greška'), 'err');
           }
         }
+        handles.transcribingClips.delete(id);
         renderRows();
       }
       await refresh();
       QNC.setBox('Transkripcija: ' + ok + ' OK, ' + fail + ' greška', fail ? 'err' : 'ok');
     } finally {
-      pool.liveTranscriptClip = null;
+      handles.liveTranscriptClip = null;
       if (btn) btn.disabled = false;
     }
   }
@@ -1576,7 +1476,7 @@ window.QNC = window.QNC || {};
     onShow(ctx) {
       sdkCtx = ctx;
       startPoolPolling();
-      pool.thumbRev += 1;
+      handles.thumbRev += 1;
       loadPool(ctx)
         .then(() => {
           if (snapClips(ctx).length) renderRows();

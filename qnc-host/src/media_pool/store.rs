@@ -6,6 +6,14 @@ use crate::project::db::{ensure_project_dirs, ProjectPaths};
 use super::db::{pool_summary, sync_pool_from_ingest_db};
 use super::ingest_db::read_imported_clips;
 
+fn clip_has_transcript(paths: &ProjectPaths, project_id: &str, clip_id: &str) -> bool {
+    let path = paths
+        .project_dir(project_id)
+        .join("transcripts")
+        .join(format!("{clip_id}.json"));
+    path.is_file()
+}
+
 pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Value, String> {
     ensure_project_dirs(paths, project_id).map_err(|e| e.to_string())?;
     sync_pool_from_ingest_db(paths, project_id)?;
@@ -26,6 +34,7 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
         let original_path = row.get("original_path").and_then(|v| v.as_str());
         let card_thumb_path = row.get("card_thumb_path").and_then(|v| v.as_str());
         let transferred = proxy_path.is_some();
+        let has_transcript = clip_has_transcript(paths, project_id, &clip_id);
         let duration = row
             .get("duration_sec")
             .and_then(|v| v.as_f64())
@@ -41,7 +50,7 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
             "discovered": true,
             "validated": transferred,
             "transferred": transferred,
-            "has_transcript": false,
+            "has_transcript": has_transcript,
             "proxy_path": proxy_path,
             "thumb_path": thumb_path,
             "source_path": source_path,

@@ -522,6 +522,7 @@ pub fn ensure_project_dirs_at(base: &Path) -> std::io::Result<()> {
         "ingest/thumbnails",
         "filmstrip",
         "media_pool",
+        "transcripts",
     ] {
         let dir = if sub.is_empty() {
             base.to_path_buf()
