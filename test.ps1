@@ -18,6 +18,10 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
     Write-Error "Instaliraj Rust: https://rustup.rs"
 }
 
+Write-Host "DB-first guard (static)..."
+& (Join-Path $Root "scripts\db-first-guard.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "Checking qnc-host..."
 Push-Location $HostDir
 cargo check
@@ -59,6 +63,12 @@ try {
     $diag = Test-GetJson "$Base/api/shell/diagnostics" '"plugins_loaded"' "GET /api/shell/diagnostics"
     if ($diag.bind_host -ne "127.0.0.1") { throw "FAIL: diagnostics bind_host expected 127.0.0.1" }
     if ($diag.plugins_loaded_count -lt 1) { throw "FAIL: diagnostics plugins_loaded_count" }
+    $dbFirst = Test-GetJson "$Base/api/shell/db-first" '"contract"' "GET /api/shell/db-first"
+    if ($dbFirst.contract -ne "db-first-v1") { throw "FAIL: db-first contract mismatch" }
+    if ($dbFirst.violations -and $dbFirst.violations.Count -gt 0) {
+        throw "FAIL: db-first violations: $($dbFirst.violations -join '; ')"
+    }
+    if ($dbFirst.status -ne "ok") { throw "FAIL: db-first status expected ok" }
     Test-Get "$Base/api/shell/tabs" 'project' "GET /api/shell/tabs"
     Test-Get "$Base/api/shell/tabs" 'ingest' "GET /api/shell/tabs (ingest)"
     Test-Get "$Base/api/design-tools/status" '"mode":"open"' "GET /api/design-tools/status"
@@ -212,6 +222,48 @@ try {
     if ($disabled.module.enabled -ne $false) { throw "FAIL: sdk_demo disable restore" }
     Write-Host "OK: sdk_demo disabled after enable test"
 
+    $poolClips = Test-GetJson "$Base/api/media-pool/clips?project_id=$([uri]::EscapeDataString($newId))" '"workflow"' "GET /api/media-pool/clips"
+    if ($poolClips.project_id -ne $newId) { throw "FAIL: media-pool clips project_id mismatch" }
+    if ($null -eq $poolClips.clips) { throw "FAIL: media-pool clips array missing" }
+    if (-not $poolClips.workflow) { throw "FAIL: media-pool workflow missing" }
+
+    $testClipId = "qa-pool-clip"
+    $poolPatch = Test-PostJson "$Base/api/media-pool/workflow" @{
+        project_id = $newId
+        current_clip_id = $testClipId
+        selected_clip_ids = @($testClipId)
+        mark_in_sec = 1.5
+        mark_out_sec = 10.0
+    } '"workflow"' "POST /api/media-pool/workflow"
+    if ($poolPatch.workflow.current_clip_id -ne $testClipId) { throw "FAIL: workflow current_clip_id not persisted" }
+    if ($poolPatch.workflow.selected_clip_ids -notcontains $testClipId) { throw "FAIL: workflow selection not persisted" }
+
+    $poolReload = Test-GetJson "$Base/api/media-pool/clips?project_id=$([uri]::EscapeDataString($newId))" '"workflow"' "GET /api/media-pool/clips (workflow reload)"
+    if ($poolReload.workflow.current_clip_id -ne $testClipId) { throw "FAIL: workflow reload current_clip_id mismatch" }
+    if ($poolReload.workflow.selected_clip_ids -notcontains $testClipId) { throw "FAIL: workflow reload selection mismatch" }
+
+    Test-PostJson "$Base/api/media-pool/transcript" @{
+        project_id = $newId
+        clip_id = $testClipId
+        status = "pending"
+        transcript = @{ text = "" }
+    } '"status":"ok"' "POST /api/media-pool/transcript (pending)"
+
+    $txComplete = Test-PostJson "$Base/api/media-pool/transcript" @{
+        project_id = $newId
+        clip_id = $testClipId
+        status = "complete"
+        transcript = @{
+            text = "QA transcript line"
+            segments = @(@{ start = 0.0; end = 1.2; text = "QA transcript line" })
+        }
+    } '"status":"ok"' "POST /api/media-pool/transcript (complete)"
+    if ($txComplete.saved.status -ne "complete") { throw "FAIL: transcript save status not complete" }
+
+    $txGet = Test-GetJson "$Base/api/media-pool/transcript?project_id=$([uri]::EscapeDataString($newId))&clip_id=$([uri]::EscapeDataString($testClipId))" '"transcript"' "GET /api/media-pool/transcript"
+    if ($txGet.transcript.text -ne "QA transcript line") { throw "FAIL: transcript text mismatch after save" }
+    Write-Host "OK: media_pool workflow + transcript round-trip"
+
     $deleted = Test-PostJson "$Base/api/projects/delete" @{
         project_ids = @($newId)
     } '"projects"' "POST /api/projects/delete"
@@ -225,7 +277,7 @@ try {
     }
 
     Write-Host ""
-    Write-Host "All host integration tests passed (project + ingest + sdk_demo flow)."
+    Write-Host "All host integration tests passed (project + ingest + media_pool + sdk_demo flow)."
 }
 finally {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue

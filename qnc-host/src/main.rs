@@ -16,6 +16,7 @@ mod app_html;
 mod app_state;
 mod components;
 mod config;
+mod db_first;
 mod design;
 mod design_db;
 mod filmstrip;
@@ -77,6 +78,7 @@ async fn main() {
         .route("/api/health", get(api_health))
         .route("/api/shell/runtime", get(api_shell_runtime))
         .route("/api/shell/diagnostics", get(api_shell_diagnostics))
+        .route("/api/shell/db-first", get(api_shell_db_first))
         .route("/api/shell/tabs", get(api_shell_tabs))
         .route("/api/shell/components", get(api_shell_components))
         .route(
@@ -181,6 +183,10 @@ async fn api_shell_diagnostics(State(state): State<AppState>) -> Json<serde_json
         "plugin_manifest_errors": scan.errors,
         "components_count": components_count,
     }))
+}
+
+async fn api_shell_db_first(State(state): State<AppState>) -> Json<serde_json::Value> {
+    Json(db_first::diagnostics(&state.root, &state.project.paths))
 }
 
 async fn api_shell_projects_root(State(state): State<AppState>) -> Json<serde_json::Value> {
