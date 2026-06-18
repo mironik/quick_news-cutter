@@ -182,7 +182,7 @@ try {
     $sdkState = Test-GetJson "$Base/api/sdk-demo/state?project_id=$([uri]::EscapeDataString($newId))" '"counter"' "GET /api/sdk-demo/state"
     if ($sdkState.project_id -ne $newId) { throw "FAIL: sdk-demo state project_id mismatch" }
     if ($sdkState.counter -ne 0) { throw "FAIL: sdk-demo counter should start at 0" }
-    if ($sdkState.persistence -ne 'in_memory_demo') { throw "FAIL: sdk-demo persistence mismatch" }
+    if ($sdkState.persistence -ne 'project_db_demo') { throw "FAIL: sdk-demo persistence mismatch" }
 
     $sdkInc = Test-PostJson "$Base/api/sdk-demo/increment" @{
         project_id = $newId

@@ -430,6 +430,15 @@
     QNC.bus?.emit('project:changed', { projectId });
   }
 
+  async function syncActiveProjectFromApi() {
+    try {
+      const d = await QNC.api('GET', '/api/projects');
+      QNC.setActiveProjectId?.(d.active_project_id || '');
+    } catch (_) {
+      QNC.setActiveProjectId?.('');
+    }
+  }
+
   async function boot() {
     if (!window.QNC) {
       console.error('qnc-core.js nije ucitan');
@@ -455,6 +464,8 @@
     const plugins = filterCapabilityTabs(tabsRes.tabs || [], runtimeRes);
     registerPluginComponents(plugins);
     pluginLoader.registerAll(plugins);
+
+    await syncActiveProjectFromApi();
 
     if (QNC.shell) QNC.shell.installTabs(plugins, { deferRender: true });
     ensurePluginSlots(plugins);

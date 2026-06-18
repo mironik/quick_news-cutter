@@ -221,10 +221,10 @@ Rust module under `qnc-host/src/<module>/`:
 
 | Persistence | When |
 |-------------|------|
-| In-memory (`OnceLock` + `HashMap`) | **Non-production demo only** (`sdk_demo`) — not DB-first compliant for real plugins |
+| In-memory (`OnceLock` + `HashMap`) | **Removed** — sdk_demo now uses `qnc_project.db` (`sdk_demo_state`) |
 | SQLite / project DB | **Production** — follow `ingest` store layer; required by [architecture-db-first.md](architecture-db-first.md) |
 
-sdk_demo state resets on host restart. Production plugins must not rely on that.
+sdk_demo state persists in per-project `qnc_project.db` (`sdk_demo_state` table). Counter survives host restart for the same project.
 
 ---
 

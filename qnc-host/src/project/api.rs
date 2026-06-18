@@ -12,6 +12,7 @@ use crate::app_state::AppState;
 
 use super::collab::{start_session, touch_session};
 use super::db::{open_global, ProjectPaths};
+use super::keyboard_settings::{load_keyboard_user, save_keyboard_user};
 use super::store::{
     cleanup_orphan_project_dirs, create_project, delete_projects, get_active_project_id,
     list_projects, open_project, orphan_project_dir_names,
@@ -118,6 +119,10 @@ pub fn router() -> Router<AppState> {
         )
         .route("/api/collab/session", post(api_collab_session))
         .route("/api/collab/touch", post(api_collab_touch))
+        .route(
+            "/api/settings/keyboard-shortcuts",
+            get(api_keyboard_shortcuts_get).post(api_keyboard_shortcuts_save),
+        )
 }
 
 async fn api_projects_ui_state_get(
@@ -136,6 +141,26 @@ async fn api_projects_ui_state_save(
     app.project.with_db(|conn| {
         let ui_state = save_ui_state(conn, &body).map_err(|e| e.to_string())?;
         Ok(Json(json!({ "status": "ok", "ui_state": ui_state })))
+    })
+}
+
+async fn api_keyboard_shortcuts_get(
+    State(app): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    app.project.with_db(|conn| {
+        let user = load_keyboard_user(conn).map_err(|e| e.to_string())?;
+        Ok(Json(json!({ "status": "ok", "user": user })))
+    })
+}
+
+async fn api_keyboard_shortcuts_save(
+    State(app): State<AppState>,
+    Json(body): Json<Value>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    app.project.with_db(|conn| {
+        let user = body.get("user").cloned().unwrap_or(body);
+        let saved = save_keyboard_user(conn, &user).map_err(|e| e.to_string())?;
+        Ok(Json(json!({ "status": "ok", "user": saved })))
     })
 }
 

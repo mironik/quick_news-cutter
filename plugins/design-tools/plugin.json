@@ -6,14 +6,15 @@
   "position": "last",
   "entry_js": "/plugins/design-tools/static/qnc-design.js",
   "entry_css": "/plugins/design-tools/static/qnc-design.css",
-  "asset_version": 53,
+  "asset_version": 54,
   "panel_id": "panel-design-tools",
   "panel_html": "/plugins/design-tools/static/panel.html",
   "api_namespace": "/api/design-tools",
   "enabled": true,
   "system": false,
   "removable": true,
+  "non_production": true,
   "requires_capability": "design_editor",
-  "description": "Samostalan design add-on (Rust host). Theme + component lab.",
+  "description": "Non-production design add-on (Rust host). Theme/lab prefs in data/design_overrides JSON — not workflow truth.",
   "uses_components": []
 }

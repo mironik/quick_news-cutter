@@ -72,10 +72,12 @@ window.QNC = window.QNC || {};
   };
 
   QNC.clientIp = '';
+  /** Projection of `active_project_id` from API — not a separate source of truth. */
   QNC.activeProjectId = '';
 
   QNC.getProjectId = () => QNC.activeProjectId || '';
 
+  /** Sync shell context after API returns active_project_id (project tab / boot). */
   QNC.setActiveProjectId = (id) => {
     QNC.activeProjectId = id ? String(id).trim() : '';
   };

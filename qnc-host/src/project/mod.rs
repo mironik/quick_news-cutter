@@ -1,6 +1,7 @@
 mod api;
 mod collab;
 pub(crate) mod db;
+mod keyboard_settings;
 mod store;
 pub(crate) mod templates;
 mod ui_state;

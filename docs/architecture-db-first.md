@@ -134,10 +134,10 @@ These violate this contract until migrated (see roadmap in audit / Phase 1–5):
 | Module enable | ~~`data/shell_module_state.json`~~ → **`project_store.db` `module_state`** (Phase 1 ✓) |
 | media_pool | ~~`pool.selected`, marks, player context~~ → **Phase 3 ✓** `media_pool_workflow` in `qnc_project.db` |
 | project tab | ~~Large `state` object cache~~ → **Phase 2 ✓** SDK snapshots (`project.index`, `project.templates`, `project.modules`, `project.ui`) |
-| design-tools | Theme/lab state in JSON overrides | SQLite or isolated non-prod addon |
-| sdk_demo | In-memory Rust map | SQLite table or explicit `@non-production` only |
-| Shell | `QNC.activeProjectId` in JS | Projection of `active_project_id` from API only |
-| Keyboard shortcuts | `localStorage` | `app_settings` or shell preferences table |
+| design-tools | **`non_production: true`** — theme/lab in `data/design_overrides/*.json` (isolated add-on, not workflow) |
+| sdk_demo | ~~In-memory Rust map~~ → **Phase 4 ✓** `sdk_demo_state` in `qnc_project.db` (demo template only) |
+| Shell | ~~`QNC.activeProjectId` in JS~~ → **Phase 4 ✓** boot sync from `GET /api/projects`; projection only |
+| Keyboard shortcuts | ~~`localStorage`~~ → **Phase 4 ✓** `app_settings.keyboard_shortcuts_user` |
 
 New features **must not** add rows to this gap list.
 
@@ -158,10 +158,10 @@ New features **must not** add rows to this gap list.
 | Plugin | DB-first status |
 |--------|-----------------|
 | **ingest** | **Reference** — workflow in SQLite; SDK snapshot + reload |
-| **sdk_demo** | Pattern reference only; backend intentionally non-SQLite until rework |
+| **sdk_demo** | Minimal SDK template — counter in `qnc_project.db` (`sdk_demo_state`); tab disabled by default |
 | **media_pool** | **SDK v1** — clips + workflow in snapshot (`media_pool_workflow` table); ephemeral: transcripts cache, ASR rowNote, player element |
 | **project** | **SDK v1** — index/templates/modules/ui via `ctx.store`; ephemeral runtime only (`openingId`, collab session handle) |
-| **design-tools** | Add-on; JSON runtime state — not production workflow |
+| **design-tools** | **Non-production add-on** — JSON overrides only; not DB-first workflow |
 
 ---
 

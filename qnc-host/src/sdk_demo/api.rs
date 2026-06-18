@@ -41,7 +41,8 @@ async fn api_state(
     Query(q): Query<ProjectQuery>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let pid = resolve_project_id(&app, &q.project_id)?;
-    Ok(Json(load_state(&pid)))
+    let state = load_state(&app.project.paths, &pid).map_err(map_store_err)?;
+    Ok(Json(state))
 }
 
 async fn api_increment(
@@ -50,7 +51,8 @@ async fn api_increment(
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let pid = resolve_project_id(&app, &body.project_id)?;
     let step = clamp_step(body.step);
-    Ok(Json(increment(&pid, step)))
+    let state = increment(&app.project.paths, &pid, step).map_err(map_store_err)?;
+    Ok(Json(state))
 }
 
 async fn api_reset(
@@ -58,7 +60,8 @@ async fn api_reset(
     Json(body): Json<ProjectBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let pid = resolve_project_id(&app, &body.project_id)?;
-    Ok(Json(reset(&pid)))
+    let state = reset(&app.project.paths, &pid).map_err(map_store_err)?;
+    Ok(Json(state))
 }
 
 fn resolve_project_id(app: &AppState, project_id: &str) -> Result<String, (StatusCode, String)> {
@@ -66,4 +69,8 @@ fn resolve_project_id(app: &AppState, project_id: &str) -> Result<String, (Statu
         return Ok(project_id.trim().to_string());
     }
     app.project.active_project_id()
+}
+
+fn map_store_err(e: String) -> (StatusCode, String) {
+    (StatusCode::INTERNAL_SERVER_ERROR, e)
 }

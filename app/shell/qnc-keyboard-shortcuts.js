@@ -1,9 +1,9 @@
-/* Globalni keyboard shortcuts — preset iz keyboard-shortcuts.json + SQLite / localStorage */
+/* Globalni keyboard shortcuts — preset iz keyboard-shortcuts.json + project_store.app_settings */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
   const BASE_URL = '/app/shell/keyboard-shortcuts.json?v=67';
-  const STORAGE_KEY = 'qnc_keyboard_shortcuts';
+  const LEGACY_STORAGE_KEY = 'qnc_keyboard_shortcuts';
   const API_URL = '/api/settings/keyboard-shortcuts';
 
   let _baseConfig = null;
@@ -14,17 +14,21 @@ window.QNC = window.QNC || {};
     return JSON.parse(JSON.stringify(obj || {}));
   }
 
-  function readLocalUser() {
+  function readLegacyLocalUser() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
     }
   }
 
-  function writeLocalUser(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data || {}));
+  function clearLegacyLocalUser() {
+    try {
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 
   function mergeUserIntoBase(base, user) {
@@ -54,17 +58,30 @@ window.QNC = window.QNC || {};
     }
   }
 
+  async function migrateLegacyLocalUser(localUser) {
+    if (!localUser || typeof localUser !== 'object' || !Object.keys(localUser).length) return null;
+    try {
+      await QNC.api('POST', API_URL, { user: localUser });
+      clearLegacyLocalUser();
+      return localUser;
+    } catch (e) {
+      console.warn('[QNC] shortcuts migrate:', e.message || e);
+      return null;
+    }
+  }
+
   async function loadConfig(force) {
     if (_config && !force) return _config;
     if (_loadPromise && !force) return _loadPromise;
     _loadPromise = (async () => {
       try {
         _baseConfig = await fetchBaseConfig();
-        const serverUser = await fetchServerUser();
-        const localUser = readLocalUser();
-        const user = serverUser || localUser;
-        if (serverUser && serverUser !== localUser) writeLocalUser(serverUser);
-        _config = mergeUserIntoBase(_baseConfig, user);
+        let serverUser = await fetchServerUser();
+        if (!serverUser || !Object.keys(serverUser).length) {
+          const legacy = readLegacyLocalUser();
+          serverUser = (await migrateLegacyLocalUser(legacy)) || legacy;
+        }
+        _config = mergeUserIntoBase(_baseConfig, serverUser || {});
         return _config;
       } catch (e) {
         console.warn('[QNC] shortcuts:', e.message || e);
@@ -178,42 +195,39 @@ window.QNC = window.QNC || {};
     async setActivePreset(presetId) {
       await loadConfig();
       if (!_config?.presets?.[presetId]) throw new Error('Nepoznat preset: ' + presetId);
-      const user = readLocalUser();
-      user.active_preset = presetId;
-      writeLocalUser(user);
-      _config = mergeUserIntoBase(_baseConfig, user);
-      await QNC.keyboardShortcuts.saveUser(user);
-      return _config;
+      const user = {
+        active_preset: presetId,
+        custom_presets: extractCustomPresets(_config),
+      };
+      return QNC.keyboardShortcuts.saveUser(user);
     },
 
     async saveCustomPreset(presetId, presetData) {
       await loadConfig();
-      const user = readLocalUser();
-      user.custom_presets = user.custom_presets || {};
-      user.custom_presets[presetId] = presetData;
-      writeLocalUser(user);
-      _config = mergeUserIntoBase(_baseConfig, user);
-      await QNC.keyboardShortcuts.saveUser(user);
-      return _config;
+      const user = {
+        active_preset: _config?.active_preset,
+        custom_presets: {
+          ...extractCustomPresets(_config),
+          [presetId]: presetData,
+        },
+      };
+      return QNC.keyboardShortcuts.saveUser(user);
     },
 
     async saveUser(userData) {
-      writeLocalUser(userData);
-      try {
-        await QNC.api('POST', API_URL, { user: userData });
-      } catch (e) {
-        console.warn('[QNC] shortcuts save server:', e.message || e);
-      }
+      const payload = userData && typeof userData === 'object' ? userData : {};
+      await QNC.api('POST', API_URL, { user: payload });
+      clearLegacyLocalUser();
       invalidateConfig();
       return loadConfig(true);
     },
 
     exportConfig() {
-      const user = readLocalUser();
+      const presetName = _config?.active_preset || 'default';
       return {
         version: _config?.version || 1,
-        active_preset: user.active_preset || _config?.active_preset,
-        custom_presets: user.custom_presets || {},
+        active_preset: presetName,
+        custom_presets: extractCustomPresets(_config),
         exported_at: new Date().toISOString(),
       };
     },
@@ -255,4 +269,13 @@ window.QNC = window.QNC || {};
       return () => document.removeEventListener('keydown', onKeyDown);
     },
   };
+
+  function extractCustomPresets(config) {
+    const baseIds = new Set(Object.keys(_baseConfig?.presets || {}));
+    const out = {};
+    Object.entries(config?.presets || {}).forEach(([id, preset]) => {
+      if (!baseIds.has(id)) out[id] = preset;
+    });
+    return out;
+  }
 })(window.QNC);
