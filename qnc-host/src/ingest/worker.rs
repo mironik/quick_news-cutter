@@ -110,11 +110,14 @@ impl ThumbWorker {
                     let result = tokio::task::spawn_blocking(move || {
                         worker.process_proxy_generate(&job.project_id, &clip_ids)
                     })
-                        .await;
+                    .await;
                     in_flight.fetch_sub(1, Ordering::AcqRel);
                     match result {
                         Ok(Ok(count)) if count > 0 => {
-                            info!("ingest proxy thumbs: project={} processed={}", pid_log, count);
+                            info!(
+                                "ingest proxy thumbs: project={} processed={}",
+                                pid_log, count
+                            );
                         }
                         Ok(Ok(_)) => {}
                         Ok(Err(e)) => warn!("ingest proxy thumbs: project={} err={}", pid_log, e),
@@ -125,7 +128,11 @@ impl ThumbWorker {
         });
     }
 
-    fn process_proxy_generate(&self, project_id: &str, clip_ids: &[String]) -> Result<usize, String> {
+    fn process_proxy_generate(
+        &self,
+        project_id: &str,
+        clip_ids: &[String],
+    ) -> Result<usize, String> {
         if self.is_blocked(project_id) {
             return Ok(0);
         }

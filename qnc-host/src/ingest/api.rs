@@ -1,11 +1,11 @@
 use std::path::Path;
 
 use axum::{
-    Json, Router,
     extract::{Query, State},
-    http::{StatusCode, header},
+    http::{header, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
+    Json, Router,
 };
 use serde_json::{json, Value};
 use tokio::fs;
@@ -46,14 +46,29 @@ pub fn router() -> Router<AppState> {
         .route("/api/ingest/state", get(api_ingest_state))
         .route("/api/ingest/source", post(api_ingest_source))
         .route("/api/ingest/selection", post(api_ingest_selection))
-        .route("/api/ingest/selection/toggle", post(api_ingest_selection_toggle))
-        .route("/api/ingest/selection/select-all", post(api_ingest_selection_select_all))
+        .route(
+            "/api/ingest/selection/toggle",
+            post(api_ingest_selection_toggle),
+        )
+        .route(
+            "/api/ingest/selection/select-all",
+            post(api_ingest_selection_select_all),
+        )
         .route("/api/ingest/discover", post(api_ingest_discover))
         .route("/api/ingest/import", post(api_ingest_import))
         .route("/api/ingest/browse", post(api_ingest_browse))
-        .route("/api/ingest/register-files", post(api_ingest_register_files))
-        .route("/api/ingest/thumbs/copy-card", post(api_ingest_thumbs_copy_card))
-        .route("/api/ingest/thumbs/from-proxy", post(api_ingest_thumbs_from_proxy))
+        .route(
+            "/api/ingest/register-files",
+            post(api_ingest_register_files),
+        )
+        .route(
+            "/api/ingest/thumbs/copy-card",
+            post(api_ingest_thumbs_copy_card),
+        )
+        .route(
+            "/api/ingest/thumbs/from-proxy",
+            post(api_ingest_thumbs_from_proxy),
+        )
         .route("/api/ingest/thumbnail", get(api_ingest_thumbnail))
 }
 
@@ -281,7 +296,8 @@ async fn api_ingest_thumbs_from_proxy(
     Json(body): Json<IngestThumbsBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let pid = resolve_project_id(&app, &body.project_id)?;
-    app.ingest_thumbs.enqueue_proxy_generate(&pid, &body.clip_ids);
+    app.ingest_thumbs
+        .enqueue_proxy_generate(&pid, &body.clip_ids);
     Ok(Json(json!({
         "status": "ok",
         "phase": "from_proxy",

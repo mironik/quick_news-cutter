@@ -51,9 +51,13 @@ fn winget_tool(_file_name: &str) -> Option<PathBuf> {
 }
 
 fn sibling_ffprobe(ffmpeg: &Path) -> Option<PathBuf> {
-    ffmpeg
-        .parent()
-        .map(|dir| dir.join(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" }))
+    ffmpeg.parent().map(|dir| {
+        dir.join(if cfg!(windows) {
+            "ffprobe.exe"
+        } else {
+            "ffprobe"
+        })
+    })
 }
 
 fn ffmpeg_candidates() -> Vec<PathBuf> {
@@ -64,21 +68,38 @@ fn ffmpeg_candidates() -> Vec<PathBuf> {
             out.push(p);
         }
     }
-    if let Some(p) = winget_tool(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" }) {
+    if let Some(p) = winget_tool(if cfg!(windows) {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    }) {
         out.push(p);
     }
     if let Ok(root) = std::env::var("QNC_ROOT") {
         let root = PathBuf::from(root.trim());
         if root.as_os_str() != "" {
-            out.push(root.join("bin").join(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" }));
-            out.push(root.join("tools").join("ffmpeg").join("bin").join(if cfg!(windows) {
+            out.push(root.join("bin").join(if cfg!(windows) {
                 "ffmpeg.exe"
             } else {
                 "ffmpeg"
             }));
+            out.push(
+                root.join("tools")
+                    .join("ffmpeg")
+                    .join("bin")
+                    .join(if cfg!(windows) {
+                        "ffmpeg.exe"
+                    } else {
+                        "ffmpeg"
+                    }),
+            );
         }
     }
-    out.push(PathBuf::from(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" }));
+    out.push(PathBuf::from(if cfg!(windows) {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    }));
     out
 }
 
@@ -118,23 +139,38 @@ fn ffprobe_candidates() -> Vec<PathBuf> {
             out.push(probe);
         }
     }
-    if let Some(p) = winget_tool(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" }) {
+    if let Some(p) = winget_tool(if cfg!(windows) {
+        "ffprobe.exe"
+    } else {
+        "ffprobe"
+    }) {
         out.push(p);
     }
     if let Ok(root) = std::env::var("QNC_ROOT") {
         let root = PathBuf::from(root.trim());
         if root.as_os_str() != "" {
-            out.push(root.join("bin").join(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" }));
+            out.push(root.join("bin").join(if cfg!(windows) {
+                "ffprobe.exe"
+            } else {
+                "ffprobe"
+            }));
             out.push(
-                root.join("tools").join("ffmpeg").join("bin").join(if cfg!(windows) {
-                    "ffprobe.exe"
-                } else {
-                    "ffprobe"
-                }),
+                root.join("tools")
+                    .join("ffmpeg")
+                    .join("bin")
+                    .join(if cfg!(windows) {
+                        "ffprobe.exe"
+                    } else {
+                        "ffprobe"
+                    }),
             );
         }
     }
-    out.push(PathBuf::from(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" }));
+    out.push(PathBuf::from(if cfg!(windows) {
+        "ffprobe.exe"
+    } else {
+        "ffprobe"
+    }));
     out
 }
 
@@ -253,26 +289,23 @@ pub fn extract_poster_jpeg(source: &Path, dest: &Path) -> Result<(), String> {
 }
 
 /// Ekstrakcija JPEG-a na zadanoj seek poziciji (fallback za jedan kadar).
-pub fn extract_poster_jpeg_at_seek(source: &Path, dest: &Path, seek_sec: f64) -> Result<(), String> {
+pub fn extract_poster_jpeg_at_seek(
+    source: &Path,
+    dest: &Path,
+    seek_sec: f64,
+) -> Result<(), String> {
     if !source.is_file() {
         return Err(format!("izvor ne postoji: {}", source.display()));
     }
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    let ffmpeg = resolve_ffmpeg().ok_or(
-        "ffmpeg nije instaliran (postavi QNC_FFMPEG ili dodaj u PATH)".to_string(),
-    )?;
+    let ffmpeg = resolve_ffmpeg()
+        .ok_or("ffmpeg nije instaliran (postavi QNC_FFMPEG ili dodaj u PATH)".to_string())?;
     let seek = format!("{:.2}", seek_sec.max(0.0));
     let vf = filmstrip_scale_filter();
     let output = Command::new(&ffmpeg)
-        .args([
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-y",
-            "-ss",
-        ])
+        .args(["-hide_banner", "-loglevel", "error", "-y", "-ss"])
         .arg(&seek)
         .arg("-i")
         .arg(source)

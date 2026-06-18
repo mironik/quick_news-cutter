@@ -7,8 +7,8 @@ use crate::media::{find_card_poster_copy, proxy_poster_source_path, CardPosterKi
 use crate::project::db::ProjectPaths;
 
 use super::db::{
-    copy_card_image_to_poster, ensure_ingest_dirs, get_meta, open_ingest, parse_json, poster_exists,
-    set_thumb_ready_path, set_thumb_status, thumbnail_path,
+    copy_card_image_to_poster, ensure_ingest_dirs, get_meta, open_ingest, parse_json,
+    poster_exists, set_thumb_ready_path, set_thumb_status, thumbnail_path,
 };
 use super::store::reconcile_thumbnail_rows;
 use super::thumb::extract_poster_jpeg;
@@ -33,7 +33,7 @@ pub fn apply_card_poster_copy(
     meta: &mut serde_json::Value,
     card_root: Option<&Path>,
 ) -> bool {
-    let poster = thumbnail_path(&paths, project_id, clip_id);
+    let poster = thumbnail_path(paths, project_id, clip_id);
     if poster_exists(&poster) {
         return true;
     }
@@ -60,9 +60,9 @@ pub fn copy_thumbs_from_card(
     paths: &ProjectPaths,
     project_id: &str,
 ) -> Result<CardThumbCopyResult, String> {
-    ensure_ingest_dirs(&paths, project_id).map_err(|e| e.to_string())?;
-    let conn = open_ingest(&paths, project_id).map_err(|e| e.to_string())?;
-    reconcile_thumbnail_rows(&paths, project_id, &conn).map_err(|e| e.to_string())?;
+    ensure_ingest_dirs(paths, project_id).map_err(|e| e.to_string())?;
+    let conn = open_ingest(paths, project_id).map_err(|e| e.to_string())?;
+    reconcile_thumbnail_rows(paths, project_id, &conn).map_err(|e| e.to_string())?;
 
     let card_root_raw = get_meta(&conn, "card_root", "").unwrap_or_default();
     let card_root = if card_root_raw.trim().is_empty() {
@@ -103,13 +103,7 @@ pub fn copy_thumbs_from_card(
 
         let mut meta = parse_json(&meta_raw, json!({}));
 
-        if apply_card_poster_copy(
-            paths,
-            project_id,
-            &clip_id,
-            &mut meta,
-            card_root.as_deref(),
-        ) {
+        if apply_card_poster_copy(paths, project_id, &clip_id, &mut meta, card_root.as_deref()) {
             conn.execute(
                 "UPDATE ingest_assets SET
                     thumb_status = 'ready',
@@ -121,8 +115,10 @@ pub fn copy_thumbs_from_card(
                 rusqlite::params![
                     source_id,
                     clip_id,
-                    thumbnail_path(&paths, project_id, &clip_id).to_string_lossy(),
-                    meta.get("card_thumb_path").and_then(|v| v.as_str()).unwrap_or(""),
+                    thumbnail_path(paths, project_id, &clip_id).to_string_lossy(),
+                    meta.get("card_thumb_path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(""),
                     serde_json::to_string(&meta).unwrap_or_default()
                 ],
             )
@@ -147,8 +143,8 @@ pub fn generate_thumbs_from_proxy(
     project_id: &str,
     clip_ids: &[String],
 ) -> Result<usize, String> {
-    ensure_ingest_dirs(&paths, project_id).map_err(|e| e.to_string())?;
-    let conn = open_ingest(&paths, project_id).map_err(|e| e.to_string())?;
+    ensure_ingest_dirs(paths, project_id).map_err(|e| e.to_string())?;
+    let conn = open_ingest(paths, project_id).map_err(|e| e.to_string())?;
 
     let card_root_raw = get_meta(&conn, "card_root", "").unwrap_or_default();
     let card_root = if card_root_raw.trim().is_empty() {
@@ -198,16 +194,10 @@ pub fn generate_thumbs_from_proxy(
             }
         }
 
-        let poster = thumbnail_path(&paths, project_id, &clip_id);
+        let poster = thumbnail_path(paths, project_id, &clip_id);
         let mut meta = parse_json(&meta_raw, json!({}));
 
-        if apply_card_poster_copy(
-            paths,
-            project_id,
-            &clip_id,
-            &mut meta,
-            card_root.as_deref(),
-        ) {
+        if apply_card_poster_copy(paths, project_id, &clip_id, &mut meta, card_root.as_deref()) {
             conn.execute(
                 "UPDATE ingest_assets SET
                     thumb_status = 'ready',
@@ -219,8 +209,10 @@ pub fn generate_thumbs_from_proxy(
                 rusqlite::params![
                     source_id,
                     clip_id,
-                    thumbnail_path(&paths, project_id, &clip_id).to_string_lossy(),
-                    meta.get("card_thumb_path").and_then(|v| v.as_str()).unwrap_or(""),
+                    thumbnail_path(paths, project_id, &clip_id).to_string_lossy(),
+                    meta.get("card_thumb_path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(""),
                     serde_json::to_string(&meta).unwrap_or_default()
                 ],
             )

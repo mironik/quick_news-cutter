@@ -1,9 +1,9 @@
 use axum::{
-    Json, Router,
     extract::{Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
+    Json, Router,
 };
 use serde_json::{json, Value};
 
@@ -114,12 +114,7 @@ async fn api_thumbnail(
     }
     let seek = if q.seek > 0.0 { q.seek } else { 0.5 };
     if q.frame_index >= 0 {
-        if let Some(path) = frame_path_for_index(
-            &app.project.paths,
-            &pid,
-            clip_id,
-            q.frame_index,
-        ) {
+        if let Some(path) = frame_path_for_index(&app.project.paths, &pid, clip_id, q.frame_index) {
             return serve_file(path).await;
         }
     }
@@ -148,7 +143,10 @@ async fn api_timeline_build(
         return Err((StatusCode::BAD_REQUEST, "clip_id je prazan".into()));
     }
     if let Some(existing) = get_filmstrip(&app.project.paths, &pid, clip_id) {
-        let st = existing.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        let st = existing
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if st == "ready" {
             return Ok(Json(json!({
                 "status": "ready",
@@ -226,8 +224,15 @@ fn internal(e: String) -> (StatusCode, String) {
 }
 
 async fn serve_file(path: std::path::PathBuf) -> Result<Response, (StatusCode, String)> {
-    let data = tokio::fs::read(&path).await.map_err(|e| internal(e.to_string()))?;
-    let media_type = if path.extension().and_then(|e| e.to_str()).map(|s| s.eq_ignore_ascii_case("mp4")).unwrap_or(false) {
+    let data = tokio::fs::read(&path)
+        .await
+        .map_err(|e| internal(e.to_string()))?;
+    let media_type = if path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.eq_ignore_ascii_case("mp4"))
+        .unwrap_or(false)
+    {
         "video/mp4"
     } else {
         "image/jpeg"

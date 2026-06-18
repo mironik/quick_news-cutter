@@ -1,7 +1,7 @@
-use rusqlite::{Connection, params};
-use serde_json::{Value, json};
+use rusqlite::{params, Connection};
+use serde_json::{json, Value};
 
-use super::db::{ProjectPaths, now_str, open_project};
+use super::db::{now_str, open_project, ProjectPaths};
 
 fn new_id(prefix: &str) -> String {
     format!("{prefix}_{}", uuid::Uuid::new_v4().simple())
@@ -22,7 +22,11 @@ pub fn start_session(
     } else {
         display_name.trim()
     };
-    let role = if role.trim().is_empty() { "editor" } else { role.trim() };
+    let role = if role.trim().is_empty() {
+        "editor"
+    } else {
+        role.trim()
+    };
     let station_id = if station_id.trim().is_empty() {
         "unknown-station"
     } else {

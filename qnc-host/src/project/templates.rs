@@ -1,12 +1,12 @@
 use std::fs;
 
-use rusqlite::{Connection, params};
-use serde_json::{Value, json};
+use rusqlite::{params, Connection};
+use serde_json::{json, Value};
 
 use super::db::{
-    ProjectPaths, deep_merge, ensure_project_dirs_at, export_dir_from_settings, export_projects_json,
-    json_string, now_str, open_project, parse_json, project_dir_in_root, project_root_from_settings,
-    slug_id,
+    deep_merge, ensure_project_dirs_at, export_dir_from_settings, export_projects_json,
+    json_string, now_str, open_project, parse_json, project_dir_in_root,
+    project_root_from_settings, slug_id, ProjectPaths,
 };
 use super::store::{record_project_opened, set_active_project_id, upsert_project_meta};
 
@@ -27,7 +27,10 @@ fn load_seed(seed_path: &std::path::Path) -> SeedFile {
     serde_json::from_str(&raw).unwrap_or(fallback)
 }
 
-pub fn ensure_templates_seeded(conn: &Connection, seed_path: &std::path::Path) -> rusqlite::Result<()> {
+pub fn ensure_templates_seeded(
+    conn: &Connection,
+    seed_path: &std::path::Path,
+) -> rusqlite::Result<()> {
     let seed = load_seed(seed_path);
     let now = now_str();
     for src in seed.source_templates {
@@ -55,12 +58,18 @@ pub fn ensure_templates_seeded(conn: &Connection, seed_path: &std::path::Path) -
         )?;
     }
     for tpl in seed.project_templates {
-        let id = tpl.get("template_id").and_then(|v| v.as_str()).unwrap_or("");
+        let id = tpl
+            .get("template_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if id.is_empty() {
             continue;
         }
         let settings = tpl.get("settings").cloned().unwrap_or_else(|| json!({}));
-        let source_ids = tpl.get("source_template_ids").cloned().unwrap_or_else(|| json!([]));
+        let source_ids = tpl
+            .get("source_template_ids")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
         conn.execute(
             "INSERT INTO project_templates
                 (template_id, name, description, system, settings_json, source_template_ids_json, created_at, updated_at)
@@ -120,10 +129,13 @@ pub fn list_project_templates(conn: &Connection) -> rusqlite::Result<Vec<Value>>
     rows.collect()
 }
 
-pub fn get_project_template(conn: &Connection, template_id: &str) -> rusqlite::Result<Option<Value>> {
+pub fn get_project_template(
+    conn: &Connection,
+    template_id: &str,
+) -> rusqlite::Result<Option<Value>> {
     let mut stmt = conn.prepare("SELECT * FROM project_templates WHERE template_id = ?1")?;
     let mut rows = stmt.query_map(params![template_id.trim()], template_row)?;
-    Ok(rows.next().transpose()?)
+    rows.next().transpose()
 }
 
 pub fn get_project_settings(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Value> {
@@ -210,7 +222,11 @@ pub fn save_project_settings(
             pid,
             template_id,
             json_string(settings),
-            if created_by_val.is_empty() { user_id } else { &created_by_val },
+            if created_by_val.is_empty() {
+                user_id
+            } else {
+                &created_by_val
+            },
             user_id,
             created_at.unwrap_or_else(|| now.clone()),
             now,
@@ -241,7 +257,10 @@ pub fn create_user_template(
     };
     let source_ids = source_template_ids
         .cloned()
-        .or_else(|| base.as_ref().and_then(|b| b.get("source_template_ids").cloned()))
+        .or_else(|| {
+            base.as_ref()
+                .and_then(|b| b.get("source_template_ids").cloned())
+        })
         .unwrap_or_else(|| json!([]));
     let template_id = format!("tpl_user_{}_{}", slug_id(name), now_str());
     let now = now_str();
@@ -260,9 +279,8 @@ pub fn create_user_template(
             now,
         ],
     )?;
-    get_project_template(conn, &template_id)?.ok_or_else(|| {
-        rusqlite::Error::InvalidParameterName("template insert failed".into())
-    })
+    get_project_template(conn, &template_id)?
+        .ok_or_else(|| rusqlite::Error::InvalidParameterName("template insert failed".into()))
 }
 
 pub fn create_project_from_template(
@@ -276,9 +294,16 @@ pub fn create_project_from_template(
     let template = get_project_template(global, template_id)?
         .ok_or_else(|| rusqlite::Error::QueryReturnedNoRows)?;
     let label = name.trim();
-    let label = if label.is_empty() { "QNC projekt" } else { label };
+    let label = if label.is_empty() {
+        "QNC projekt"
+    } else {
+        label
+    };
     let project_id = slug_id(label);
-    let mut settings = template.get("settings").cloned().unwrap_or_else(|| json!({}));
+    let mut settings = template
+        .get("settings")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     if let Some(ov) = settings_override {
         settings = deep_merge(&settings, ov);
     }
@@ -293,18 +318,20 @@ pub fn create_project_from_template(
         );
         map.insert(
             "source_template_ids".into(),
-            template.get("source_template_ids").cloned().unwrap_or_else(|| json!([])),
+            template
+                .get("source_template_ids")
+                .cloned()
+                .unwrap_or_else(|| json!([])),
         );
     }
-    let projects_root = project_root_from_settings(&settings).unwrap_or_else(|| paths.projects_root.clone());
+    let projects_root =
+        project_root_from_settings(&settings).unwrap_or_else(|| paths.projects_root.clone());
     let project_dir = project_dir_in_root(&projects_root, &project_id);
-    ensure_project_dirs_at(&project_dir).map_err(|e| {
-        rusqlite::Error::ToSqlConversionFailure(Box::new(e))
-    })?;
+    ensure_project_dirs_at(&project_dir)
+        .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
     if let Some(export_dir) = export_dir_from_settings(&settings) {
-        fs::create_dir_all(export_dir).map_err(|e| {
-            rusqlite::Error::ToSqlConversionFailure(Box::new(e))
-        })?;
+        fs::create_dir_all(export_dir)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
     }
     upsert_project_meta(global, &project_id, label, None, Some(&project_dir))?;
     let tpl_id = template
@@ -330,7 +357,10 @@ pub fn create_project_from_template(
 }
 
 fn workflow_tabs_from_settings(settings: &Value) -> (Vec<String>, Value) {
-    let workspace = settings.get("workspace").cloned().unwrap_or_else(|| json!({}));
+    let workspace = settings
+        .get("workspace")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let mut tabs = workspace
         .get("tabs")
         .and_then(|v| v.as_array())
@@ -376,9 +406,16 @@ fn step_id_for_tab(tab_id: &str) -> String {
     format!("step_{tab_id}")
 }
 
-fn save_template_snapshot(conn: &Connection, project_id: &str, template: &Value) -> rusqlite::Result<()> {
+fn save_template_snapshot(
+    conn: &Connection,
+    project_id: &str,
+    template: &Value,
+) -> rusqlite::Result<()> {
     let now = now_str();
-    let template_id = template.get("template_id").and_then(|v| v.as_str()).unwrap_or("");
+    let template_id = template
+        .get("template_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let template_name = template.get("name").and_then(|v| v.as_str()).unwrap_or("");
     conn.execute(
         "INSERT INTO project_template_snapshot
@@ -388,14 +425,27 @@ fn save_template_snapshot(conn: &Connection, project_id: &str, template: &Value)
             template_id = excluded.template_id,
             template_name = excluded.template_name,
             snapshot_json = excluded.snapshot_json",
-        params![project_id, template_id, template_name, json_string(template), now],
+        params![
+            project_id,
+            template_id,
+            template_name,
+            json_string(template),
+            now
+        ],
     )?;
     Ok(())
 }
 
-fn write_project_workflow(conn: &Connection, project_id: &str, settings: &Value) -> rusqlite::Result<()> {
+fn write_project_workflow(
+    conn: &Connection,
+    project_id: &str,
+    settings: &Value,
+) -> rusqlite::Result<()> {
     let (tabs, labels) = workflow_tabs_from_settings(settings);
-    conn.execute("DELETE FROM project_workflow_steps WHERE project_id = ?1", params![project_id])?;
+    conn.execute(
+        "DELETE FROM project_workflow_steps WHERE project_id = ?1",
+        params![project_id],
+    )?;
     let mut entry_step_id = String::new();
     let mut previous_step_id = String::new();
     for (idx, tab_id) in tabs.iter().enumerate() {
@@ -450,7 +500,11 @@ fn write_project_workflow(conn: &Connection, project_id: &str, settings: &Value)
     Ok(())
 }
 
-fn ensure_project_workflow(conn: &Connection, project_id: &str, settings: &Value) -> rusqlite::Result<()> {
+fn ensure_project_workflow(
+    conn: &Connection,
+    project_id: &str,
+    settings: &Value,
+) -> rusqlite::Result<()> {
     let count: i64 = conn.query_row(
         "SELECT COUNT(*) FROM project_workflow_steps WHERE project_id = ?1",
         params![project_id],

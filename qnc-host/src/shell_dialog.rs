@@ -93,13 +93,7 @@ pub fn pick_media_files(initial: &Path) -> Option<Vec<PathBuf>> {
          if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{ $d.FileNames }}"
     );
     let out = Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-STA",
-            "-Command",
-            &script,
-        ])
+        .args(["-NoProfile", "-NonInteractive", "-STA", "-Command", &script])
         .output()
         .ok()?;
     if !out.status.success() {
@@ -132,7 +126,9 @@ pub fn pick_media_files(initial: &Path) -> Option<Vec<PathBuf>> {
         .set_title("QNC — odaberi medijske datoteke")
         .add_filter(
             "Video / MXF",
-            &["mxf", "mov", "mp4", "mts", "m2ts", "avi", "mkv", "m4v", "r3d"],
+            &[
+                "mxf", "mov", "mp4", "mts", "m2ts", "avi", "mkv", "m4v", "r3d",
+            ],
         )
         .add_filter("MXF", &["mxf"]);
     if initial.is_dir() {

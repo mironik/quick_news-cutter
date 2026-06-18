@@ -1,12 +1,13 @@
 use std::path::Path;
 
-use serde_json::{Map, Value, json};
+use serde_json::{json, Map, Value};
 
 use crate::config::read_json;
 
 pub fn list_global(components_root: &Path) -> Value {
     let registry_path = components_root.join("registry.json");
-    let reg = read_json(&registry_path).unwrap_or_else(|| json!({ "version": 1, "components": {} }));
+    let reg =
+        read_json(&registry_path).unwrap_or_else(|| json!({ "version": 1, "components": {} }));
     let version = reg.get("version").cloned().unwrap_or(json!(1));
     let components = reg
         .get("components")

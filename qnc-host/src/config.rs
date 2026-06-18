@@ -60,7 +60,9 @@ impl AppConfig {
                 cfg.api_port = p;
             }
         }
-        if let Ok(raw) = std::env::var("QNC_PROJECTS_ROOT").or_else(|_| std::env::var("QNC_PROJEKTI_ROOT")) {
+        if let Ok(raw) =
+            std::env::var("QNC_PROJECTS_ROOT").or_else(|_| std::env::var("QNC_PROJEKTI_ROOT"))
+        {
             let trimmed = raw.trim();
             if !trimmed.is_empty() {
                 cfg.projects_root = Some(trimmed.to_string());
@@ -132,7 +134,11 @@ pub fn default_projects_root() -> PathBuf {
             return PathBuf::from(base).join("qnc").join("projects");
         }
         if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home).join(".local").join("share").join("qnc").join("projects");
+            return PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("qnc")
+                .join("projects");
         }
     }
 
@@ -161,7 +167,10 @@ pub fn save_projects_root(root: &Path, projects_root: &str) -> Result<Value, Str
     let Some(obj) = doc.as_object_mut() else {
         return Err("Neispravan shell_config.json".into());
     };
-    obj.insert("projects_root".into(), Value::String(projects_root.trim().to_string()));
+    obj.insert(
+        "projects_root".into(),
+        Value::String(projects_root.trim().to_string()),
+    );
     fs::create_dir_all(root.join("data")).map_err(|e| e.to_string())?;
     let text = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
     fs::write(&path, text).map_err(|e| e.to_string())?;

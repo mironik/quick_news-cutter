@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use axum::{
-    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
+    Json, Router,
 };
 use tower_http::services::ServeDir;
 use tracing::info;
@@ -77,10 +77,16 @@ async fn main() {
         .route("/api/shell/diagnostics", get(api_shell_diagnostics))
         .route("/api/shell/tabs", get(api_shell_tabs))
         .route("/api/shell/components", get(api_shell_components))
-        .route("/api/shell/components/sync", post(api_shell_components_sync))
+        .route(
+            "/api/shell/components/sync",
+            post(api_shell_components_sync),
+        )
         .route("/api/shell/pick-directory", post(api_shell_pick_directory))
         .route("/api/shell/pick-files", post(api_shell_pick_files))
-        .route("/api/shell/projects-root", get(api_shell_projects_root).post(api_shell_projects_root_save))
+        .route(
+            "/api/shell/projects-root",
+            get(api_shell_projects_root).post(api_shell_projects_root_save),
+        )
         .route("/api/modules", get(api_modules_list))
         .route("/api/modules/{module_id}/enable", post(api_module_enable))
         .route("/app", get(app_page))
@@ -149,8 +155,7 @@ async fn api_shell_diagnostics(State(state): State<AppState>) -> Json<serde_json
                 .map(str::to_string)
         })
         .collect();
-    let components_catalog =
-        components::list_global(&state.root.join("app").join("components"));
+    let components_catalog = components::list_global(&state.root.join("app").join("components"));
     let components_count = components_catalog
         .get("components")
         .and_then(|v| v.as_object())
@@ -235,11 +240,7 @@ struct PickDirectoryBody {
 async fn api_shell_pick_directory(
     Json(body): Json<PickDirectoryBody>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let initial = body
-        .initial_dir
-        .unwrap_or_default()
-        .trim()
-        .to_string();
+    let initial = body.initial_dir.unwrap_or_default().trim().to_string();
     let picked = tokio::task::spawn_blocking(move || {
         let start = std::path::PathBuf::from(&initial);
         shell_dialog::pick_directory(&start)
@@ -263,11 +264,7 @@ struct PickFilesBody {
 async fn api_shell_pick_files(
     Json(body): Json<PickFilesBody>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let initial = body
-        .initial_dir
-        .unwrap_or_default()
-        .trim()
-        .to_string();
+    let initial = body.initial_dir.unwrap_or_default().trim().to_string();
     let picked = tokio::task::spawn_blocking(move || {
         let start = std::path::PathBuf::from(&initial);
         shell_dialog::pick_media_files(&start)
@@ -276,7 +273,10 @@ async fn api_shell_pick_files(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     match picked {
         Some(paths) => {
-            let out: Vec<String> = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+            let out: Vec<String> = paths
+                .iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect();
             Ok(Json(serde_json::json!({
                 "status": "ok",
                 "paths": out,
@@ -305,11 +305,19 @@ async fn api_module_enable(
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let manifests = tabs::list_tab_manifests(&state.root.join("plugins"));
     let mut store = state.modules.write().expect("module lock");
-    match store.set_enabled(&state.root.join("data"), &manifests, &module_id, body.enabled) {
-        Ok(module) => Ok(Json(serde_json::json!({ "status": "ok", "module": module }))),
-        Err(modules::ModuleError::NotFound) => {
-            Err((StatusCode::NOT_FOUND, format!("Modul '{module_id}' ne postoji.")))
-        }
+    match store.set_enabled(
+        &state.root.join("data"),
+        &manifests,
+        &module_id,
+        body.enabled,
+    ) {
+        Ok(module) => Ok(Json(
+            serde_json::json!({ "status": "ok", "module": module }),
+        )),
+        Err(modules::ModuleError::NotFound) => Err((
+            StatusCode::NOT_FOUND,
+            format!("Modul '{module_id}' ne postoji."),
+        )),
         Err(modules::ModuleError::NotRemovable) => Err((
             StatusCode::FORBIDDEN,
             format!("Modul '{module_id}' je sistemski i ne moze se iskljuciti."),

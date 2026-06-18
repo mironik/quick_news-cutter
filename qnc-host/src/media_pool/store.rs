@@ -7,19 +7,9 @@ use super::db::{pool_summary, sync_pool_from_ingest_db};
 use super::ingest_db::read_imported_clips;
 
 pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Value, String> {
-    ensure_project_dirs(
-        paths,
-        project_id,
-    )
-    .map_err(|e| e.to_string())?;
-    sync_pool_from_ingest_db(
-        paths,
-        project_id,
-    )?;
-    let imported = read_imported_clips(
-        paths,
-        project_id,
-    )?;
+    ensure_project_dirs(paths, project_id).map_err(|e| e.to_string())?;
+    sync_pool_from_ingest_db(paths, project_id)?;
+    let imported = read_imported_clips(paths, project_id)?;
     let mut clips: Vec<Value> = Vec::new();
     for row in imported {
         let clip_id = row
@@ -59,12 +49,11 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
             "card_thumb_path": card_thumb_path,
             "duration_sec": duration,
         });
-        if let Some(fs) = get_filmstrip(
-            paths,
-            project_id,
-            &clip_id,
-        ) {
-            let st = fs.get("status").and_then(|v| v.as_str()).unwrap_or("missing");
+        if let Some(fs) = get_filmstrip(paths, project_id, &clip_id) {
+            let st = fs
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("missing");
             if let Some(obj) = clip.as_object_mut() {
                 obj.insert("filmstrip_status".into(), json!(st));
                 if let Some(err) = fs
@@ -78,20 +67,13 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
                     if let Some(dur) = fs.get("duration_sec") {
                         obj.insert("timeline_duration_sec".into(), dur.clone());
                     }
-                    let frames = list_frames_for_clip(
-                        paths,
-                        project_id,
-                        &clip_id,
-                    )
-                    .unwrap_or_default();
+                    let frames =
+                        list_frames_for_clip(paths, project_id, &clip_id).unwrap_or_default();
                     if !frames.is_empty() {
                         let seeks: Vec<Value> = frames
                             .iter()
                             .map(|f| {
-                                json!(f
-                                    .get("seek_sec")
-                                    .and_then(|v| v.as_f64())
-                                    .unwrap_or(0.0))
+                                json!(f.get("seek_sec").and_then(|v| v.as_f64()).unwrap_or(0.0))
                             })
                             .collect();
                         obj.insert("timeline_seeks".into(), json!(seeks));
@@ -114,11 +96,5 @@ pub fn mark_filmstrip_building(
     project_id: &str,
     clip_id: &str,
 ) -> Result<(), String> {
-    crate::filmstrip::mark_filmstrip(
-        paths,
-        project_id,
-        clip_id,
-        "building",
-        "",
-    )
+    crate::filmstrip::mark_filmstrip(paths, project_id, clip_id, "building", "")
 }

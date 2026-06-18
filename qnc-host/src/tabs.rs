@@ -18,7 +18,7 @@ pub struct PluginScanResult {
 
 pub fn list_tab_manifests(plugins_root: &Path) -> Vec<Value> {
     let mut scan = scan_plugin_manifests(plugins_root);
-    scan.manifests.sort_by(|a, b| sort_key(a).cmp(&sort_key(b)));
+    scan.manifests.sort_by_key(sort_key);
     scan.manifests
 }
 
@@ -48,22 +48,14 @@ pub fn scan_plugin_manifests(plugins_root: &Path) -> PluginScanResult {
         let raw = match fs::read_to_string(&manifest_path) {
             Ok(raw) => raw,
             Err(e) => {
-                record_manifest_error(
-                    &mut errors,
-                    &manifest_path,
-                    format!("read failed: {e}"),
-                );
+                record_manifest_error(&mut errors, &manifest_path, format!("read failed: {e}"));
                 continue;
             }
         };
         let mut data = match serde_json::from_str::<Value>(&raw) {
             Ok(v) => v,
             Err(e) => {
-                record_manifest_error(
-                    &mut errors,
-                    &manifest_path,
-                    format!("invalid JSON: {e}"),
-                );
+                record_manifest_error(&mut errors, &manifest_path, format!("invalid JSON: {e}"));
                 continue;
             }
         };
@@ -126,10 +118,7 @@ fn sort_key(item: &Value) -> (i32, i32, String) {
     } else {
         0
     };
-    let priority = item
-        .get("priority")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0) as i32;
+    let priority = item.get("priority").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
     let label = item
         .get("label")
         .and_then(|v| v.as_str())

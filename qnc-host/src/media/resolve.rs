@@ -103,10 +103,7 @@ pub fn resolve_existing_file(path: &Path) -> Option<PathBuf> {
         return Some(path.to_path_buf());
     }
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let stem = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     if stem.is_empty() {
         return None;
     }
@@ -175,7 +172,12 @@ pub fn find_card_thumb_near_media(meta: &Value) -> Option<PathBuf> {
 }
 
 fn find_card_file_near_media(meta: &Value, extensions: &[&str]) -> Option<PathBuf> {
-    for key in ["original_path", "proxy_path", "source_path", "project_proxy_path"] {
+    for key in [
+        "original_path",
+        "proxy_path",
+        "source_path",
+        "project_proxy_path",
+    ] {
         if let Some(p) = path_from_meta(meta, key) {
             if let Some(th) = find_card_file_for_media_path(&p, extensions) {
                 return Some(th);
@@ -198,7 +200,10 @@ fn is_thm_path(path: &Path) -> bool {
 }
 
 /// Proces 1: prvo THM, zatim JPG/ JPEG na kartici.
-pub fn find_card_poster_copy(meta: &Value, card_root: Option<&Path>) -> Option<(PathBuf, CardPosterKind)> {
+pub fn find_card_poster_copy(
+    meta: &Value,
+    card_root: Option<&Path>,
+) -> Option<(PathBuf, CardPosterKind)> {
     if let Some(p) = card_thumb_path(meta) {
         let kind = if is_thm_path(&p) {
             CardPosterKind::Thm
@@ -244,10 +249,7 @@ fn find_card_file_under_card_root(
             if let Some(th) = find_card_file_for_media_path(&p, extensions) {
                 return Some(th);
             }
-            let stem = p
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("");
+            let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
             let base = clip_base_stem(stem);
             if let Some(th) = find_card_file_in_tree(root, 8, &base, extensions) {
                 return Some(th);
@@ -271,7 +273,9 @@ fn find_card_file_in_tree(
         if depth >= max_depth {
             continue;
         }
-        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -424,7 +428,12 @@ pub fn import_source_path(meta: &Value, project: &Value) -> Option<PathBuf> {
         }
         return None;
     }
-    for key in ["project_proxy_path", "proxy_path", "original_path", "source_path"] {
+    for key in [
+        "project_proxy_path",
+        "proxy_path",
+        "original_path",
+        "source_path",
+    ] {
         if let Some(p) = path_from_meta(meta, key) {
             if p.is_file() {
                 return Some(p);
@@ -451,10 +460,8 @@ pub fn import_display_label(meta: &Value, project: &Value) -> String {
         "mts" | "m2ts" => "AVCHD".to_string(),
         other => other.to_ascii_uppercase(),
     };
-    let is_proxy = path_from_meta(meta, "proxy_path")
-        .is_some_and(|p| paths_same_file(&p, &path))
-        || path_from_meta(meta, "project_proxy_path")
-            .is_some_and(|p| paths_same_file(&p, &path))
+    let is_proxy = path_from_meta(meta, "proxy_path").is_some_and(|p| paths_same_file(&p, &path))
+        || path_from_meta(meta, "project_proxy_path").is_some_and(|p| paths_same_file(&p, &path))
         || is_proxy_media_path(&path);
     if is_proxy {
         format!("Uvoz: proxy {}", kind)
@@ -587,10 +594,7 @@ pub fn group_media_files(files: &[PathBuf], thumb_files: &[PathBuf]) -> Vec<Medi
             .parent()
             .map(|p| p.to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."));
-        let stem = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("clip");
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("clip");
         let base = clip_base_stem(stem);
         let clip_id = clip_id_from_stem(&base);
 
@@ -831,22 +835,22 @@ mod tests {
         assert_eq!(poster_video_source_path(&meta_proxy).unwrap(), proxy);
 
         let thm = touch(&dir, "Clip0001.thm");
-        assert!(
-            card_poster_image_path(&meta_proxy)
-                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().eq_ignore_ascii_case("Clip0001.thm")))
-                .unwrap_or(false)
-        );
+        assert!(card_poster_image_path(&meta_proxy)
+            .and_then(|p| p
+                .file_name()
+                .map(|n| n.to_string_lossy().eq_ignore_ascii_case("Clip0001.thm")))
+            .unwrap_or(false));
         assert_eq!(poster_video_source_path(&meta_proxy).unwrap(), proxy);
 
         let meta_with_thm = json!({
             "original_path": mxf.to_string_lossy(),
             "card_thumb_path": thm.to_string_lossy(),
         });
-        assert!(
-            card_poster_image_path(&meta_with_thm)
-                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().eq_ignore_ascii_case("Clip0001.thm")))
-                .unwrap_or(false)
-        );
+        assert!(card_poster_image_path(&meta_with_thm)
+            .and_then(|p| p
+                .file_name()
+                .map(|n| n.to_string_lossy().eq_ignore_ascii_case("Clip0001.thm")))
+            .unwrap_or(false));
 
         let _ = fs::remove_dir_all(&dir);
     }

@@ -34,14 +34,12 @@ pub fn build_for_clip(
     }
 
     if let Some(existing) = get_filmstrip(paths, project_id, clip_id) {
-        let status = existing.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        let status = existing
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if status == "ready" {
-            let frames = list_frames_for_clip(
-                paths,
-                project_id,
-                clip_id,
-            )
-            .unwrap_or_default();
+            let frames = list_frames_for_clip(paths, project_id, clip_id).unwrap_or_default();
             let all_exist = frames.iter().all(|f| {
                 f.get("path")
                     .and_then(|v| v.as_str())
@@ -76,8 +74,7 @@ pub fn build_for_clip(
     if !missing.is_empty() {
         let batch_seeks: Vec<f64> = missing.iter().map(|i| seeks[*i]).collect();
         let batch_outs: Vec<PathBuf> = missing.iter().map(|i| output_paths[*i].clone()).collect();
-        let batch_results =
-            extract_filmstrip_batch_at_seeks(media, &batch_seeks, &batch_outs);
+        let batch_results = extract_filmstrip_batch_at_seeks(media, &batch_seeks, &batch_outs);
         for (idx, result) in missing.iter().zip(batch_results) {
             if let Err(exc) = result {
                 errors.push(format!("{}s: {exc}", seeks[*idx]));

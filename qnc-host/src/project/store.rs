@@ -4,12 +4,12 @@ use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
-use rusqlite::{Connection, params};
-use serde_json::{Value, json};
+use rusqlite::{params, Connection};
+use serde_json::{json, Value};
 
 use super::db::{
-    ProjectPaths, ensure_project_dirs, ensure_project_store, export_projects_json, get_setting,
-    now_str, project_dir_in_root, set_setting, slug_id,
+    ensure_project_dirs, ensure_project_store, export_projects_json, get_setting, now_str,
+    project_dir_in_root, set_setting, slug_id, ProjectPaths,
 };
 
 pub fn get_active_project_id(conn: &Connection) -> rusqlite::Result<String> {
@@ -112,11 +112,18 @@ pub fn upsert_project_meta(
 }
 
 pub fn delete_project_row(conn: &Connection, project_id: &str) -> rusqlite::Result<()> {
-    conn.execute("DELETE FROM projects WHERE project_id = ?", params![project_id])?;
+    conn.execute(
+        "DELETE FROM projects WHERE project_id = ?",
+        params![project_id],
+    )?;
     Ok(())
 }
 
-pub fn create_project(conn: &Connection, paths: &ProjectPaths, name: Option<&str>) -> rusqlite::Result<Value> {
+pub fn create_project(
+    conn: &Connection,
+    paths: &ProjectPaths,
+    name: Option<&str>,
+) -> rusqlite::Result<Value> {
     let list = list_projects(conn)?;
     let label = name
         .map(str::trim)
@@ -127,7 +134,13 @@ pub fn create_project(conn: &Connection, paths: &ProjectPaths, name: Option<&str
     let created_at = now_str();
     let project_dir = project_dir_in_root(&paths.projects_root, &project_id);
     ensure_project_dirs(paths, &project_id).ok();
-    upsert_project_meta(conn, &project_id, &label, Some(&created_at), Some(&project_dir))?;
+    upsert_project_meta(
+        conn,
+        &project_id,
+        &label,
+        Some(&created_at),
+        Some(&project_dir),
+    )?;
     record_project_opened(conn, &project_id)?;
     set_active_project_id(conn, &project_id)?;
     export_projects_json(paths, conn);
@@ -139,7 +152,11 @@ pub fn create_project(conn: &Connection, paths: &ProjectPaths, name: Option<&str
     }))
 }
 
-pub fn open_project(conn: &Connection, paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Option<Value>> {
+pub fn open_project(
+    conn: &Connection,
+    paths: &ProjectPaths,
+    project_id: &str,
+) -> rusqlite::Result<Option<Value>> {
     let pid = project_id.trim();
     for p in list_projects(conn)? {
         if p.get("project_id").and_then(|v| v.as_str()) == Some(pid) {
@@ -182,10 +199,7 @@ pub fn delete_projects(
             remove_project_dir(&dir).map_err(|e| {
                 rusqlite::Error::SqliteFailure(
                     rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_IOERR),
-                    Some(format!(
-                        "{} — zatvori QNC host i pokušaj ponovo.",
-                        e
-                    )),
+                    Some(format!("{} — zatvori QNC host i pokušaj ponovo.", e)),
                 )
             })?;
             if dir.exists() {
@@ -239,7 +253,10 @@ fn remove_project_dir(dir: &Path) -> Result<(), String> {
 }
 
 /// Direktoriji u `Projekti/` koji nemaju red u globalnoj bazi.
-pub fn orphan_project_dir_names(conn: &Connection, paths: &ProjectPaths) -> rusqlite::Result<Vec<String>> {
+pub fn orphan_project_dir_names(
+    conn: &Connection,
+    paths: &ProjectPaths,
+) -> rusqlite::Result<Vec<String>> {
     let projects = list_projects(conn)?;
     let known: HashSet<String> = projects
         .iter()

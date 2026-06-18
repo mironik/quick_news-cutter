@@ -1,5 +1,5 @@
 use rusqlite::Connection;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 const UI_STATE_KEY: &str = "project_tab_ui_state";
 
@@ -51,7 +51,11 @@ fn normalize_ui_state_in_place(state: &mut Value) {
                 }
             }
         }
-        if !obj.get("settings_override").map(|v| v.is_object()).unwrap_or(false) {
+        if !obj
+            .get("settings_override")
+            .map(|v| v.is_object())
+            .unwrap_or(false)
+        {
             obj.insert("settings_override".into(), json!({}));
         }
     }
@@ -99,7 +103,12 @@ fn merge_ui_patch(target: &mut Value, patch: &Value) {
     }
 }
 
-fn set_nested_path(root: &mut serde_json::Map<String, Value>, top_key: &str, path: &str, value: Value) {
+fn set_nested_path(
+    root: &mut serde_json::Map<String, Value>,
+    top_key: &str,
+    path: &str,
+    value: Value,
+) {
     let parts: Vec<&str> = path.split('.').filter(|p| !p.is_empty()).collect();
     if parts.is_empty() {
         return;

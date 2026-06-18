@@ -1,17 +1,17 @@
 use std::sync::Mutex;
 
 use axum::{
-    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::{get, post},
+    Json, Router,
 };
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::app_state::AppState;
 
 use super::collab::{start_session, touch_session};
-use super::db::{ProjectPaths, open_global};
+use super::db::{open_global, ProjectPaths};
 use super::store::{
     cleanup_orphan_project_dirs, create_project, delete_projects, get_active_project_id,
     list_projects, open_project, orphan_project_dir_names,
@@ -44,7 +44,10 @@ impl ProjectState {
     where
         F: FnOnce(&rusqlite::Connection) -> Result<T, String>,
     {
-        let guard = self.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let guard = self
+            .db
+            .lock()
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         f(&guard).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
     }
 
@@ -79,21 +82,47 @@ impl ProjectState {
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/api/projects/ui-state", get(api_projects_ui_state_get).post(api_projects_ui_state_save))
-        .route("/api/projects", get(api_projects_list).post(api_projects_create))
+        .route(
+            "/api/projects/ui-state",
+            get(api_projects_ui_state_get).post(api_projects_ui_state_save),
+        )
+        .route(
+            "/api/projects",
+            get(api_projects_list).post(api_projects_create),
+        )
         .route("/api/projects/open", post(api_projects_open))
         .route("/api/projects/delete", post(api_projects_delete))
-        .route("/api/projects/cleanup-orphans", post(api_projects_cleanup_orphans))
-        .route("/api/projects/from-template", post(api_projects_from_template))
-        .route("/api/projects/{project_id}/settings", get(api_project_settings_get).post(api_project_settings_save))
-        .route("/api/projects/{project_id}/workspace", get(api_project_workspace_get))
-        .route("/api/project-templates", get(api_project_templates_list).post(api_project_template_create))
-        .route("/api/project-templates/{template_id}", get(api_project_template_get))
+        .route(
+            "/api/projects/cleanup-orphans",
+            post(api_projects_cleanup_orphans),
+        )
+        .route(
+            "/api/projects/from-template",
+            post(api_projects_from_template),
+        )
+        .route(
+            "/api/projects/{project_id}/settings",
+            get(api_project_settings_get).post(api_project_settings_save),
+        )
+        .route(
+            "/api/projects/{project_id}/workspace",
+            get(api_project_workspace_get),
+        )
+        .route(
+            "/api/project-templates",
+            get(api_project_templates_list).post(api_project_template_create),
+        )
+        .route(
+            "/api/project-templates/{template_id}",
+            get(api_project_template_get),
+        )
         .route("/api/collab/session", post(api_collab_session))
         .route("/api/collab/touch", post(api_collab_touch))
 }
 
-async fn api_projects_ui_state_get(State(app): State<AppState>) -> Result<Json<Value>, (StatusCode, String)> {
+async fn api_projects_ui_state_get(
+    State(app): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, String)> {
     app.project.with_db(|conn| {
         let ui_state = get_ui_state(conn).map_err(|e| e.to_string())?;
         Ok(Json(json!({ "status": "ok", "ui_state": ui_state })))
@@ -110,7 +139,9 @@ async fn api_projects_ui_state_save(
     })
 }
 
-async fn api_projects_list(State(app): State<AppState>) -> Result<Json<Value>, (StatusCode, String)> {
+async fn api_projects_list(
+    State(app): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, String)> {
     app.project.with_db(|conn| {
         let projects = list_projects(conn).map_err(|e| e.to_string())?;
         let active = get_active_project_id(conn).map_err(|e| e.to_string())?;
@@ -132,7 +163,8 @@ async fn api_projects_create(
     Json(body): Json<ProjectCreateBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     app.project.with_db(|conn| {
-        let entry = create_project(conn, &app.project.paths, body.name.as_deref()).map_err(|e| e.to_string())?;
+        let entry = create_project(conn, &app.project.paths, body.name.as_deref())
+            .map_err(|e| e.to_string())?;
         let active = get_active_project_id(conn).map_err(|e| e.to_string())?;
         Ok(Json(json!({
             "status": "ok",
@@ -142,7 +174,9 @@ async fn api_projects_create(
     })
 }
 
-async fn api_project_templates_list(State(app): State<AppState>) -> Result<Json<Value>, (StatusCode, String)> {
+async fn api_project_templates_list(
+    State(app): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, String)> {
     app.project.with_db(|conn| {
         ensure_templates_seeded(conn, &app.project.paths.seed_path).map_err(|e| e.to_string())?;
         let templates = list_project_templates(conn).map_err(|e| e.to_string())?;
@@ -194,7 +228,11 @@ async fn api_project_template_create(
 ) -> Result<Json<Value>, (StatusCode, String)> {
     app.project.with_db(|conn| {
         ensure_templates_seeded(conn, &app.project.paths.seed_path).map_err(|e| e.to_string())?;
-        let settings = if body.settings.is_null() { None } else { Some(&body.settings) };
+        let settings = if body.settings.is_null() {
+            None
+        } else {
+            Some(&body.settings)
+        };
         let source_val = Value::Array(body.source_template_ids.clone());
         let sources = if body.source_template_ids.is_empty() {
             None
@@ -274,7 +312,8 @@ async fn api_project_settings_get(
     State(app): State<AppState>,
     Path(project_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let settings = get_project_settings(&app.project.paths, &project_id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let settings = get_project_settings(&app.project.paths, &project_id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(json!({
         "status": "ok",
         "project_id": project_id,
@@ -286,7 +325,8 @@ async fn api_project_workspace_get(
     State(app): State<AppState>,
     Path(project_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let workspace = get_project_workspace(&app.project.paths, &project_id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let workspace = get_project_workspace(&app.project.paths, &project_id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(json!({ "status": "ok", "workspace": workspace })))
 }
 
@@ -337,7 +377,8 @@ async fn api_projects_open(
     Json(body): Json<ProjectOpenBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     match app.project.with_db(|conn| {
-        let proj = open_project(conn, &app.project.paths, &body.project_id).map_err(|e| e.to_string())?;
+        let proj =
+            open_project(conn, &app.project.paths, &body.project_id).map_err(|e| e.to_string())?;
         match proj {
             Some(p) => {
                 let active = get_active_project_id(conn).map_err(|e| e.to_string())?;
@@ -366,7 +407,10 @@ async fn api_projects_delete(
     Json(body): Json<ProjectDeleteBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     if body.project_ids.is_empty() {
-        return Err((StatusCode::UNPROCESSABLE_ENTITY, "project_ids je prazan.".into()));
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "project_ids je prazan.".into(),
+        ));
     }
     for pid in &body.project_ids {
         app.ingest_thumbs.block_project(pid);
@@ -377,8 +421,8 @@ async fn api_projects_delete(
     app.ingest_thumbs.wait_drained(4000).await;
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     app.project.with_db(|conn| {
-        let (removed, _) =
-            delete_projects(conn, &app.project.paths, &body.project_ids).map_err(|e| e.to_string())?;
+        let (removed, _) = delete_projects(conn, &app.project.paths, &body.project_ids)
+            .map_err(|e| e.to_string())?;
         let active = get_active_project_id(conn).map_err(|e| e.to_string())?;
         let projects = list_projects(conn).map_err(|e| e.to_string())?;
         Ok(Json(json!({
@@ -390,7 +434,9 @@ async fn api_projects_delete(
     })
 }
 
-async fn api_projects_cleanup_orphans(State(app): State<AppState>) -> Result<Json<Value>, (StatusCode, String)> {
+async fn api_projects_cleanup_orphans(
+    State(app): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, String)> {
     let orphans = app.project.with_db(|conn| {
         orphan_project_dir_names(conn, &app.project.paths).map_err(|e| e.to_string())
     })?;
@@ -466,8 +512,10 @@ async fn api_collab_touch(
     Json(body): Json<CollabTouchBody>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     app.project.with_db(|conn| {
-        touch_session(conn, &app.project.paths, &body.session_id, &body.project_id).map_err(|e| e.to_string())?;
-        let session = super::collab::get_session(conn, &body.session_id).map_err(|e| e.to_string())?;
+        touch_session(conn, &app.project.paths, &body.session_id, &body.project_id)
+            .map_err(|e| e.to_string())?;
+        let session =
+            super::collab::get_session(conn, &body.session_id).map_err(|e| e.to_string())?;
         Ok(Json(json!({ "status": "ok", "session": session })))
     })
 }

@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -50,7 +50,10 @@ impl FilmstripWorker {
         if pid.is_empty() {
             return;
         }
-        self.blocked.lock().expect("filmstrip block").insert(pid.to_string());
+        self.blocked
+            .lock()
+            .expect("filmstrip block")
+            .insert(pid.to_string());
         let mut q = self.pending.lock().expect("filmstrip queue");
         q.retain(|j| j.project_id != pid);
     }
@@ -62,7 +65,7 @@ impl FilmstripWorker {
             .contains(project_id)
     }
 
-    pub fn enqueue(&self, project_id: &str, clip_id: &str, media_path: &PathBuf) {
+    pub fn enqueue(&self, project_id: &str, clip_id: &str, media_path: &Path) {
         let pid = project_id.trim();
         let cid = clip_id.trim();
         if pid.is_empty() || cid.is_empty() || !media_path.is_file() {
@@ -77,7 +80,7 @@ impl FilmstripWorker {
             .push(FilmstripJob {
                 project_id: pid.to_string(),
                 clip_id: cid.to_string(),
-                media_path: media_path.clone(),
+                media_path: media_path.to_path_buf(),
             });
     }
 
@@ -115,8 +118,13 @@ impl FilmstripWorker {
                 in_flight.fetch_sub(1, Ordering::AcqRel);
                 match result {
                     Ok(Ok(())) => info!("filmstrip: project={} clip={}", pid_log, cid_log),
-                    Ok(Err(e)) => warn!("filmstrip: project={} clip={} err={}", pid_log, cid_log, e),
-                    Err(e) => warn!("filmstrip: project={} clip={} task err={}", pid_log, cid_log, e),
+                    Ok(Err(e)) => {
+                        warn!("filmstrip: project={} clip={} err={}", pid_log, cid_log, e)
+                    }
+                    Err(e) => warn!(
+                        "filmstrip: project={} clip={} task err={}",
+                        pid_log, cid_log, e
+                    ),
                 }
             }
         });

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use axum::{
-    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::{get, post},
+    Json, Router,
 };
 use serde_json::Value;
 
@@ -15,12 +15,18 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/design-tools/status", get(api_design_status))
         .route("/api/design-tools/tokens", get(api_design_tokens))
-        .route("/api/design-tools/themes", get(api_design_themes).post(api_design_create_theme))
+        .route(
+            "/api/design-tools/themes",
+            get(api_design_themes).post(api_design_create_theme),
+        )
         .route(
             "/api/design-tools/themes/{theme_id}/activate",
             post(api_design_activate_theme),
         )
-        .route("/api/design-tools/overrides/tokens", post(api_design_save_tokens))
+        .route(
+            "/api/design-tools/overrides/tokens",
+            post(api_design_save_tokens),
+        )
         .route(
             "/api/design-tools/timeline-lab",
             get(api_design_timeline_lab).post(api_design_save_timeline_lab),
@@ -31,7 +37,8 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/api/design-tools/project-template-settings-lab",
-            get(api_design_project_template_settings_lab).post(api_design_save_project_template_settings_lab),
+            get(api_design_project_template_settings_lab)
+                .post(api_design_save_project_template_settings_lab),
         )
         .route(
             "/api/design-tools/ingest-clip-grid-lab",
@@ -130,7 +137,9 @@ async fn api_design_save_project_list_lab(
 }
 
 async fn api_design_project_template_settings_lab(State(state): State<AppState>) -> Json<Value> {
-    Json(design::load_project_template_settings_lab_prefs(&state.root))
+    Json(design::load_project_template_settings_lab_prefs(
+        &state.root,
+    ))
 }
 
 #[derive(serde::Deserialize)]

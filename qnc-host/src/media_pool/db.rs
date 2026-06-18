@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 
 use crate::project::db::{now_str, open_project, ProjectPaths};
@@ -44,7 +44,11 @@ pub fn sync_pool_from_ingest_db(paths: &ProjectPaths, project_id: &str) -> Resul
     let imported = read_imported_clips(paths, project_id)?;
     let ids: HashSet<String> = imported
         .iter()
-        .filter_map(|c| c.get("clip_id").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .filter_map(|c| {
+            c.get("clip_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
         .collect();
     let conn = open_db(paths, project_id)?;
     let now = now_str();

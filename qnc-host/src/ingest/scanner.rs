@@ -40,7 +40,9 @@ pub fn scan_media_files(root: &Path, max_depth: u32) -> Vec<PathBuf> {
     }
     let mut stack = vec![(root.to_path_buf(), 0u32)];
     while let Some((dir, depth)) = stack.pop() {
-        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file() && is_media_file(&path) {
@@ -61,7 +63,9 @@ pub fn scan_card_thumb_files(root: &Path, max_depth: u32) -> Vec<PathBuf> {
     }
     let mut stack = vec![(root.to_path_buf(), 0u32)];
     while let Some((dir, depth)) = stack.pop() {
-        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file() && is_card_thumb_file(&path) {

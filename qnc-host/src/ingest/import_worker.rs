@@ -57,7 +57,10 @@ impl ImportWorker {
         if pid.is_empty() || self.is_blocked(pid) {
             return;
         }
-        self.pending.lock().expect("import queue").insert(pid.to_string());
+        self.pending
+            .lock()
+            .expect("import queue")
+            .insert(pid.to_string());
     }
 
     pub fn spawn(self: Arc<Self>) {
@@ -75,8 +78,9 @@ impl ImportWorker {
                     let worker = self.clone();
                     let pid_log = project_id.clone();
                     let thumbs = self.thumbs.clone();
-                    let result = tokio::task::spawn_blocking(move || worker.process_project(&project_id))
-                        .await;
+                    let result =
+                        tokio::task::spawn_blocking(move || worker.process_project(&project_id))
+                            .await;
                     match result {
                         Ok(Ok(count)) if count > 0 => {
                             info!("ingest import: project={} processed={}", pid_log, count);
@@ -99,7 +103,8 @@ impl ImportWorker {
         let conn = open_ingest(&self.paths, project_id).map_err(|e| e.to_string())?;
         reconcile_thumbnail_rows(&self.paths, project_id, &conn).map_err(|e| e.to_string())?;
 
-        let project = project_settings_snapshot(&self.paths, project_id).unwrap_or_else(|_| json!({}));
+        let project =
+            project_settings_snapshot(&self.paths, project_id).unwrap_or_else(|_| json!({}));
         let breaking = is_breaking_news(&project);
         let copy_proxy = proxy_policy_copy(&project);
 
@@ -212,7 +217,8 @@ impl ImportWorker {
                     done += 1;
                 }
                 Err(err) => {
-                    row_import_error(&conn, &source_id, &clip_id, &err).map_err(|e| e.to_string())?;
+                    row_import_error(&conn, &source_id, &clip_id, &err)
+                        .map_err(|e| e.to_string())?;
                 }
             }
         }
@@ -246,9 +252,8 @@ fn import_breaking_card(
         } else {
             Ok((proxy, "on_card".to_string(), true))
         }
-    } else if original_on_card.is_some() {
+    } else if let Some(path) = original_on_card {
         // Ne kopiraj original — samo čitaj s kartice.
-        let path = original_on_card.unwrap();
         Ok((path, "on_card".to_string(), true))
     } else {
         let _ = import_source_path(meta, project);
@@ -259,7 +264,13 @@ fn import_breaking_card(
 fn copy_into_proxy(proxy_dir: &Path, clip_id: &str, src: &Path) -> Result<PathBuf, String> {
     let safe = clip_id
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect::<String>();
     let safe = if safe.is_empty() { "clip".into() } else { safe };
     let ext = src
@@ -268,8 +279,7 @@ fn copy_into_proxy(proxy_dir: &Path, clip_id: &str, src: &Path) -> Result<PathBu
         .filter(|s| !s.is_empty())
         .unwrap_or("mp4");
     let dest = proxy_dir.join(format!("{}.{}", safe, ext));
-    if src.canonicalize().map_err(|e| e.to_string())?
-        == dest.canonicalize().unwrap_or(dest.clone())
+    if src.canonicalize().map_err(|e| e.to_string())? == dest.canonicalize().unwrap_or(dest.clone())
     {
         return Ok(dest);
     }

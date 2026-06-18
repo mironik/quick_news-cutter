@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 
 use crate::project::db::{open_project, ProjectPaths};
@@ -96,7 +96,11 @@ fn table_exists(conn: &Connection, table: &str) -> Result<bool, String> {
         .is_ok())
 }
 
-pub fn proxy_path_for_clip(paths: &ProjectPaths, project_id: &str, clip_id: &str) -> Option<PathBuf> {
+pub fn proxy_path_for_clip(
+    paths: &ProjectPaths,
+    project_id: &str,
+    clip_id: &str,
+) -> Option<PathBuf> {
     let clips = read_imported_clips(paths, project_id).ok()?;
     clips
         .iter()

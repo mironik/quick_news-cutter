@@ -2,11 +2,10 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use rusqlite::params;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::media::{
-    group_media_files, import_display_label, is_breaking_news, is_media_file,
-    is_proxy_media_path,
+    group_media_files, import_display_label, is_breaking_news, is_media_file, is_proxy_media_path,
 };
 use crate::project::db::{project_display_name, project_settings_snapshot, ProjectPaths};
 
@@ -51,14 +50,17 @@ fn row_to_clip(
         "extension": ext,
     });
     let stored_thumb_path: String = row.get("thumb_path").unwrap_or_default();
-    let poster = stored_thumb_path
-        .trim()
-        .is_empty()
-        .then(|| thumbnail_path(paths, project_id, &clip_id))
-        .unwrap_or_else(|| PathBuf::from(stored_thumb_path.trim()));
+    let poster = if stored_thumb_path.trim().is_empty() {
+        thumbnail_path(paths, project_id, &clip_id)
+    } else {
+        PathBuf::from(stored_thumb_path.trim())
+    };
     if thumb_status == "ready" && poster_exists(&poster) {
         if let Some(obj) = clip.as_object_mut() {
-            obj.insert("thumb_url".into(), json!(thumbnail_url(project_id, &clip_id)));
+            obj.insert(
+                "thumb_url".into(),
+                json!(thumbnail_url(project_id, &clip_id)),
+            );
         }
     }
     if let Some(obj) = clip.as_object_mut() {
@@ -99,10 +101,18 @@ fn row_to_clip(
         if let Some(p) = meta.get("poster_source").and_then(|v| v.as_str()) {
             obj.insert("poster_source".into(), json!(p));
         }
-        if meta.get("read_from_card").and_then(|v| v.as_bool()).unwrap_or(false) {
+        if meta
+            .get("read_from_card")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
             obj.insert("read_from_card".into(), json!(true));
         }
-        if meta.get("card_locked").and_then(|v| v.as_bool()).unwrap_or(false) {
+        if meta
+            .get("card_locked")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
             obj.insert("card_locked".into(), json!(true));
         }
         let import_label = import_display_label(&meta, project);
@@ -146,7 +156,11 @@ fn scan_root_for_active_source(
     }
 }
 
-pub fn discover(paths: &ProjectPaths, project_id: &str, source_id: &str) -> rusqlite::Result<Value> {
+pub fn discover(
+    paths: &ProjectPaths,
+    project_id: &str,
+    source_id: &str,
+) -> rusqlite::Result<Value> {
     let conn = open_ingest(paths, project_id)?;
     let sid = if source_id.trim().is_empty() {
         get_meta(&conn, "active_source_id", "local")?
@@ -162,7 +176,11 @@ pub fn discover(paths: &ProjectPaths, project_id: &str, source_id: &str) -> rusq
     )?;
     let project = project_settings_snapshot(paths, project_id).unwrap_or_else(|_| json!({}));
     let breaking = is_breaking_news(&project);
-    set_meta(&conn, "card_root", inventory.card_root.to_string_lossy().as_ref())?;
+    set_meta(
+        &conn,
+        "card_root",
+        inventory.card_root.to_string_lossy().as_ref(),
+    )?;
     if breaking {
         set_meta(&conn, "card_locked", "1")?;
     } else {
@@ -214,9 +232,8 @@ fn metadata_has_video(meta: &Value) -> bool {
 }
 
 fn purge_non_video_clips(conn: &rusqlite::Connection, source_id: &str) -> rusqlite::Result<()> {
-    let mut stmt = conn.prepare(
-        "SELECT clip_id, metadata_json FROM ingest_assets WHERE source_id = ?1",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT clip_id, metadata_json FROM ingest_assets WHERE source_id = ?1")?;
     let rows: Vec<(String, String)> = stmt
         .query_map(params![source_id], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<Result<_, _>>()?;
@@ -241,7 +258,8 @@ fn reconcile_source_assets(
         return Ok(());
     }
     let valid: HashSet<String> = valid_clip_ids.iter().cloned().collect();
-    let mut stmt = conn.prepare("SELECT clip_id, metadata_json FROM ingest_assets WHERE source_id = ?1")?;
+    let mut stmt =
+        conn.prepare("SELECT clip_id, metadata_json FROM ingest_assets WHERE source_id = ?1")?;
     let rows: Vec<(String, String)> = stmt
         .query_map(params![source_id], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<Result<_, _>>()?;
@@ -269,15 +287,30 @@ fn codec_label(ext: &str) -> String {
 }
 
 fn thumb_colors(name: &str) -> (String, String) {
-    let h = name.bytes().fold(0u32, |acc, b| acc.wrapping_add(u32::from(b)));
-    let a = format!("#{:02x}{:02x}{:02x}", 40 + (h % 40) as u8, 40 + ((h >> 3) % 40) as u8, 42 + ((h >> 6) % 40) as u8);
-    let b = format!("#{:02x}{:02x}{:02x}", 24 + (h % 24) as u8, 24 + ((h >> 4) % 24) as u8, 26 + ((h >> 8) % 24) as u8);
+    let h = name
+        .bytes()
+        .fold(0u32, |acc, b| acc.wrapping_add(u32::from(b)));
+    let a = format!(
+        "#{:02x}{:02x}{:02x}",
+        40 + (h % 40) as u8,
+        40 + ((h >> 3) % 40) as u8,
+        42 + ((h >> 6) % 40) as u8
+    );
+    let b = format!(
+        "#{:02x}{:02x}{:02x}",
+        24 + (h % 24) as u8,
+        24 + ((h >> 4) % 24) as u8,
+        26 + ((h >> 8) % 24) as u8
+    );
     (a, b)
 }
 
 pub fn list_sources(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Vec<Value>> {
     let settings = project_settings_snapshot(paths, project_id).unwrap_or_else(|_| json!({}));
-    let inner = settings.get("settings").cloned().unwrap_or_else(|| json!({}));
+    let inner = settings
+        .get("settings")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let source_ids = inner
         .get("source_template_ids")
         .and_then(|v| v.as_array())
@@ -317,16 +350,21 @@ pub fn load_state(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Va
     let card_locked = get_meta(&conn, "card_locked", "")? == "1";
     let card_root = get_meta(&conn, "card_root", "")?;
     let project = project_settings_snapshot(paths, &pid).unwrap_or_else(|_| json!({}));
-    let mut stmt = conn.prepare(
-        "SELECT * FROM ingest_assets WHERE source_id = ?1 ORDER BY clip_id",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT * FROM ingest_assets WHERE source_id = ?1 ORDER BY clip_id")?;
     let clips: Vec<Value> = stmt
-        .query_map(params![active_source], |row| row_to_clip(&pid, paths, row, &project))?
+        .query_map(params![active_source], |row| {
+            row_to_clip(&pid, paths, row, &project)
+        })?
         .collect::<Result<_, _>>()?;
     let selected: Vec<String> = clips
         .iter()
         .filter(|c| c.get("selected").and_then(|v| v.as_bool()).unwrap_or(false))
-        .filter_map(|c| c.get("clip_id").and_then(|v| v.as_str()).map(str::to_string))
+        .filter_map(|c| {
+            c.get("clip_id")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        })
         .collect();
     Ok(json!({
         "status": "ok",
@@ -342,13 +380,21 @@ pub fn load_state(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Va
     }))
 }
 
-pub fn set_browse_path(paths: &ProjectPaths, project_id: &str, path: &str) -> rusqlite::Result<Value> {
+pub fn set_browse_path(
+    paths: &ProjectPaths,
+    project_id: &str,
+    path: &str,
+) -> rusqlite::Result<Value> {
     let conn = open_ingest(paths, project_id)?;
     set_meta(&conn, "browse_path", path.trim())?;
     load_state(paths, project_id)
 }
 
-pub fn set_active_source(paths: &ProjectPaths, project_id: &str, source_id: &str) -> rusqlite::Result<Value> {
+pub fn set_active_source(
+    paths: &ProjectPaths,
+    project_id: &str,
+    source_id: &str,
+) -> rusqlite::Result<Value> {
     let conn = open_ingest(paths, project_id)?;
     set_meta(&conn, "active_source_id", source_id.trim())?;
     let browse = get_meta(&conn, "browse_path", "")?;
@@ -441,9 +487,8 @@ pub fn reconcile_thumbnail_rows(
     project_id: &str,
     conn: &rusqlite::Connection,
 ) -> rusqlite::Result<()> {
-    let mut stmt = conn.prepare(
-        "SELECT source_id, clip_id, thumb_status FROM ingest_assets ORDER BY clip_id",
-    )?;
+    let mut stmt = conn
+        .prepare("SELECT source_id, clip_id, thumb_status FROM ingest_assets ORDER BY clip_id")?;
     let rows: Vec<(String, String, String)> = stmt
         .query_map([], |r| {
             Ok((
@@ -509,13 +554,8 @@ fn upsert_media_group(
         Some(PathBuf::from(card_root_raw.trim()))
     };
     let mut meta = group.build_metadata(breaking, breaking, on_card);
-    let copied_now = apply_card_poster_copy(
-        paths,
-        project_id,
-        &clip_id,
-        &mut meta,
-        card_root.as_deref(),
-    );
+    let copied_now =
+        apply_card_poster_copy(paths, project_id, &clip_id, &mut meta, card_root.as_deref());
     let thumb_status = if copied_now || poster_exists(&poster) {
         "ready"
     } else {
@@ -613,10 +653,18 @@ pub fn register_media_paths(
     Ok(count)
 }
 
-pub fn queue_import(paths: &ProjectPaths, project_id: &str, clip_ids: &[String]) -> rusqlite::Result<Value> {
+pub fn queue_import(
+    paths: &ProjectPaths,
+    project_id: &str,
+    clip_ids: &[String],
+) -> rusqlite::Result<Value> {
     let conn = open_ingest(paths, project_id)?;
     let active_source = get_meta(&conn, "active_source_id", "local")?;
-    let ids: HashSet<String> = clip_ids.iter().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+    let ids: HashSet<String> = clip_ids
+        .iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
     if ids.is_empty() {
         return Ok(json!({ "status": "ok", "queued": 0 }));
     }

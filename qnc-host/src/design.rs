@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::config::read_json;
 
@@ -326,7 +326,10 @@ pub fn create_theme(root: &Path, label: &str) -> Result<Value, String> {
     }))
 }
 
-pub fn save_token_overrides(root: &Path, tokens: &HashMap<String, String>) -> Result<Value, String> {
+pub fn save_token_overrides(
+    root: &Path,
+    tokens: &HashMap<String, String>,
+) -> Result<Value, String> {
     let mode = design_mode(root);
     if mode == "off" {
         return Err("Design editor je isključen.".into());
@@ -432,7 +435,8 @@ fn default_project_list_lab_prefs() -> Value {
 }
 
 pub fn load_project_list_lab_prefs(root: &Path) -> Value {
-    let doc = read_json(&project_list_lab_path(root)).unwrap_or_else(default_project_list_lab_prefs);
+    let doc =
+        read_json(&project_list_lab_path(root)).unwrap_or_else(default_project_list_lab_prefs);
     json!({
         "status": "ok",
         "prefs": doc,
@@ -481,7 +485,10 @@ pub fn load_project_template_settings_lab_prefs(root: &Path) -> Value {
     })
 }
 
-pub fn save_project_template_settings_lab_prefs(root: &Path, prefs: Value) -> Result<Value, String> {
+pub fn save_project_template_settings_lab_prefs(
+    root: &Path,
+    prefs: Value,
+) -> Result<Value, String> {
     let mode = design_mode(root);
     if mode == "off" {
         return Err("Design editor je isključen.".into());

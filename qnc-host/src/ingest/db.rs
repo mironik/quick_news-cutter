@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde_json::Value;
 
 use crate::project::db::{open_project, ProjectPaths};
@@ -203,7 +203,13 @@ fn sanitize_name(raw: &str) -> String {
     let mut out: String = raw
         .trim()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     if out.is_empty() {
         out = "clip".into();
@@ -212,8 +218,7 @@ fn sanitize_name(raw: &str) -> String {
 }
 
 pub fn poster_exists(path: &Path) -> bool {
-    path.is_file()
-        && path.metadata().map(|m| m.len() > 0).unwrap_or(false)
+    path.is_file() && path.metadata().map(|m| m.len() > 0).unwrap_or(false)
 }
 
 /// Kopija THM/JPG s kartice u ingest poster (bez ffmpeg).

@@ -2,8 +2,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use rusqlite::{Connection, params};
-use serde_json::{Value, json};
+use rusqlite::{params, Connection};
+use serde_json::{json, Value};
 
 use crate::config::{configured_projects_root, AppConfig};
 
@@ -18,7 +18,11 @@ impl ProjectPaths {
     pub fn from_root(root: &Path, config: &AppConfig) -> Self {
         let data_dir = root.join("data");
         let projects_root = configured_projects_root(config);
-        let seed_path = root.join("plugins").join("project").join("storage").join("system_seed.json");
+        let seed_path = root
+            .join("plugins")
+            .join("project")
+            .join("storage")
+            .join("system_seed.json");
         Self {
             data_dir,
             projects_root,
@@ -64,7 +68,13 @@ pub fn slug_id(name: &str) -> String {
         .trim()
         .to_lowercase()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     while base.contains("__") {
         base = base.replace("__", "_");
@@ -84,7 +94,13 @@ pub fn safe_dir_name(project_id: &str) -> String {
     let mut pid: String = project_id
         .trim()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     if pid.len() > 80 {
         pid.truncate(80);
@@ -120,7 +136,10 @@ pub fn export_dir_from_settings(settings: &Value) -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-pub fn project_settings_snapshot(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Value> {
+pub fn project_settings_snapshot(
+    paths: &ProjectPaths,
+    project_id: &str,
+) -> rusqlite::Result<Value> {
     let pid = project_id.trim();
     let conn = open_project(paths, pid)?;
     let row: Option<(String, String)> = conn
@@ -298,7 +317,11 @@ fn init_project_schema(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
-fn migrate_from_projects_json(conn: &Connection, data_dir: &Path, projects_root: &Path) -> rusqlite::Result<()> {
+fn migrate_from_projects_json(
+    conn: &Connection,
+    data_dir: &Path,
+    projects_root: &Path,
+) -> rusqlite::Result<()> {
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM projects", [], |r| r.get(0))?;
     if count > 0 {
         return Ok(());
@@ -423,7 +446,15 @@ pub fn ensure_project_dirs(paths: &ProjectPaths, project_id: &str) -> std::io::R
 }
 
 pub fn ensure_project_dirs_at(base: &Path) -> std::io::Result<()> {
-    for sub in ["", "proxy", "incoming/card", "incoming/ftp", "ingest/thumbnails", "filmstrip", "media_pool"] {
+    for sub in [
+        "",
+        "proxy",
+        "incoming/card",
+        "incoming/ftp",
+        "ingest/thumbnails",
+        "filmstrip",
+        "media_pool",
+    ] {
         let dir = if sub.is_empty() {
             base.to_path_buf()
         } else {
