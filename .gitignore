@@ -1,6 +1,37 @@
-*.i
-*.ii
-*.gpu
-*.ptx
-*.cubin
-*.fatbin
+# Rust build artifacts (OVO JE GLAVNI PROBLEM)
+/target
+**/target/
+debug/
+release/
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Node.js (ako koristiš)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE i editori
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+
+# OS datoteke
+.DS_Store
+Thumbs.db
+
+# Logovi
+*.log
+build-check.log
+
+# Cache direktoriji
+__pycache__/
+.pytest_cache/
