@@ -221,8 +221,8 @@ Rust module under `qnc-host/src/<module>/`:
 
 | Persistence | When |
 |-------------|------|
-| In-memory (`OnceLock` + `HashMap`) | Prototypes only — same as sdk_demo |
-| SQLite / project DB | **Production** — follow `ingest` store layer |
+| In-memory (`OnceLock` + `HashMap`) | **Non-production demo only** (`sdk_demo`) — not DB-first compliant for real plugins |
+| SQLite / project DB | **Production** — follow `ingest` store layer; required by [architecture-db-first.md](architecture-db-first.md) |
 
 sdk_demo state resets on host restart. Production plugins must not rely on that.
 

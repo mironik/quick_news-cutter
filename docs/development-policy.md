@@ -2,6 +2,16 @@
 
 **Ovo je obavezno za sve izmjene u `QNC_v2/quick_news_cutter`.**
 
+## DB-first (obavezno)
+
+**SQLite + Rust API je jedini izvor istine** za workflow, projekt i plugin stanje.
+
+- Plugin JS **ne smije** držati workflow state u lokalnim objektima, DOM-u ili runtime JSON datotekama.
+- `ctx.store` je **cache** API snapshota, ne baza.
+- JSON datoteke smiju biti samo **deklarativni** manifesti/config (`plugin.json`, `registry.json`, seed).
+
+Puni ugovor: **[architecture-db-first.md](architecture-db-first.md)**
+
 ## Primarni target
 
 | Što | Gdje |
@@ -37,6 +47,8 @@ Ne portati monolite. Ne kopirati `server_storage`, ingest SMB, setup skripte u s
 
 ## Zabranjeno u v2 (bez izričitog odobrenja)
 
+- Runtime workflow state u JSON datotekama (`data/*` osim statičkog configa) — vidi [architecture-db-first.md](architecture-db-first.md)
+- Workflow state u plugin/component JS objektima bez SQLite/API round-tripa
 - Pretpostavka da server radi na Jetsonu
 - `QNC_DEPLOYMENT=jetson` kao default ili auto-detect koji mijenja ponašanje
 - Jetson-specific ingest/SMB u shellu ili globalnom kodu
@@ -58,4 +70,5 @@ Ne portati monolite. Ne kopirati `server_storage`, ingest SMB, setup skripte u s
 
 ## Reference
 
+- [architecture-db-first.md](architecture-db-first.md)
 - [shell-spec-v1.md](shell-spec-v1.md)

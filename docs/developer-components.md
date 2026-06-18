@@ -4,6 +4,8 @@ Globalne UI komponente su javni building blocks za sve QNC plugin-app-tabove.
 
 Za puni tab orchestrator s Plugin SDK v1 vidi [plugin-sdk-v1.md](plugin-sdk-v1.md). Za novi plugin kopiraj minimalni sdk_demo vodič: [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md).
 
+**DB-first:** komponente ne smiju držati workflow state — vidi [architecture-db-first.md](architecture-db-first.md).
+
 ## Pravila
 
 - Komponente zive u `app/components/<component-id>/`.

@@ -34,7 +34,7 @@ Ovaj dokument definira:
 | Tab manifesti | sken `plugins/*/plugin.json`, sort, enable/disable |
 | Komponente | resolve `data-qnc-component`, global registry |
 | Runtime | OS info, port, capabilities (bez teških probe) |
-| Module prefs | `module_state` / `module_settings` (SQLite) |
+| Module prefs | SQLite (`module_state` in global DB) — **target**; see §10 |
 | Statički mount | `/static`, `/plugins`, `/components` |
 | Plugin backend loader | `plugins/*/backend/routes.py` → `register(app)` |
 | Process log modal | zajednički UI za log (shell chrome) |
@@ -43,8 +43,7 @@ Ovaj dokument definira:
 ### 2.2 Shell ne radi
 
 - Projekti, templatei, ingest, media pool, story, export, AI
-- Poslovni SQLite (project_store, per-project DB)
-- Poslovni SQLite (project_store, per-project DB)
+- Poslovni SQLite (`project_store.db`, per-project `qnc_project.db`) — owned by plugins via Rust host, not shell JS
 - Hardver-specifične pretpostavke u shellu (Jetson/CUDA kao default)
 - Ručna gradnja plugin DOM-a izvan component resolve mehanizma
 
@@ -380,15 +379,24 @@ Shell globalni `server.py` **ne smije** definirati plugin rute.
 
 ## 10. Storage granice
 
-| Podaci | Lokacija | Vlasnik |
-|--------|----------|---------|
-| Module enable/settings | `data/shell_runtime.db` | shell |
-| Shell config (port, presets) | `data/shell_config.json` | shell |
-| Global component registry | `components/registry.json` | shell |
-| Project lista, templatei | `data/project_store.db` itd. | **project plugin** |
-| Per-project files | `Projekti/<id>/` | **project plugin** (+ drugi plugini preko API) |
+**Policy:** [architecture-db-first.md](architecture-db-first.md) — SQLite is truth; JSON is declarative config only.
 
-Plugin **ne piše** u `shell_runtime.db`. Shell **ne piše** u project DB.
+| Podaci | Lokacija (target / current) | Vlasnik |
+|--------|----------------------------|---------|
+| Module enable | **Target:** `project_store.db` (`module_state` table). **Current:** `data/shell_module_state.json` (legacy — Phase 1 migration) | shell |
+| Shell config (port, presets) | `data/shell_config.json` (static config; minimal runtime patches) | shell |
+| Global component registry | `app/components/registry.json` | shell |
+| Project lista, templatei, UI state | `data/project_store.db` | **project plugin** (Rust) |
+| Per-project workflow | `{project_dir}/qnc_project.db` | **plugin APIs** (ingest, media_pool, …) |
+| Per-project files | `{projects_root}/{id}/` (proxy, thumbs, filmstrip JPEGs) | filesystem blobs; **metadata in SQLite** |
+
+**Forbidden as workflow truth:** `data/projects.json` (export/migration mirror only), `data/design_overrides/*.json` for runtime lab/theme state, plugin JS objects (`pool`, `state`), DOM, `localStorage` for workflow.
+
+Plugin **ne piše** u shell module storage. Shell **ne piše** u per-project business tables.
+
+### 10.1 Implementation note (Rust host v2)
+
+Current `qnc-host` uses `data/shell_module_state.json` for module enable flags. This is **not** the long-term contract — migrate to SQLite per [architecture-db-first.md](architecture-db-first.md) §6.
 
 ---
 

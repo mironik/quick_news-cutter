@@ -6,10 +6,10 @@
 |------|--------|
 | **Phase** | A — experimental but usable in production ingest tab |
 | **Script** | `/app/shell/qnc-plugin-sdk.js` (loaded before plugin `entry_js`, after `qnc-tab-registry.js`) |
-| **Source of truth** | **SQLite / API snapshots** — not component-local state, not helper JSON files |
+| **Source of truth** | **SQLite / API snapshots** — not component-local state, not helper JSON files, not orchestrator JS objects. See [architecture-db-first.md](architecture-db-first.md) |
 | **Reference implementation** | [`plugins/ingest/static/qnc-ingest.js`](../plugins/ingest/static/qnc-ingest.js) + [`plugins/ingest/plugin.json`](../plugins/ingest/plugin.json) |
 | **Minimal runnable reference** | [`plugins/sdk_demo`](../plugins/sdk_demo/) — single panel, in-memory Rust API; tab disabled by default (`enabled: false`). **How to clone:** [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) |
-| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle + `ctx.action`; player/scrubber/selection still local |
+| **Partial reference** | [`plugins/media_pool`](../plugins/media_pool/) — SDK lifecycle; **non-compliant** with DB-first until `pool` workflow fields migrate to SQLite |
 | **Not SDK yet** | `project`, `design-tools` — legacy orchestrators; do not migrate them in the same pass |
 
 SDK v1 helps plugin authors build tabs as **lego compositions** of `app/components`, with a thin orchestrator file. The host does not enforce manifest schemas beyond loading tabs; the SDK reads `plugin.json` `state.snapshots` and `backend.actions` when present.
@@ -23,7 +23,9 @@ SDK v1 helps plugin authors build tabs as **lego compositions** of `app/componen
 - **No** direct plugin-to-plugin JS imports or API calls.
 - **Cross-tab coordination:** shell bus (`QNC.bus`), shared project id, DB reads, snapshot invalidation.
 
-See also [developer-components.md](developer-components.md) for component contracts, [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) for cloning sdk_demo into a new tab, and [shell-spec-v1.md](shell-spec-v1.md) for shell behavior.
+`ctx.store` is a **cache** of GET snapshots only. After `ctx.action` writes, always `ctx.store.reload` before render. Do not mirror snapshot fields in parallel JS objects — see [architecture-db-first.md](architecture-db-first.md).
+
+See also [architecture-db-first.md](architecture-db-first.md), [developer-components.md](developer-components.md), [create-plugin-from-sdk-demo.md](create-plugin-from-sdk-demo.md) for cloning sdk_demo into a new tab, and [shell-spec-v1.md](shell-spec-v1.md) for shell behavior.
 
 ---
 

@@ -10,7 +10,7 @@
 | **Jetson / v1** | samo **referenca za čitanje** — ne write target |
 | **AI** | **kasnije** (uključujući Jetson AI); core bez AI sada |
 
-Pravila: [docs/development-policy.md](docs/development-policy.md)
+Pravila: [docs/development-policy.md](docs/development-policy.md) · DB-first: [docs/architecture-db-first.md](docs/architecture-db-first.md)
 
 ## Testiranje (Windows — bez Pythona)
 
