@@ -585,7 +585,6 @@ window.QNC = window.QNC || {};
       try {
         await refreshAndRender(ctx);
         await ensureSession(ctx);
-        QNC.shell?.showProjectOnly?.();
       } catch (e) {
         ctx.setStatus('Projekti: ' + e.message, 'err');
       }
