@@ -1073,6 +1073,64 @@
       "assets": { "css": [], "js": [] },
       "variants": {},
       "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
+    },
+    "sdk-demo-tab-layout": {
+      "global_id": "sdk-demo-tab-layout",
+      "component_id": "sdk-demo-tab-layout",
+      "version": "1.0.0",
+      "source_plugin_id": "sdk_demo",
+      "kind": "layout",
+      "description": "SDK Demo tab — shell-plugin-tab s demo panelom u content slotu.",
+      "embeddable": false,
+      "path": "/app/components/sdk-demo-tab-layout/component.html",
+      "package": "/app/components/sdk-demo-tab-layout",
+      "assets": {
+        "css": [
+          "/app/components/shell-plugin-tab/component.css",
+          "/app/components/sdk-demo-tab-layout/component.css"
+        ],
+        "js": []
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": ["content"],
+        "events": [],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": ["shell-plugin-tab", "sdk-demo-panel"],
+        "owns_state": false
+      }
+    },
+    "sdk-demo-panel": {
+      "global_id": "sdk-demo-panel",
+      "component_id": "sdk-demo-panel",
+      "version": "1.0.0",
+      "source_plugin_id": "sdk_demo",
+      "kind": "panel",
+      "description": "SDK Demo counter panel — emits sdk_demo.increment and sdk_demo.reset.",
+      "embeddable": true,
+      "path": "/app/components/sdk-demo-panel/component.html",
+      "package": "/app/components/sdk-demo-panel",
+      "assets": {
+        "css": ["/app/components/sdk-demo-panel/component.css"],
+        "js": ["/app/components/sdk-demo-panel/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["counter", "project_id", "persistence", "updated_at", "busy", "status_note"],
+        "slots": ["counter", "project-id", "persistence", "updated-at", "status-note"],
+        "events": [
+          { "action": "sdk_demo.increment", "payload": { "step": "number" } },
+          { "action": "sdk_demo.reset", "payload": {} }
+        ],
+        "backend_actions": ["sdk_demo.increment", "sdk_demo.reset"],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
     }
   }
 }

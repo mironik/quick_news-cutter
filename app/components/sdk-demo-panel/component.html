@@ -1,0 +1,29 @@
+<section class="qnc-sdk-demo-panel" data-qnc-panel="sdk-demo-panel">
+  <header class="qnc-sdk-demo-header">
+    <h2 class="qnc-sdk-demo-title">SDK Demo</h2>
+    <p class="qnc-sdk-demo-subtitle muted">Plugin SDK v1 golden path — snapshot + ctx.action</p>
+  </header>
+  <div class="qnc-sdk-demo-stats">
+    <div class="qnc-sdk-demo-stat">
+      <span class="qnc-sdk-demo-stat-label">Counter</span>
+      <span class="qnc-sdk-demo-stat-value" data-qnc-slot="counter">0</span>
+    </div>
+    <div class="qnc-sdk-demo-stat">
+      <span class="qnc-sdk-demo-stat-label">Project</span>
+      <span class="qnc-sdk-demo-stat-value qnc-sdk-demo-mono" data-qnc-slot="project-id">—</span>
+    </div>
+    <div class="qnc-sdk-demo-stat">
+      <span class="qnc-sdk-demo-stat-label">Persistence</span>
+      <span class="qnc-sdk-demo-stat-value qnc-sdk-demo-mono" data-qnc-slot="persistence">—</span>
+    </div>
+    <div class="qnc-sdk-demo-stat">
+      <span class="qnc-sdk-demo-stat-label">Updated</span>
+      <span class="qnc-sdk-demo-stat-value qnc-sdk-demo-mono" data-qnc-slot="updated-at">—</span>
+    </div>
+  </div>
+  <div class="qnc-sdk-demo-actions">
+    <button type="button" class="qnc-sdk-demo-btn qnc-sdk-demo-btn-accent" data-action="increment">+1</button>
+    <button type="button" class="qnc-sdk-demo-btn" data-action="reset">Reset</button>
+  </div>
+  <p class="qnc-sdk-demo-note muted" data-qnc-slot="status-note"></p>
+</section>

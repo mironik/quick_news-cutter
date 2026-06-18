@@ -25,6 +25,7 @@ mod modules;
 mod platform;
 mod project;
 mod routes;
+mod sdk_demo;
 mod shell_dialog;
 mod tabs;
 
@@ -99,6 +100,7 @@ async fn main() {
         .merge(routes::design_tools::router())
         .merge(ingest::router())
         .merge(media_pool::router())
+        .merge(sdk_demo::router())
         .with_state(state);
 
     let port = config.api_port;

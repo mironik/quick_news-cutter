@@ -1,0 +1,60 @@
+{
+  "plugin_id": "sdk_demo",
+  "tab_id": "sdk_demo",
+  "label": "SDK Demo",
+  "priority": 9600,
+  "position": "last",
+  "entry_js": "/plugins/sdk_demo/static/qnc-sdk-demo.js",
+  "entry_css": "/plugins/sdk_demo/static/qnc-sdk-demo.css",
+  "asset_version": 1,
+  "panel_id": "panel-sdk-demo",
+  "api_namespace": "/api/sdk-demo",
+  "panel_html": "/app/components/sdk-demo-tab-layout/component.html",
+  "uses_components": [
+    "shell-plugin-tab",
+    "sdk-demo-tab-layout",
+    "sdk-demo-panel"
+  ],
+  "sdk_version": 1,
+  "enabled": false,
+  "system": false,
+  "removable": true,
+  "description": "Minimal Plugin SDK v1 golden-path demo (in-memory Rust state).",
+  "state": {
+    "snapshots": [
+      {
+        "key": "sdk_demo.state",
+        "method": "GET",
+        "path": "/api/sdk-demo/state",
+        "query": ["project_id"]
+      }
+    ],
+    "invalidates_on": ["project:changed"]
+  },
+  "consumes": {
+    "shell_events": ["project:changed"]
+  },
+  "backend": {
+    "implementation": "rust",
+    "host_module": "qnc-host/src/sdk_demo",
+    "store": {
+      "scope": "project",
+      "persistence": "in_memory_demo"
+    },
+    "actions": [
+      {
+        "action": "sdk_demo.increment",
+        "method": "POST",
+        "path": "/api/sdk-demo/increment",
+        "writes": ["sdk_demo.counter"]
+      },
+      {
+        "action": "sdk_demo.reset",
+        "method": "POST",
+        "path": "/api/sdk-demo/reset",
+        "writes": ["sdk_demo.counter"]
+      }
+    ],
+    "jobs": []
+  }
+}

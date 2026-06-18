@@ -1,0 +1,91 @@
+.qnc-sdk-demo-panel {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.qnc-sdk-demo-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qnc-sdk-demo-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.qnc-sdk-demo-subtitle {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.qnc-sdk-demo-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+
+.qnc-sdk-demo-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qnc-sdk-demo-stat-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+.qnc-sdk-demo-stat-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.qnc-sdk-demo-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.qnc-sdk-demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qnc-sdk-demo-btn {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: #252525;
+  color: #ebebeb;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qnc-sdk-demo-btn:hover:not(:disabled) {
+  background: #2e2e2e;
+}
+
+.qnc-sdk-demo-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.qnc-sdk-demo-btn-accent {
+  border-color: #ff9500;
+  background: rgba(255, 149, 0, 0.12);
+  color: #ffd099;
+}
+
+.qnc-sdk-demo-note {
+  margin: 0;
+  font-size: 0.72rem;
+}

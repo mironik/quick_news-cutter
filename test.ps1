@@ -162,8 +162,55 @@ try {
 
     Test-Get "$Base/app/components/registry.json" 'media-thumb' "GET registry (media-thumb)"
     Test-Get "$Base/app/components/registry.json" 'ingest-clip-grid' "GET registry (ingest-clip-grid)"
+    Test-Get "$Base/app/components/registry.json" 'sdk-demo-panel' "GET registry (sdk-demo-panel)"
     Test-Get "$Base/plugins/ingest/static/qnc-ingest.js" 'Plugin SDK v1 orchestrator' "GET qnc-ingest.js (SDK orchestrator)"
     Test-Get "$Base/plugins/ingest/static/qnc-ingest.js" 'QNC\.createPluginApp' "GET qnc-ingest.js (createPluginApp)"
+    Test-Get "$Base/plugins/sdk_demo/static/qnc-sdk-demo.js" 'QNC\.createPluginApp' "GET qnc-sdk-demo.js (createPluginApp)"
+
+    $modules = Test-GetJson "$Base/api/modules" '"modules"' "GET /api/modules"
+    $sdkModule = $modules.modules | Where-Object { $_.module_id -eq 'sdk_demo' -or $_.tab_id -eq 'sdk_demo' } | Select-Object -First 1
+    if (-not $sdkModule) { throw "FAIL: sdk_demo module missing from /api/modules" }
+    if ($sdkModule.enabled -ne $false) { throw "FAIL: sdk_demo should be disabled by default" }
+    Write-Host "OK: sdk_demo disabled by default"
+
+    $tabsBefore = Test-GetJson "$Base/api/shell/tabs" '"tabs"' "GET /api/shell/tabs (before sdk_demo enable)"
+    if ($tabsBefore.tabs | Where-Object { $_.tab_id -eq 'sdk_demo' }) {
+        throw "FAIL: sdk_demo tab visible before enable"
+    }
+    Write-Host "OK: sdk_demo tab hidden until enabled"
+
+    $sdkState = Test-GetJson "$Base/api/sdk-demo/state?project_id=$([uri]::EscapeDataString($newId))" '"counter"' "GET /api/sdk-demo/state"
+    if ($sdkState.project_id -ne $newId) { throw "FAIL: sdk-demo state project_id mismatch" }
+    if ($sdkState.counter -ne 0) { throw "FAIL: sdk-demo counter should start at 0" }
+    if ($sdkState.persistence -ne 'in_memory_demo') { throw "FAIL: sdk-demo persistence mismatch" }
+
+    $sdkInc = Test-PostJson "$Base/api/sdk-demo/increment" @{
+        project_id = $newId
+        step = 2
+    } '"counter"' "POST /api/sdk-demo/increment"
+    if ($sdkInc.counter -lt 2) { throw "FAIL: sdk-demo increment counter" }
+
+    $sdkReset = Test-PostJson "$Base/api/sdk-demo/reset" @{
+        project_id = $newId
+    } '"counter"' "POST /api/sdk-demo/reset"
+    if ($sdkReset.counter -ne 0) { throw "FAIL: sdk-demo reset counter" }
+
+    $enabled = Test-PostJson "$Base/api/modules/sdk_demo/enable" @{
+        enabled = $true
+    } '"status":"ok"' "POST /api/modules/sdk_demo/enable"
+    if ($enabled.module.enabled -ne $true) { throw "FAIL: sdk_demo enable" }
+
+    $tabsAfter = Test-GetJson "$Base/api/shell/tabs" '"tabs"' "GET /api/shell/tabs (after sdk_demo enable)"
+    if (-not ($tabsAfter.tabs | Where-Object { $_.tab_id -eq 'sdk_demo' })) {
+        throw "FAIL: sdk_demo tab missing after enable"
+    }
+    Write-Host "OK: sdk_demo tab visible after enable"
+
+    $disabled = Test-PostJson "$Base/api/modules/sdk_demo/enable" @{
+        enabled = $false
+    } '"status":"ok"' "POST /api/modules/sdk_demo/enable (restore disabled)"
+    if ($disabled.module.enabled -ne $false) { throw "FAIL: sdk_demo disable restore" }
+    Write-Host "OK: sdk_demo disabled after enable test"
 
     $deleted = Test-PostJson "$Base/api/projects/delete" @{
         project_ids = @($newId)
@@ -178,7 +225,7 @@ try {
     }
 
     Write-Host ""
-    Write-Host "All host integration tests passed (project + ingest SQLite flow)."
+    Write-Host "All host integration tests passed (project + ingest + sdk_demo flow)."
 }
 finally {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
