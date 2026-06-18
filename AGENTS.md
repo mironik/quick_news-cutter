@@ -1,5 +1,7 @@
 # QNC v2 — upute za agenta (obavezno)
 
+For agent execution rules, git hygiene, runtime data cleanup, and stash safety, see [docs/agent-workflow.md](docs/agent-workflow.md).
+
 ## Prije bilo kakvog koda
 
 1. Provjeri **workspace root** — mora biti developer `quick_news_cutter` na **Windows / macOS / Linux**.
