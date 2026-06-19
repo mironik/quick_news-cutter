@@ -1,0 +1,22 @@
+.qnc-story-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+.qnc-story-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.qnc-story-toolbar .qbtn-danger {
+  border-color: #a33;
+  color: #fbb;
+}
+
+.qnc-story-toolbar .qbtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

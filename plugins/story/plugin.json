@@ -6,17 +6,20 @@
   "position": "normal",
   "entry_js": "/plugins/story/static/qnc-story.js",
   "entry_css": "/plugins/story/static/qnc-story.css",
-  "asset_version": 1,
+  "asset_version": 2,
   "panel_id": "panel-storyboard",
   "api_namespace": "/api/story",
   "storage": "story",
   "enabled": true,
   "system": true,
   "removable": false,
-  "description": "Story tab — DB-backed montage skeleton (Plugin SDK v1).",
+  "description": "Story tab — DB-backed montage (Plugin SDK v1, parts CRUD).",
   "panel_html": "/app/components/story-tab-layout/component.html",
   "uses_components": [
-    "story-tab-layout"
+    "story-tab-layout",
+    "story-toolbar",
+    "story-parts-list",
+    "story-part-editor"
   ],
   "sdk_version": 1,
   "state": {
@@ -40,7 +43,38 @@
       "scope": "project",
       "persistence": "project_db"
     },
-    "actions": [],
+    "actions": [
+      {
+        "action": "story.part.create",
+        "method": "POST",
+        "path": "/api/story/part/create",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.part.update",
+        "method": "POST",
+        "path": "/api/story/part/update",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.part.delete",
+        "method": "POST",
+        "path": "/api/story/part/delete",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.part.reorder",
+        "method": "POST",
+        "path": "/api/story/part/reorder",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.part.select",
+        "method": "POST",
+        "path": "/api/story/part/select",
+        "writes": ["story.state"]
+      }
+    ],
     "jobs": []
   }
 }

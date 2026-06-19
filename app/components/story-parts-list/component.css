@@ -1,0 +1,74 @@
+.qnc-story-parts-list {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  min-height: 8rem;
+}
+
+.qnc-story-parts-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+.qnc-story-parts-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.qnc-story-part-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  cursor: pointer;
+}
+
+.qnc-story-part-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.qnc-story-part-row.selected {
+  border-color: rgba(120, 180, 255, 0.55);
+  background: rgba(80, 140, 220, 0.12);
+}
+
+.qnc-story-part-kind {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+  min-width: 3.5rem;
+}
+
+.qnc-story-part-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qnc-story-parts-empty {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+.qnc-story-parts-empty.hidden {
+  display: none;
+}
+
+.qnc-story-parts-items:not(:empty) + .qnc-story-parts-empty {
+  display: none;
+}

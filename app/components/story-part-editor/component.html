@@ -1,0 +1,22 @@
+<section class="qnc-story-part-editor" data-qnc-panel="story-part-editor">
+  <h3 class="qnc-story-editor-title">Uređivač</h3>
+  <p class="qnc-story-editor-empty muted" data-qnc-slot="empty">Odaberi dio za uređivanje.</p>
+  <form class="qnc-story-editor-form" data-qnc-slot="form" hidden>
+    <label class="qnc-story-field">
+      <span>Vrsta</span>
+      <select name="kind" data-field="kind">
+        <option value="tonovi">TONOVI</option>
+        <option value="offovi">OFFOVI</option>
+      </select>
+    </label>
+    <label class="qnc-story-field">
+      <span>Naslov</span>
+      <input type="text" name="title" data-field="title" autocomplete="off" />
+    </label>
+    <label class="qnc-story-field">
+      <span>Tekst</span>
+      <textarea name="text" data-field="text" rows="4"></textarea>
+    </label>
+    <button type="button" class="qbtn" data-action="save">Spremi</button>
+  </form>
+</section>

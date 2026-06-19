@@ -1135,10 +1135,10 @@
     "story-tab-layout": {
       "global_id": "story-tab-layout",
       "component_id": "story-tab-layout",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source_plugin_id": "story",
       "kind": "layout",
-      "description": "Story tab — shell-plugin-tab s placeholder panelom u content slotu.",
+      "description": "Story tab — shell layout s toolbarom, listom dijelova i uređivačem.",
       "embeddable": false,
       "path": "/app/components/story-tab-layout/component.html",
       "package": "/app/components/story-tab-layout",
@@ -1157,7 +1157,110 @@
         "events": [],
         "backend_actions": [],
         "requires": ["QNC.componentBus"],
-        "requires_components": ["shell-plugin-tab"],
+        "requires_components": [
+          "shell-plugin-tab",
+          "story-toolbar",
+          "story-parts-list",
+          "story-part-editor"
+        ],
+        "owns_state": false
+      }
+    },
+    "story-toolbar": {
+      "global_id": "story-toolbar",
+      "component_id": "story-toolbar",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story toolbar — add/reorder/delete part intents.",
+      "embeddable": true,
+      "path": "/app/components/story-toolbar/component.html",
+      "package": "/app/components/story-toolbar",
+      "assets": {
+        "css": ["/app/components/story-toolbar/component.css"],
+        "js": ["/app/components/story-toolbar/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["selected_part_id", "busy"],
+        "slots": [],
+        "events": [
+          { "action": "story.part.create", "payload": { "kind": "string" } },
+          { "action": "story.part.delete", "payload": {} },
+          { "action": "story.part.reorder", "payload": { "direction": "string" } }
+        ],
+        "backend_actions": [
+          "story.part.create",
+          "story.part.delete",
+          "story.part.reorder"
+        ],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-parts-list": {
+      "global_id": "story-parts-list",
+      "component_id": "story-parts-list",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story parts list — render + select intent.",
+      "embeddable": true,
+      "path": "/app/components/story-parts-list/component.html",
+      "package": "/app/components/story-parts-list",
+      "assets": {
+        "css": ["/app/components/story-parts-list/component.css"],
+        "js": ["/app/components/story-parts-list/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["parts", "selected_part_id"],
+        "slots": ["parts", "empty"],
+        "events": [
+          { "action": "story.part.select", "payload": { "part_id": "string" } }
+        ],
+        "backend_actions": ["story.part.select"],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-part-editor": {
+      "global_id": "story-part-editor",
+      "component_id": "story-part-editor",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story part editor — title/text/kind save intent.",
+      "embeddable": true,
+      "path": "/app/components/story-part-editor/component.html",
+      "package": "/app/components/story-part-editor",
+      "assets": {
+        "css": ["/app/components/story-part-editor/component.css"],
+        "js": ["/app/components/story-part-editor/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["parts", "selected_part_id", "busy"],
+        "slots": ["empty", "form"],
+        "events": [
+          {
+            "action": "story.part.update",
+            "payload": {
+              "part_id": "string",
+              "title": "string",
+              "text": "string",
+              "kind": "string"
+            }
+          }
+        ],
+        "backend_actions": ["story.part.update"],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
         "owns_state": false
       }
     }

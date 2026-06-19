@@ -260,8 +260,67 @@ try {
     if ($storyState.summary.duration_sec -ne 0) { throw "FAIL: story summary.duration_sec should be 0" }
     Write-Host "OK: story.state DB-backed empty snapshot"
 
+    Test-Get "$Base/plugins/story/plugin.json" 'story.part.create' "GET story plugin.json (part actions)"
     Test-Get "$Base/app/components/registry.json" 'story-tab-layout' "GET registry (story-tab-layout)"
+    Test-Get "$Base/app/components/registry.json" 'story-parts-list' "GET registry (story-parts-list)"
     Test-Get "$Base/plugins/story/static/qnc-story.js" 'QNC\.createPluginApp' "GET qnc-story.js (createPluginApp)"
+    Test-Get "$Base/plugins/story/static/qnc-story.js" 'story\.part\.create' "GET qnc-story.js (part handlers)"
+
+    $tonPart = Test-PostJson "$Base/api/story/part/create" @{
+        project_id = $newId
+        kind = "tonovi"
+    } '"parts"' "POST /api/story/part/create (tonovi)"
+    if (@($tonPart.parts).Count -ne 1) { throw "FAIL: story create tonovi parts count" }
+    if ($tonPart.summary.part_count -ne 1) { throw "FAIL: story create tonovi summary.part_count" }
+    $tonPartId = $tonPart.parts[0].part_id
+    if (-not $tonPartId) { throw "FAIL: story tonovi part_id missing" }
+    if ($tonPart.parts[0].kind -ne "tonovi") { throw "FAIL: story tonovi kind mismatch" }
+
+    $offPart = Test-PostJson "$Base/api/story/part/create" @{
+        project_id = $newId
+        kind = "offovi"
+    } '"parts"' "POST /api/story/part/create (offovi)"
+    if (@($offPart.parts).Count -ne 2) { throw "FAIL: story create offovi parts count" }
+    $offPartId = ($offPart.parts | Where-Object { $_.kind -eq 'offovi' } | Select-Object -First 1).part_id
+    if (-not $offPartId) { throw "FAIL: story offovi part_id missing" }
+
+    $selected = Test-PostJson "$Base/api/story/part/select" @{
+        project_id = $newId
+        part_id = $tonPartId
+    } '"selected_part_id"' "POST /api/story/part/select"
+    if ($selected.selected_part_id -ne $tonPartId) { throw "FAIL: story select selected_part_id" }
+
+    $selectedReload = Test-GetJson "$Base/api/story/state?project_id=$([uri]::EscapeDataString($newId))" '"selected_part_id"' "GET /api/story/state (selected reload)"
+    if ($selectedReload.selected_part_id -ne $tonPartId) { throw "FAIL: story selected_part_id reload" }
+
+    $updated = Test-PostJson "$Base/api/story/part/update" @{
+        project_id = $newId
+        part_id = $tonPartId
+        title = "QA ton headline"
+        text = "QA ton body"
+    } '"parts"' "POST /api/story/part/update"
+    $updatedTon = $updated.parts | Where-Object { $_.part_id -eq $tonPartId } | Select-Object -First 1
+    if ($updatedTon.title -ne "QA ton headline") { throw "FAIL: story update title" }
+    if ($updatedTon.text -ne "QA ton body") { throw "FAIL: story update text" }
+
+    $reordered = Test-PostJson "$Base/api/story/part/reorder" @{
+        project_id = $newId
+        part_id = $offPartId
+        direction = "up"
+    } '"parts"' "POST /api/story/part/reorder"
+    if ($reordered.parts[0].part_id -ne $offPartId) { throw "FAIL: story reorder up" }
+
+    $deleted = Test-PostJson "$Base/api/story/part/delete" @{
+        project_id = $newId
+        part_id = $tonPartId
+    } '"parts"' "POST /api/story/part/delete"
+    if (@($deleted.parts).Count -ne 1) { throw "FAIL: story delete parts count" }
+    if ($deleted.parts | Where-Object { $_.part_id -eq $tonPartId }) { throw "FAIL: story deleted part still listed" }
+
+    $finalStory = Test-GetJson "$Base/api/story/state?project_id=$([uri]::EscapeDataString($newId))" '"parts"' "GET /api/story/state (after CRUD)"
+    if (@($finalStory.parts).Count -ne 1) { throw "FAIL: story final parts count" }
+    if ($finalStory.summary.part_count -ne 1) { throw "FAIL: story final summary.part_count" }
+    Write-Host "OK: story parts CRUD round-trip (SQLite)"
 
     $env:QNC_TEST_PROJECT_DB = $dbPath
     $env:QNC_TEST_PROJECT_ID = $newId

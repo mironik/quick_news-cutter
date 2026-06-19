@@ -1,0 +1,44 @@
+.qnc-story-part-editor {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  min-height: 8rem;
+}
+
+.qnc-story-editor-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+.qnc-story-editor-empty {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+.qnc-story-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qnc-story-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.qnc-story-field input,
+.qnc-story-field textarea,
+.qnc-story-field select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.qnc-story-editor-form[hidden],
+.qnc-story-editor-empty.hidden {
+  display: none !important;
+}

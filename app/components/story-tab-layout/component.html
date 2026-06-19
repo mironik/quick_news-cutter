@@ -1,9 +1,9 @@
 <section class="tab-panel qnc-shell-plugin-tab story-panel" data-qnc-panel="shell-plugin-tab">
   <div class="qnc-shell-plugin-tab-body" data-qnc-slot="content">
-    <section class="qnc-story-placeholder" data-qnc-panel="story-tab-layout">
+    <section class="qnc-story-workspace" data-qnc-panel="story-tab-layout">
       <header class="qnc-story-head">
         <h2 class="qnc-story-title">Story</h2>
-        <p class="qnc-story-subtitle muted">Montaža — DB-backed skeleton</p>
+        <p class="qnc-story-subtitle muted">Montaža — dijelovi iz SQLite</p>
       </header>
       <dl class="qnc-story-stats">
         <div class="qnc-story-stat">
@@ -19,6 +19,11 @@
           <dd class="qnc-story-mono" data-qnc-slot="project-id">—</dd>
         </div>
       </dl>
+      <div data-qnc-component="story-toolbar"></div>
+      <div class="qnc-story-main">
+        <div data-qnc-component="story-parts-list"></div>
+        <div data-qnc-component="story-part-editor"></div>
+      </div>
       <p class="qnc-story-note muted" data-qnc-slot="status-note"></p>
     </section>
   </div>

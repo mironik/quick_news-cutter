@@ -32,10 +32,5 @@ window.QNC = window.QNC || {};
     setSlot(panel, 'status-note', m.status_note || '');
   }
 
-  QNC.components = QNC.components || { _registry: new Map() };
-  QNC.components.register?.({
-    id: PANEL_ID,
-    mount,
-    update,
-  });
+  QNC.components.register(PANEL_ID, { mount, update });
 })(window.QNC);
