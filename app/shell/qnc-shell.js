@@ -40,6 +40,14 @@ window.QNC = window.QNC || {};
     });
   }
 
+  /** Legacy DB workspace tab id → registered shell plugin tab id (read-only alias). */
+  function resolveWorkspaceTabId(raw) {
+    const id = String(raw || "").trim();
+    if (!id) return "";
+    if (id === "ingest_proxy") return "ingest";
+    return id;
+  }
+
   function footerHasTab(tabId) {
     const id = String(tabId || "").trim();
     if (!id) return false;
@@ -93,7 +101,10 @@ window.QNC = window.QNC || {};
       const tabs = workspace && Array.isArray(workspace.tabs) && workspace.tabs.length
         ? filterWorkspaceTabs(availableTabs, workspace.tabs, workspace.tab_labels || workspace.tabLabels)
         : availableTabs;
-      const sorted = sortTabs(tabs, workspace?.tabs);
+      const sorted = sortTabs(
+        tabs,
+        (workspace?.tabs || []).map((id) => resolveWorkspaceTabId(id))
+      );
       activeTabs = sorted;
       renderFooterTabs(sorted);
       const active = QNC.getActiveTab ? QNC.getActiveTab() : "project";
@@ -141,15 +152,15 @@ window.QNC = window.QNC || {};
       const activeStepId = String(workspace?.active_step_id || workspace?.entry_step_id || "").trim();
       if (activeStepId) {
         const step = steps.find((item) => String(item?.step_id || "") === activeStepId);
-        const tabId = String(step?.tab_id || "").trim();
+        const tabId = resolveWorkspaceTabId(step?.tab_id);
         if (tabId && tabId !== "project" && footerHasTab(tabId)) return tabId;
       }
       const entryStep = steps.find((item) => String(item?.status || "") === "active");
-      const entryTab = String(entryStep?.tab_id || "").trim();
+      const entryTab = resolveWorkspaceTabId(entryStep?.tab_id);
       if (entryTab && entryTab !== "project" && footerHasTab(entryTab)) return entryTab;
       const manual = Array.isArray(workspace?.tabs) ? workspace.tabs : [];
       for (const raw of manual) {
-        const id = String(raw || "").trim();
+        const id = resolveWorkspaceTabId(raw);
         if (!id || id === "project") continue;
         if (footerHasTab(id)) return id;
       }
@@ -161,17 +172,20 @@ window.QNC = window.QNC || {};
     const labelMap = labels && typeof labels === "object" ? labels : {};
     const byId = new Map(tabs.map((tab) => [tab.tab_id, tab]));
     const order = ["project"].concat(
-      (ids || []).map((id) => String(id || "").trim()).filter(Boolean)
+      (ids || []).map((id) => resolveWorkspaceTabId(id)).filter(Boolean)
     );
     const seen = new Set();
     const out = [];
-    for (const raw of order) {
-      if (seen.has(raw)) continue;
-      seen.add(raw);
-      const tab = byId.get(raw);
+    for (const id of order) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const tab = byId.get(id);
       if (!tab) continue;
       const copy = { ...tab };
-      if (labelMap[copy.tab_id]) copy.label = String(labelMap[copy.tab_id]);
+      const label =
+        labelMap[copy.tab_id] ||
+        (copy.tab_id === "ingest" ? labelMap.ingest_proxy : "");
+      if (label) copy.label = String(label);
       out.push(copy);
     }
     return out;

@@ -75,7 +75,12 @@ try {
     Test-Get "$Base/api/shell/tabs" 'project' "GET /api/shell/tabs"
     Test-Get "$Base/api/shell/tabs" 'ingest' "GET /api/shell/tabs (ingest)"
     Test-Get "$Base/api/design-tools/status" '"mode":"open"' "GET /api/design-tools/status"
-    Test-Get "$Base/app" 'qnc-plugin-panels' "GET /app"
+    Test-Get "$Base/app/shell/qnc-shell.js" 'resolveWorkspaceTabId' "GET qnc-shell.js (workspace tab resolver)"
+    $shellJs = (Invoke-WebRequest -Uri "$Base/app/shell/qnc-shell.js" -UseBasicParsing).Content
+    if ($shellJs -notmatch 'ingest_proxy"\)\s*return\s*"ingest"') {
+        throw "FAIL: qnc-shell.js missing ingest_proxy -> ingest workspace alias"
+    }
+    Write-Host "OK: shell legacy ingest_proxy alias present"
     Test-Get "$Base/plugins/project/static/qnc-project.js" 'createPluginApp' "GET qnc-project.js (SDK orchestrator)"
     Test-Get "$Base/app/components/registry.json" 'project-list' "GET registry (project-list)"
     Test-Get "$Base/app/components/registry.json" 'project-template-settings' "GET registry (project-template-settings)"
