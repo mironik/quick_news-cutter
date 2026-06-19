@@ -251,29 +251,54 @@ Always re-render after `reload`. Do not treat component internal state as author
 
 - Resolves action from `plugin.json` → `backend.actions` (or top-level `actions`).
 - Default method **POST**; body sent as JSON.
+- When `method` is **GET**, `body` is merged into the URL as **query parameters** (via `mergeQuery`); **no request body** is sent.
+- `null`, `undefined`, and empty string values are omitted from the query string.
+- Existing query params on `spec.path` are preserved.
 - Auto-injects `project_id` when action `reads`/`writes` contain `"project"`.
-- Use for **writes** and declared POST handlers.
+- Use for **writes** (POST) and declared **read** actions (GET).
 
 ```javascript
 await ctx.action('ingest.discover', { source_id: 'local' });
 await ctx.action('clip.toggle', { clip_id: 'abc123' });
 await ctx.action('filmstrip.build', { clip_id: 'abc123', frames: 10 });
+await ctx.action('transcript.get', { project_id: ctx.projectId, clip_id: 'qa-pool-clip' });
+// → GET /api/media-pool/transcript?project_id=...&clip_id=qa-pool-clip
 ```
 
 ### `ctx.api.get` / `ctx.api.post`
 
 - Paths prefixed with `apiNamespace` when relative.
-- **`ctx.api.get(path, query)`** — use for **GET list/read** endpoints that need query params.
+- **`ctx.api.get(path, query)`** — ad-hoc GET when you need query params **without** a declared `backend.actions` entry (same merge rules as GET `ctx.action`).
 
 ```javascript
 const data = await ctx.api.get('/clips', { project_id: ctx.projectId });
 ```
 
-Media pool reads clips via `ctx.store.reload('media_pool.clips')`. Use store snapshots for all authoritative reads; do not treat local JS caches as workflow state.
+Media pool reads clips via `ctx.store.reload('media_pool.clips')`. Use store snapshots for all authoritative list reads; use declared GET actions (e.g. `transcript.get`) or `ctx.api.get` for one-off reads. Do not treat local JS caches as workflow state.
 
-### GET action limitation
+### GET actions and query parameters
 
-`ctx.action` with `method: "GET"` does **not** attach `body` as query parameters — it calls `QNC.api('GET', path)` without query. For GET endpoints (e.g. `clips.list`), use **`ctx.api.get`** with explicit query, or declare the snapshot as a store loader instead of an action.
+Declared actions with `"method": "GET"` call:
+
+```text
+GET {apiNamespace}{path}?{body as query}
+```
+
+Example (`plugins/media_pool/plugin.json`):
+
+```json
+{ "action": "transcript.get", "method": "GET", "path": "/transcript" }
+```
+
+```javascript
+const data = await ctx.action('transcript.get', {
+  project_id: ctx.projectId,
+  clip_id: 'qa-pool-clip',
+});
+// GET /api/media-pool/transcript?project_id=...&clip_id=qa-pool-clip
+```
+
+Prefer **`ctx.store.reload(snapshotKey)`** for list/index reads already declared under `state.snapshots`. Use **GET `ctx.action`** for manifest-declared single-resource reads (e.g. transcript by `clip_id`).
 
 ---
 
@@ -373,7 +398,7 @@ Migrate one plugin at a time. Legacy orchestrators without SDK continue to work.
 | Component not visible | Not in `uses_components` or not mounted | Add to `plugin.json`; call `mount` once on correct `[data-qnc-panel="..."]` selector |
 | Component not in registry | Missing `registry.json` entry | Add component under `app/components/` and register |
 | `Nepoznata action: ...` | Action id not in `plugin.json` `backend.actions` | Declare action with matching `action` string |
-| GET action returns wrong data | `ctx.action` ignores body query on GET | Use `ctx.api.get(path, query)` instead |
+| GET action returns wrong / empty data | Missing query keys in `body`, wrong action id, or no active project | Pass required params (e.g. `clip_id`, `project_id`); verify `backend.actions` entry; for list reads prefer `ctx.store.reload` |
 | Shell event does not refresh tab | `listens` not configured and no manual `onShell` | Add `listens: ['project:changed']` or handle in `onInit` |
 | Component events ignored | Wrong `pluginId` in emit vs listen | Match `PLUGIN_CTX.pluginId` with `createPluginApp({ pluginId })` |
 | Tab does not switch / wrong manifest | `tabId` vs `plugin_id` mismatch | Use `tabId: 'pool'` for media pool footer tab, not `media_pool` |
@@ -389,7 +414,7 @@ Migrate one plugin at a time. Legacy orchestrators without SDK continue to work.
 | `app.lifecycle(hooks)` | `onInit`, `onShow`, `onHide`, `onDestroy` |
 | `app.register()` | Registers tab via `QNC.tabs.register` |
 | `ctx.api.get/post(path, …)` | HTTP with namespace prefix |
-| `ctx.action(id, body)` | Manifest-declared actions |
+| `ctx.action(id, body)` | Manifest-declared actions (POST body JSON; GET body → query string, no body sent) |
 | `ctx.bindComponent(id, root, { mapModel, mountCtx, onMissing })` | Mount/update component |
 | `ctx.store.load/reload/get/invalidate/subscribe/refreshInvalidated` | Snapshot cache |
 | `ctx.on(event, fn)` | Component bus (`pluginId` scope) |
