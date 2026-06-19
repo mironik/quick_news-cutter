@@ -562,6 +562,7 @@ fn label_for_tab(tab_id: &str, labels: &Value) -> String {
 fn plugin_id_for_tab(tab_id: &str) -> String {
     match tab_id {
         "pool" => "media_pool".to_string(),
+        "storyboard" => "story".to_string(),
         other => other.to_string(),
     }
 }

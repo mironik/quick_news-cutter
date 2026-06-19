@@ -1131,6 +1131,35 @@
         "requires_components": [],
         "owns_state": false
       }
+    },
+    "story-tab-layout": {
+      "global_id": "story-tab-layout",
+      "component_id": "story-tab-layout",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "layout",
+      "description": "Story tab — shell-plugin-tab s placeholder panelom u content slotu.",
+      "embeddable": false,
+      "path": "/app/components/story-tab-layout/component.html",
+      "package": "/app/components/story-tab-layout",
+      "assets": {
+        "css": [
+          "/app/components/shell-plugin-tab/component.css",
+          "/app/components/story-tab-layout/component.css"
+        ],
+        "js": ["/app/components/story-tab-layout/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["project_id", "part_count", "duration_sec", "status_note"],
+        "slots": ["part-count", "duration-sec", "project-id", "status-note"],
+        "events": [],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": ["shell-plugin-tab"],
+        "owns_state": false
+      }
     }
   }
 }

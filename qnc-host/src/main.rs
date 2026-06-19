@@ -29,6 +29,7 @@ mod project;
 mod routes;
 mod sdk_demo;
 mod shell_dialog;
+mod story;
 mod tabs;
 
 use app_state::AppState;
@@ -104,6 +105,7 @@ async fn main() {
         .merge(ingest::router())
         .merge(media_pool::router())
         .merge(sdk_demo::router())
+        .merge(story::router())
         .with_state(state);
 
     let port = config.api_port;

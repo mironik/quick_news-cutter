@@ -1,0 +1,48 @@
+.qnc-story-placeholder {
+  max-width: 42rem;
+}
+
+.qnc-story-head {
+  margin-bottom: 1rem;
+}
+
+.qnc-story-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+}
+
+.qnc-story-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.qnc-story-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.qnc-story-stat dt {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.qnc-story-stat dd {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+}
+
+.qnc-story-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.qnc-story-note {
+  margin: 0;
+  font-size: 0.9rem;
+}

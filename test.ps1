@@ -234,6 +234,35 @@ try {
     }
     Write-Host "OK: new project workspace uses ingest (step_ingest)"
 
+    $storyPy = @(Get-ChildItem -Path (Join-Path $Root "plugins\story") -Filter "*.py" -Recurse -ErrorAction SilentlyContinue)
+    if ($storyPy.Count -gt 0) { throw "FAIL: plugins/story must not contain .py files" }
+    Write-Host "OK: story plugin has no Python files"
+
+    $shellTabsStory = Test-GetJson "$Base/api/shell/tabs" '"tabs"' "GET /api/shell/tabs (story manifest)"
+    $storyTab = $shellTabsStory.tabs | Where-Object { $_.tab_id -eq 'storyboard' } | Select-Object -First 1
+    if (-not $storyTab) { throw "FAIL: storyboard tab missing from /api/shell/tabs" }
+    if ($storyTab.plugin_id -ne 'story') { throw "FAIL: storyboard tab plugin_id expected story" }
+    Write-Host "OK: /api/shell/tabs exposes storyboard/story"
+
+    if ($workspace.workspace.tabs -notcontains 'storyboard') {
+        throw "FAIL: tpl_breaking_news workspace missing storyboard tab"
+    }
+    Write-Host "OK: breaking news workspace includes storyboard"
+
+    $storyState = Test-GetJson "$Base/api/story/state?project_id=$([uri]::EscapeDataString($newId))" '"project_id"' "GET /api/story/state"
+    if ($storyState.project_id -ne $newId) { throw "FAIL: story state project_id mismatch" }
+    if ($storyState.selected_part_id -ne '') { throw "FAIL: story selected_part_id should be empty" }
+    if ($storyState.selected_shot_id -ne '') { throw "FAIL: story selected_shot_id should be empty" }
+    if ($null -eq $storyState.parts -or @($storyState.parts).Count -ne 0) { throw "FAIL: story parts should be empty array" }
+    if ($null -eq $storyState.markers -or @($storyState.markers).Count -ne 0) { throw "FAIL: story markers should be empty array" }
+    if ($null -eq $storyState.covers -or @($storyState.covers).Count -ne 0) { throw "FAIL: story covers should be empty array" }
+    if ($storyState.summary.part_count -ne 0) { throw "FAIL: story summary.part_count should be 0" }
+    if ($storyState.summary.duration_sec -ne 0) { throw "FAIL: story summary.duration_sec should be 0" }
+    Write-Host "OK: story.state DB-backed empty snapshot"
+
+    Test-Get "$Base/app/components/registry.json" 'story-tab-layout' "GET registry (story-tab-layout)"
+    Test-Get "$Base/plugins/story/static/qnc-story.js" 'QNC\.createPluginApp' "GET qnc-story.js (createPluginApp)"
+
     $env:QNC_TEST_PROJECT_DB = $dbPath
     $env:QNC_TEST_PROJECT_ID = $newId
     Push-Location $HostDir
@@ -417,7 +446,7 @@ try {
     }
 
     Write-Host ""
-    Write-Host "All host integration tests passed (project tab + ingest + media_pool + sdk_demo flow)."
+    Write-Host "All host integration tests passed (project tab + ingest + media_pool + sdk_demo + story flow)."
 }
 finally {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue

@@ -45,7 +45,8 @@ $orchestrators = @(
     "plugins\ingest\static\qnc-ingest.js",
     "plugins\media_pool\static\qnc-media-pool.js",
     "plugins\project\static\qnc-project.js",
-    "plugins\sdk_demo\static\qnc-sdk-demo.js"
+    "plugins\sdk_demo\static\qnc-sdk-demo.js",
+    "plugins\story\static\qnc-story.js"
 )
 $forbidden = @(
     @{ Pattern = '\blet\s+pool\s*='; Label = "let pool = workflow store" },
