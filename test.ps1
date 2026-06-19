@@ -29,6 +29,9 @@ if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 Write-Host "Building qnc-host..."
 cargo build --release
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
+Write-Host "Legacy ingest migration (cargo test)..."
+cargo test legacy_ingest --release -- --nocapture
+if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 Pop-Location
 
 $proc = Start-Process -FilePath $Bin -PassThru -NoNewWindow -WorkingDirectory $Root
@@ -217,6 +220,39 @@ try {
         throw "FAIL: new project has no active ingest workflow step"
     }
     Write-Host "OK: new project workspace uses ingest (step_ingest)"
+
+    $env:QNC_TEST_PROJECT_DB = $dbPath
+    $env:QNC_TEST_PROJECT_ID = $newId
+    Push-Location $HostDir
+    cargo test legacy_ingest_corrupt_and_migrate --release -- --nocapture 2>&1 | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        Pop-Location
+        Remove-Item Env:QNC_TEST_PROJECT_DB -ErrorAction SilentlyContinue
+        Remove-Item Env:QNC_TEST_PROJECT_ID -ErrorAction SilentlyContinue
+        throw "FAIL: legacy ingest_proxy corruption fixture"
+    }
+    Pop-Location
+    Remove-Item Env:QNC_TEST_PROJECT_DB -ErrorAction SilentlyContinue
+    Remove-Item Env:QNC_TEST_PROJECT_ID -ErrorAction SilentlyContinue
+
+    $legacyWorkspace = Test-GetJson "$Base/api/projects/$([uri]::EscapeDataString($newId))/workspace" '"tabs"' "GET /api/projects/{id}/workspace (legacy ingest migration)"
+    if ($legacyWorkspace.workspace.tabs -contains "ingest_proxy") {
+        throw "FAIL: migrated workspace.tabs still contains ingest_proxy"
+    }
+    if ($legacyWorkspace.workspace.active_step_id -eq "step_ingest_proxy") {
+        throw "FAIL: migrated active_step_id is step_ingest_proxy"
+    }
+    if ($legacyWorkspace.workspace.entry_step_id -eq "step_ingest_proxy") {
+        throw "FAIL: migrated entry_step_id is step_ingest_proxy"
+    }
+    $ingestSteps = @($legacyWorkspace.workspace.steps | Where-Object { $_.tab_id -eq "ingest" })
+    if ($ingestSteps.Count -ne 1) {
+        throw "FAIL: migrated workspace has $($ingestSteps.Count) ingest steps (expected 1)"
+    }
+    if ($legacyWorkspace.workspace.active_step_id -ne "step_ingest") {
+        throw "FAIL: migrated active_step_id is not step_ingest"
+    }
+    Write-Host "OK: legacy ingest_proxy migrated on workspace load"
 
     $ingestState = Test-GetJson "$Base/api/ingest/state?project_id=$([uri]::EscapeDataString($newId))" '"clips"' "GET /api/ingest/state"
     if ($ingestState.project_id -ne $newId) { throw "FAIL: ingest state project_id mismatch" }

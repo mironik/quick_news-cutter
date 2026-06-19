@@ -228,6 +228,7 @@ pub fn get_project_template(
 pub fn get_project_settings(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Value> {
     let pid = project_id.trim();
     let conn = open_project(paths, pid)?;
+    migrate_legacy_ingest_workflow(&conn, pid)?;
     let row: Option<String> = conn
         .query_row(
             "SELECT template_id FROM project_settings WHERE project_id = ?1",
@@ -732,4 +733,411 @@ fn workflow_state(conn: &Connection, project_id: &str) -> rusqlite::Result<Value
         "active_step_id": active_step_id,
         "entry_step_id": entry_step_id,
     }))
+}
+
+/// Idempotent SQLite migration for legacy `ingest_proxy` workspace tab ids.
+pub(crate) fn migrate_legacy_ingest_workflow(
+    conn: &Connection,
+    project_id: &str,
+) -> rusqlite::Result<()> {
+    let pid = project_id.trim();
+    if pid.is_empty() || !project_needs_ingest_migration(conn, pid)? {
+        return Ok(());
+    }
+
+    let settings = load_object(conn, "project_settings_kv", "project_id", pid)?;
+    let normalized = normalize_settings_workspace(&settings);
+    if normalized != settings {
+        replace_object(conn, "project_settings_kv", "project_id", pid, &normalized)?;
+    }
+
+    let has_ingest: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM project_workflow_steps
+         WHERE project_id = ?1 AND (step_id = 'step_ingest' OR tab_id = 'ingest')",
+        params![pid],
+        |r| r.get(0),
+    )?;
+    let has_proxy: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM project_workflow_steps
+         WHERE project_id = ?1 AND (step_id = 'step_ingest_proxy' OR tab_id = 'ingest_proxy')",
+        params![pid],
+        |r| r.get(0),
+    )?;
+
+    if has_proxy > 0 && has_ingest > 0 {
+        let proxy_next: Option<String> = conn
+            .query_row(
+                "SELECT next_step_id FROM project_workflow_steps
+                 WHERE project_id = ?1 AND step_id = 'step_ingest_proxy'",
+                params![pid],
+                |r| r.get(0),
+            )
+            .ok()
+            .flatten();
+        let proxy_status: Option<String> = conn
+            .query_row(
+                "SELECT status FROM project_workflow_steps
+                 WHERE project_id = ?1 AND step_id = 'step_ingest_proxy'",
+                params![pid],
+                |r| r.get(0),
+            )
+            .ok();
+        conn.execute(
+            "UPDATE project_workflow_steps SET next_step_id = ?2
+             WHERE project_id = ?1 AND next_step_id = 'step_ingest_proxy'",
+            params![pid, proxy_next],
+        )?;
+        if proxy_status.as_deref() == Some("active") {
+            conn.execute(
+                "UPDATE project_workflow_steps SET status = 'locked'
+                 WHERE project_id = ?1 AND status = 'active' AND step_id != 'step_ingest'",
+                params![pid],
+            )?;
+            conn.execute(
+                "UPDATE project_workflow_steps SET status = 'active'
+                 WHERE project_id = ?1 AND step_id = 'step_ingest'",
+                params![pid],
+            )?;
+        }
+        conn.execute(
+            "DELETE FROM project_workflow_step_kv WHERE step_id = 'step_ingest_proxy'",
+            [],
+        )?;
+        conn.execute(
+            "DELETE FROM project_workflow_steps
+             WHERE project_id = ?1 AND step_id = 'step_ingest_proxy'",
+            params![pid],
+        )?;
+    } else if has_proxy > 0 {
+        migrate_workflow_step_kv(conn, "step_ingest_proxy", "step_ingest")?;
+        conn.execute(
+            "UPDATE project_workflow_steps SET next_step_id = 'step_ingest'
+             WHERE project_id = ?1 AND next_step_id = 'step_ingest_proxy'",
+            params![pid],
+        )?;
+        conn.execute(
+            "UPDATE project_workflow_steps
+             SET step_id = 'step_ingest', tab_id = 'ingest', plugin_id = 'ingest'
+             WHERE project_id = ?1 AND step_id = 'step_ingest_proxy'",
+            params![pid],
+        )?;
+    }
+
+    conn.execute(
+        "UPDATE project_workflow_steps SET tab_id = 'ingest', plugin_id = 'ingest'
+         WHERE project_id = ?1 AND tab_id = 'ingest_proxy'",
+        params![pid],
+    )?;
+    conn.execute(
+        "UPDATE project_workflow_state SET active_step_id = 'step_ingest'
+         WHERE project_id = ?1 AND active_step_id = 'step_ingest_proxy'",
+        params![pid],
+    )?;
+    conn.execute(
+        "UPDATE project_workflow_state SET entry_step_id = 'step_ingest'
+         WHERE project_id = ?1 AND entry_step_id = 'step_ingest_proxy'",
+        params![pid],
+    )?;
+    let now = now_str();
+    conn.execute(
+        "UPDATE project_workflow_state SET updated_at = ?2 WHERE project_id = ?1",
+        params![pid, now],
+    )?;
+    Ok(())
+}
+
+fn project_needs_ingest_migration(conn: &Connection, project_id: &str) -> rusqlite::Result<bool> {
+    let pid = project_id.trim();
+    let legacy_steps: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM project_workflow_steps
+         WHERE project_id = ?1 AND (tab_id = 'ingest_proxy' OR step_id = 'step_ingest_proxy')",
+        params![pid],
+        |r| r.get(0),
+    )?;
+    if legacy_steps > 0 {
+        return Ok(true);
+    }
+    let state_legacy: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM project_workflow_state
+             WHERE project_id = ?1
+               AND (active_step_id = 'step_ingest_proxy' OR entry_step_id = 'step_ingest_proxy')",
+            params![pid],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if state_legacy > 0 {
+        return Ok(true);
+    }
+    let settings = load_object(conn, "project_settings_kv", "project_id", pid)?;
+    Ok(settings_needs_ingest_migration(&settings))
+}
+
+fn settings_needs_ingest_migration(settings: &Value) -> bool {
+    if settings
+        .get("workspace")
+        .and_then(|w| w.get("tabs"))
+        .and_then(|t| t.as_array())
+        .is_some_and(|arr| arr.iter().any(|v| v.as_str() == Some("ingest_proxy")))
+    {
+        return true;
+    }
+    settings
+        .get("workspace")
+        .and_then(|w| w.get("tab_labels"))
+        .and_then(|l| l.as_object())
+        .is_some_and(|map| map.contains_key("ingest_proxy"))
+}
+
+fn migrate_workflow_step_kv(
+    conn: &Connection,
+    from_step: &str,
+    to_step: &str,
+) -> rusqlite::Result<()> {
+    let mut stmt = conn.prepare(
+        "SELECT setting_key, setting_value FROM project_workflow_step_kv WHERE step_id = ?1",
+    )?;
+    let rows: Vec<(String, String)> = stmt
+        .query_map(params![from_step], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    for (key, value) in rows {
+        conn.execute(
+            "INSERT INTO project_workflow_step_kv (step_id, setting_key, setting_value)
+             VALUES (?1, ?2, ?3)
+             ON CONFLICT(step_id, setting_key) DO NOTHING",
+            params![to_step, key, value],
+        )?;
+    }
+    conn.execute(
+        "DELETE FROM project_workflow_step_kv WHERE step_id = ?1",
+        params![from_step],
+    )?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod legacy_ingest_tests {
+    use super::*;
+    use crate::project::db::{open_project, ProjectPaths};
+    use std::path::PathBuf;
+
+    fn test_paths(base: &std::path::Path) -> ProjectPaths {
+        ProjectPaths {
+            data_dir: base.join("data"),
+            projects_root: base.join("projects"),
+            seed_path: PathBuf::from("nonexistent"),
+        }
+    }
+
+    fn seed_project(conn: &Connection, project_id: &str, settings: &Value) -> rusqlite::Result<()> {
+        conn.execute(
+            "INSERT INTO project_settings (project_id, template_id, settings_json)
+             VALUES (?1, 'tpl_breaking_news', '{}')",
+            params![project_id],
+        )?;
+        replace_object(
+            conn,
+            "project_settings_kv",
+            "project_id",
+            project_id,
+            settings,
+        )?;
+        write_project_workflow(conn, project_id, settings)
+    }
+
+    fn corrupt_to_legacy(conn: &Connection, project_id: &str) -> rusqlite::Result<()> {
+        conn.execute(
+            "UPDATE project_workflow_steps
+             SET step_id = 'step_ingest_proxy', tab_id = 'ingest_proxy', plugin_id = 'ingest_proxy'
+             WHERE project_id = ?1 AND step_id = 'step_ingest'",
+            params![project_id],
+        )?;
+        conn.execute(
+            "UPDATE project_workflow_steps SET next_step_id = 'step_ingest_proxy'
+             WHERE project_id = ?1 AND next_step_id = 'step_ingest'",
+            params![project_id],
+        )?;
+        conn.execute(
+            "UPDATE project_workflow_state
+             SET active_step_id = 'step_ingest_proxy', entry_step_id = 'step_ingest_proxy'
+             WHERE project_id = ?1",
+            params![project_id],
+        )?;
+        conn.execute(
+            "UPDATE project_settings_kv SET setting_value = 'ingest_proxy'
+             WHERE project_id = ?1 AND setting_key = 'workspace.tabs[1]'",
+            params![project_id],
+        )?;
+        let proxy_steps: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM project_workflow_steps
+                 WHERE project_id = ?1 AND step_id = 'step_ingest_proxy'",
+                params![project_id],
+                |r| r.get(0),
+            )
+            .expect("count legacy ingest_proxy steps");
+        assert!(
+            proxy_steps > 0,
+            "legacy ingest corruption fixture did not update workflow steps"
+        );
+        Ok(())
+    }
+
+    fn breaking_news_settings() -> Value {
+        json!({
+            "workspace": {
+                "tabs": ["project", "ingest", "pool"],
+                "tab_labels": { "ingest": "Ingest", "pool": "Media" }
+            }
+        })
+    }
+
+    #[test]
+    fn legacy_ingest_renames_proxy_step_and_settings() {
+        let base = std::env::temp_dir().join(format!(
+            "qnc_legacy_ingest_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        let _ = std::fs::create_dir_all(&base);
+        let paths = test_paths(&base);
+        let project_id = "qa_legacy_ingest";
+        let conn = open_project(&paths, project_id).unwrap();
+        seed_project(&conn, project_id, &breaking_news_settings()).unwrap();
+        corrupt_to_legacy(&conn, project_id).unwrap();
+
+        migrate_legacy_ingest_workflow(&conn, project_id).unwrap();
+        migrate_legacy_ingest_workflow(&conn, project_id).unwrap();
+
+        let settings = load_object(&conn, "project_settings_kv", "project_id", project_id).unwrap();
+        let tabs = settings["workspace"]["tabs"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        assert!(!tabs.iter().any(|v| v.as_str() == Some("ingest_proxy")));
+        assert_eq!(
+            tabs.iter().filter(|v| v.as_str() == Some("ingest")).count(),
+            1
+        );
+
+        let proxy_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM project_workflow_steps
+                 WHERE project_id = ?1 AND (tab_id = 'ingest_proxy' OR step_id = 'step_ingest_proxy')",
+                params![project_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(proxy_count, 0);
+
+        let ingest_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM project_workflow_steps
+                 WHERE project_id = ?1 AND tab_id = 'ingest'",
+                params![project_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(ingest_count, 1);
+
+        let (active, entry): (String, String) = conn
+            .query_row(
+                "SELECT active_step_id, entry_step_id FROM project_workflow_state WHERE project_id = ?1",
+                params![project_id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(active, "step_ingest");
+        assert_eq!(entry, "step_ingest");
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn legacy_ingest_dedupes_duplicate_proxy_and_ingest_steps() {
+        let base = std::env::temp_dir().join(format!(
+            "qnc_legacy_ingest_dup_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        let _ = std::fs::create_dir_all(&base);
+        let paths = test_paths(&base);
+        let project_id = "qa_legacy_dup";
+        let settings = json!({
+            "workspace": {
+                "tabs": ["project", "ingest", "ingest_proxy", "pool"],
+                "tab_labels": { "ingest": "Ingest", "ingest_proxy": "Proxy", "pool": "Media" }
+            }
+        });
+        let conn = open_project(&paths, project_id).unwrap();
+        seed_project(&conn, project_id, &settings).unwrap();
+        conn.execute(
+            "INSERT INTO project_workflow_steps
+                (step_id, project_id, plugin_id, tab_id, label, position, status, next_step_id, settings_json)
+             VALUES ('step_ingest_proxy', ?1, 'ingest_proxy', 'ingest_proxy', 'Proxy', 2, 'locked', 'step_pool', '{}')",
+            params![project_id],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE project_workflow_steps SET next_step_id = 'step_ingest_proxy'
+             WHERE project_id = ?1 AND step_id = 'step_ingest'",
+            params![project_id],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE project_workflow_steps SET position = 3 WHERE project_id = ?1 AND step_id = 'step_pool'",
+            params![project_id],
+        )
+        .unwrap();
+
+        migrate_legacy_ingest_workflow(&conn, project_id).unwrap();
+
+        let ingest_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM project_workflow_steps
+                 WHERE project_id = ?1 AND tab_id = 'ingest'",
+                params![project_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(ingest_count, 1);
+        let proxy_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM project_workflow_steps
+                 WHERE project_id = ?1 AND tab_id = 'ingest_proxy'",
+                params![project_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(proxy_count, 0);
+        let ingest_next: Option<String> = conn
+            .query_row(
+                "SELECT next_step_id FROM project_workflow_steps
+                 WHERE project_id = ?1 AND step_id = 'step_ingest'",
+                params![project_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(ingest_next.as_deref(), Some("step_pool"));
+
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn legacy_ingest_corrupt_and_migrate() {
+        let db_path = match std::env::var("QNC_TEST_PROJECT_DB") {
+            Ok(v) if !v.trim().is_empty() => v,
+            _ => return,
+        };
+        let project_id = match std::env::var("QNC_TEST_PROJECT_ID") {
+            Ok(v) if !v.trim().is_empty() => v,
+            _ => return,
+        };
+        let conn = Connection::open(&db_path).expect("open project db for legacy ingest test");
+        corrupt_to_legacy(&conn, &project_id).expect("corrupt project db to legacy ingest_proxy");
+    }
 }
