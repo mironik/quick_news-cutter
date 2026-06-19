@@ -925,14 +925,15 @@ window.QNC = window.QNC || {};
   async function loadTranscript(clipId) {
     if (handles.liveTranscriptClip === clipId) return;
     const pid = poolProjectId();
+    if (!sdkCtx?.action) {
+      renderTranscriptPanel(null);
+      return;
+    }
     try {
-      const d = await QNC.api(
-        'GET',
-        '/api/media-pool/transcript?clip_id=' +
-          encodeURIComponent(clipId) +
-          '&project_id=' +
-          encodeURIComponent(pid)
-      );
+      const d = await sdkCtx.action('transcript.get', {
+        project_id: pid,
+        clip_id: clipId,
+      });
       renderTranscriptPanel(d.transcript || null);
     } catch {
       renderTranscriptPanel(null);
