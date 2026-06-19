@@ -176,7 +176,9 @@ window.QNC = window.QNC || {};
         if (reads.some((r) => String(r).includes('project')) && !payload.project_id && projectId()) {
           payload.project_id = projectId();
         }
-        return QNC.api(method, apiPath(spec.path), method === 'GET' ? undefined : payload);
+        const url =
+          method === 'GET' ? mergeQuery(apiPath(spec.path), payload) : apiPath(spec.path);
+        return QNC.api(method, url, method === 'GET' ? undefined : payload);
       },
 
       bindComponent(componentId, root, options) {
