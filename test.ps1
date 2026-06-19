@@ -92,6 +92,20 @@ try {
     if (-not $templates.templates -or $templates.templates.Count -lt 1) {
         throw "FAIL: project templates not seeded"
     }
+    foreach ($tpl in $templates.templates) {
+        $tplTabs = @($tpl.settings.workspace.tabs)
+        if ($tplTabs -contains "ingest_proxy") {
+            throw "FAIL: template $($tpl.template_id) workspace.tabs contains ingest_proxy"
+        }
+    }
+    $newsTpl = $templates.templates | Where-Object { $_.template_id -eq "tpl_news_package" } | Select-Object -First 1
+    if ($newsTpl) {
+        $ingestCount = @($newsTpl.settings.workspace.tabs | Where-Object { $_ -eq "ingest" }).Count
+        if ($ingestCount -gt 1) {
+            throw "FAIL: tpl_news_package workspace.tabs has duplicate ingest"
+        }
+    }
+    Write-Host "OK: system templates use ingest tab id (no ingest_proxy)"
 
     $ui = Test-GetJson "$Base/api/projects/ui-state" '"ui_state"' "GET /api/projects/ui-state"
     if (-not $ui.ui_state) { throw "FAIL: ui_state missing" }
@@ -189,6 +203,20 @@ try {
 
     $workspace = Test-GetJson "$Base/api/projects/$([uri]::EscapeDataString($newId))/workspace" '"tabs"' "GET /api/projects/{id}/workspace"
     if (-not $workspace.workspace.tabs) { throw "FAIL: workspace tabs missing" }
+    if ($workspace.workspace.tabs -contains "ingest_proxy") {
+        throw "FAIL: new project workspace.tabs contains ingest_proxy"
+    }
+    if ($workspace.workspace.active_step_id -eq "step_ingest_proxy") {
+        throw "FAIL: new project active_step_id is step_ingest_proxy"
+    }
+    if ($workspace.workspace.entry_step_id -eq "step_ingest_proxy") {
+        throw "FAIL: new project entry_step_id is step_ingest_proxy"
+    }
+    $activeIngest = @($workspace.workspace.steps | Where-Object { $_.status -eq "active" -and $_.tab_id -eq "ingest" })
+    if ($activeIngest.Count -lt 1) {
+        throw "FAIL: new project has no active ingest workflow step"
+    }
+    Write-Host "OK: new project workspace uses ingest (step_ingest)"
 
     $ingestState = Test-GetJson "$Base/api/ingest/state?project_id=$([uri]::EscapeDataString($newId))" '"clips"' "GET /api/ingest/state"
     if ($ingestState.project_id -ne $newId) { throw "FAIL: ingest state project_id mismatch" }

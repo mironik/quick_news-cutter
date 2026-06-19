@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs;
 
 use rusqlite::{params, Connection};
@@ -197,7 +198,12 @@ pub fn get_project_template(
     else {
         return Ok(None);
     };
-    let settings = load_object(conn, "project_template_kv", "template_id", &template_id)?;
+    let settings = normalize_settings_workspace(&load_object(
+        conn,
+        "project_template_kv",
+        "template_id",
+        &template_id,
+    )?);
     let source_ids = load_string_list(
         conn,
         "project_template_sources",
@@ -452,12 +458,73 @@ pub fn create_project_from_template(
     }))
 }
 
+/// Legacy v1 workspace tab id → registered plugin tab id.
+fn normalize_workspace_tab_id(raw: &str) -> String {
+    let id = raw.trim();
+    if id.is_empty() {
+        return String::new();
+    }
+    if id == "ingest_proxy" {
+        "ingest".to_string()
+    } else {
+        id.to_string()
+    }
+}
+
+/// Map legacy ids, preserve order, drop empty/duplicate tab ids.
+fn normalize_workspace_tab_list(tabs: Vec<String>) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+    for raw in tabs {
+        let id = normalize_workspace_tab_id(&raw);
+        if id.is_empty() || !seen.insert(id.clone()) {
+            continue;
+        }
+        out.push(id);
+    }
+    out
+}
+
+fn normalized_tab_labels(labels: &Value) -> Value {
+    let mut map = labels.as_object().cloned().unwrap_or_default();
+    if !map.contains_key("ingest") {
+        if let Some(label) = map.get("ingest_proxy").cloned() {
+            map.insert("ingest".to_string(), label);
+        }
+    }
+    map.remove("ingest_proxy");
+    Value::Object(map)
+}
+
+fn normalize_settings_workspace(settings: &Value) -> Value {
+    let mut out = settings.clone();
+    let Some(root) = out.as_object_mut() else {
+        return out;
+    };
+    let workspace = root.get("workspace").cloned().unwrap_or_else(|| json!({}));
+    let mut ws = workspace.as_object().cloned().unwrap_or_default();
+    if let Some(arr) = ws.get("tabs").and_then(|v| v.as_array()) {
+        let raw = arr
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.trim().to_string()))
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>();
+        ws.insert("tabs".into(), json!(normalize_workspace_tab_list(raw)));
+    }
+    if let Some(labels) = ws.get("tab_labels") {
+        ws.insert("tab_labels".into(), normalized_tab_labels(labels));
+    }
+    root.insert("workspace".into(), Value::Object(ws));
+    out
+}
+
 fn workflow_tabs_from_settings(settings: &Value) -> (Vec<String>, Value) {
-    let workspace = settings
+    let normalized = normalize_settings_workspace(settings);
+    let workspace = normalized
         .get("workspace")
         .cloned()
         .unwrap_or_else(|| json!({}));
-    let mut tabs = workspace
+    let raw_tabs = workspace
         .get("tabs")
         .and_then(|v| v.as_array())
         .cloned()
@@ -466,13 +533,13 @@ fn workflow_tabs_from_settings(settings: &Value) -> (Vec<String>, Value) {
         .filter_map(|v| v.as_str().map(|s| s.trim().to_string()))
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>();
-    tabs.dedup();
+    let mut tabs = normalize_workspace_tab_list(raw_tabs);
     if !tabs.iter().any(|t| t == "project") {
         tabs.insert(0, "project".to_string());
     }
     let labels = workspace
         .get("tab_labels")
-        .cloned()
+        .map(normalized_tab_labels)
         .unwrap_or_else(|| json!({}));
     (tabs, labels)
 }
