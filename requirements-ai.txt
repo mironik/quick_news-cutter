@@ -1,6 +1,0 @@
-# Opcionalno — ASR, mining, video analiza (plugin capability, ne shell)
-faster-whisper>=1.0.3
-numpy>=1.24,<2
-opencv-python-headless>=4.8.0
-# ctranslate2 / CUDA: samo ako AI plugin eksplicitno traži (platform-specific install)
-# nvidia-riva-client>=2.14.0  # QNC_ASR_BACKEND=riva

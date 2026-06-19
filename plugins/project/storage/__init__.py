@@ -1,1 +1,0 @@
-"""Project plugin storage layer."""

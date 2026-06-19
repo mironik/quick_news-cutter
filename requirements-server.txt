@@ -1,3 +1,0 @@
-# QNC v2 — puni server (core + AI paketi). Za laptop/dev: requirements-core.txt
--r requirements-core.txt
--r requirements-ai.txt
