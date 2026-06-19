@@ -81,6 +81,14 @@ try {
         throw "FAIL: qnc-shell.js missing ingest_proxy -> ingest workspace alias"
     }
     Write-Host "OK: shell legacy ingest_proxy alias present"
+    $appJs = (Invoke-WebRequest -Uri "$Base/app/shell/app.js" -UseBasicParsing).Content
+    if ($appJs -notmatch 'function componentAssetDomId') {
+        throw "FAIL: app.js missing componentAssetDomId helper"
+    }
+    if ($appJs -notmatch "componentAssetDomId\('qnc-component-css-'") {
+        throw "FAIL: app.js component CSS ids not scoped per asset href"
+    }
+    Write-Host "OK: shell component asset loader uses per-href DOM ids"
     Test-Get "$Base/plugins/project/static/qnc-project.js" 'createPluginApp' "GET qnc-project.js (SDK orchestrator)"
     Test-Get "$Base/app/components/registry.json" 'project-list' "GET registry (project-list)"
     Test-Get "$Base/app/components/registry.json" 'project-template-settings' "GET registry (project-template-settings)"

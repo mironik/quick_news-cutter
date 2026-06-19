@@ -10,6 +10,20 @@
     }
   }
 
+  function assetPathSlug(assetPath) {
+    return String(assetPath || '')
+      .replace(/^\/+/, '')
+      .replace(/[^\w-]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(-96);
+  }
+
+  function componentAssetDomId(prefix, componentId, assetPath) {
+    const cid = String(componentId || 'unknown').replace(/[^\w-]+/g, '_');
+    const slug = assetPathSlug(assetPath);
+    return prefix + cid + (slug ? '--' + slug : '');
+  }
+
   function loadCss(href, id, session) {
     return new Promise((resolve, reject) => {
       if (!href) return resolve();
@@ -27,9 +41,21 @@
       link.href = href;
       link.dataset.qncHref = href;
       link.dataset.qncTabAsset = session?.tabId || '';
-      link.onload = () => resolve();
-      link.onerror = () => reject(new Error('CSS nije ucitan: ' + href));
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const fail = () => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('CSS nije ucitan: ' + href));
+      };
+      link.onload = finish;
+      link.onerror = fail;
       document.head.appendChild(link);
+      if (link.sheet) finish();
     });
   }
 
@@ -50,8 +76,19 @@
       script.defer = false;
       script.dataset.qncSrc = src;
       script.dataset.qncTabAsset = session?.tabId || '';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('JS nije ucitan: ' + src));
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const fail = () => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('JS nije ucitan: ' + src));
+      };
+      script.onload = finish;
+      script.onerror = fail;
       document.body.appendChild(script);
     });
   }
@@ -123,11 +160,11 @@
     const assets = entry.component.assets || {};
     const cssFiles = Array.isArray(assets.css) ? assets.css : [];
     const version = entry.component.version || entry.plugin?.asset_version || '';
+    const cid = componentGlobalId(entry) || 'component';
     await Promise.all(
       cssFiles.map((href) => {
         const url = href + (version ? (href.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(version) : '');
-        const cid = componentGlobalId(entry) || href;
-        return loadCss(url, 'qnc-component-css-' + cid, session);
+        return loadCss(url, componentAssetDomId('qnc-component-css-', cid, href), session);
       })
     );
   }
@@ -138,10 +175,10 @@
     const jsFiles = Array.isArray(entry.component.assets?.js) ? entry.component.assets.js : [];
     if (!jsFiles.length) return;
     const version = entry.component.version || entry.plugin?.asset_version || '1';
+    const cid = componentGlobalId(entry) || 'component';
     for (const src of jsFiles) {
       const url = src + (src.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(version);
-      const cid = componentGlobalId(entry) || src;
-      await loadScript(url, 'qnc-component-js-' + cid, session);
+      await loadScript(url, componentAssetDomId('qnc-component-js-', cid, src), session);
     }
   }
 
@@ -252,13 +289,28 @@
 
   async function resolveComponents(root, session) {
     if (!root) return;
+    const maxPasses = 32;
+    let passes = 0;
     let nodes = Array.from(root.querySelectorAll('[data-qnc-component]'));
     while (nodes.length) {
+      passes += 1;
+      if (passes > maxPasses) {
+        const stuck = nodes.map((n) => n.getAttribute('data-qnc-component') || '?').join(', ');
+        throw new Error('resolveComponents: unresolved component nodes: ' + stuck);
+      }
+      const beforeKey = nodes
+        .map((n) => (n.getAttribute('data-qnc-component') || '?') + '@' + (n.getAttribute('data-qnc-variant') || ''))
+        .sort()
+        .join('|');
       await Promise.all(
         nodes.map(async (node) => {
+          const compId = node.getAttribute('data-qnc-component') || '';
+          if (!compId) throw new Error('resolveComponents: empty data-qnc-component');
           const entry = componentEntryFor(node);
           const url = componentPathFor(node, entry);
-          if (!url) return;
+          if (!entry || !url) {
+            throw new Error('resolveComponents: unknown component "' + compId + '"');
+          }
           await loadComponentAssets(entry, session);
           await loadComponentScripts(entry, session);
           const res = await fetch(url, { cache: 'no-store' });
@@ -270,6 +322,13 @@
         })
       );
       nodes = Array.from(root.querySelectorAll('[data-qnc-component]'));
+      const afterKey = nodes
+        .map((n) => (n.getAttribute('data-qnc-component') || '?') + '@' + (n.getAttribute('data-qnc-variant') || ''))
+        .sort()
+        .join('|');
+      if (nodes.length && afterKey === beforeKey) {
+        throw new Error('resolveComponents: no progress resolving: ' + beforeKey);
+      }
     }
   }
 
