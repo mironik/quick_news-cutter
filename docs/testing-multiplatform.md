@@ -2,7 +2,7 @@
 
 QNC v2 shell testira se **na svakom stroju gdje želiš pokretati app** — ne samo na Jetsonu.
 
-**Windows:** samo `test.ps1` (Rust). **Ne** koristiti `pytest` ni Python server.
+**Windows:** samo `test.ps1` (Rust). Legacy `pytest` suite uklonjen iz repoa.
 
 ## 1. Preuzmi kod na stroj gdje testiraš
 
@@ -81,7 +81,6 @@ Svaki stroj builda **svoj** `qnc-host` binary (`cargo build --release`). Ne kopi
 
 ## 5. Što test **ne** pokriva (još)
 
-- `/api/projects` — Project backend u Rustu dolazi sljedeće
 - AI, FFmpeg
 - Installer (.dmg / .msi) — kasnije
 

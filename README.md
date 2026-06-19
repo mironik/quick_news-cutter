@@ -35,30 +35,7 @@ GUI: **http://127.0.0.1:8001/app** (default bind localhost; LAN: `QNC_BIND_HOST=
 
 Detalji: [qnc-host/README.md](qnc-host/README.md)
 
-## Legacy Python dev server (referenca — ne produkt)
-
-| | |
-|--|--|
-| **Produkt runtime** | Rust `qnc-host` — `run_host.bat` / `run_host.sh` |
-| **Python stack** | samo **dev referenca** za usporedbu / stari workflow |
-
-Datoteke u repou koje **ne koristi** Windows produkt:
-
-- `server.py`, `server_app_web.py` — FastAPI shell (djelomično zastarjeli API)
-- `run_server.sh` — pokreće `uvicorn server:app` na `:8001`, bind `0.0.0.0`
-- `requirements-core.txt`, `requirements-server.txt`, `requirements-ai.txt`
-- `shell/` — Python registry/loader (paralelan starijem modelu)
-
-**Pravilo:** novi backend ide u `qnc-host/` (Rust). Python datoteke **ne brišemo** bez posebnog odobrenja; ne pokrećemo ih na Windowsu. Vidi [docs/development-policy.md](docs/development-policy.md).
-
-Na Linux/macOS/Jetson (samo ako treba usporediti staro ponašanje):
-
-```bash
-pip install -r requirements-core.txt
-./run_server.sh
-```
-
-Za svakodnevni rad uvijek: `./run_host.sh` (Rust).
+**Runtime:** samo Rust `qnc-host` + SQLite + JS plugini. Legacy Python stack (FastAPI, `shell/*.py`, pytest) uklonjen iz repoa.
 
 Projektni folderi nisu unutar aplikacije. Project template može definirati `storage.projects_root` za projekte koji se kreiraju iz tog templatea. Ako template nema putanju, koristi se default:
 
@@ -75,15 +52,15 @@ Za shared/multiuser produkciju `QNC_PROJECTS_ROOT` je globalni fallback, a konkr
 ```
 QNC_v2/quick_news_cutter/
   qnc-host/              ← Rust shell (produkt na laptopu)
-  shell/                 ← tab_loader, component_registry, module_registry, runtime_db
+  shell/                 ← tab manifest schema (JSON)
   app/                   ← cijela aplikacijska UI ljuska
     shell/               ← boot, core JS, tab footer
     shared/              ← theme, qnc-ui CSS, contract
     components/          ← sve UI komponente + registry.json
     assets/              ← ikone, fontovi
   plugins/
-    project/             ← Project modul (orchestrator + Rust API storage)
-      storage/
+    project/             ← Project modul (orchestrator + Rust API)
+      storage/           ← system_seed.json (Rust template seed)
       static/
     …                    ← budući moduli (ingest, media_pool, …)
   data/                  ← shell_runtime.db, project_store.db, projects.json

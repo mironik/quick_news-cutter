@@ -2,7 +2,7 @@
 
 **Status:** ratificirano (korak 1)  
 **Verzija ugovora:** `shell_api_version: 1`  
-**Referentni host:** QNC v2 (Python + FastAPI) — budući Rust host mora implementirati isti ugovor.
+**Referentni host:** Rust `qnc-host` — implementira Shell API v1 ugovor.
 
 ---
 
@@ -35,8 +35,7 @@ Ovaj dokument definira:
 | Komponente | resolve `data-qnc-component`, global registry |
 | Runtime | OS info, port, capabilities (bez teških probe) |
 | Module prefs | SQLite (`module_state` in global DB) — **target**; see §10 |
-| Statički mount | `/static`, `/plugins`, `/components` |
-| Plugin backend loader | `plugins/*/backend/routes.py` → `register(app)` |
+| Statički mount | `/app/*`, `/plugins/*` |
 | Process log modal | zajednički UI za log (shell chrome) |
 | Health | `/api/health` |
 
@@ -47,7 +46,7 @@ Ovaj dokument definira:
 - Hardver-specifične pretpostavke u shellu (Jetson/CUDA kao default)
 - Ručna gradnja plugin DOM-a izvan component resolve mehanizma
 
-Ako nova funkcionalnost zahtijeva izmjenu `server.py` ili `APP_HTML` izvan tablice u §4 — **to je bug dizajna**, ne feature.
+Ako nova funkcionalnost zahtijeva izmjenu `qnc-host/src/main.rs` / `app_html.rs` ili globalnog `APP_HTML` izvan tablice u §4 — **to je bug dizajna**, ne feature.
 
 ---
 
@@ -55,27 +54,23 @@ Ako nova funkcionalnost zahtijeva izmjenu `server.py` ili `APP_HTML` izvan tabli
 
 ```
 quick_news_cutter/
-  server.py                 # lifespan + register_app_routes + register_plugin_backends
-  server_app_web.py         # /app, /api/shell/*, /api/modules, static mount
+  qnc-host/src/             # Rust shell + plugin API routeri
+    main.rs                 # HTTP server, static mount, boot
+    app_html.rs             # /app HTML shell
+    tabs.rs                 # plugin.json loader
+    project/, ingest/, …    # plugin backend moduli
+  app/
+    shell/                  # boot JS (qnc-core.js, app.js, …)
+    components/             # global portable komponente
+  plugins/                  # tab plugini (manifest + orchestrator JS)
   shell/
-    tab_loader.py
-    module_registry.py      # shell_runtime.db samo
-    runtime_db.py
-    component_registry.py
-    platform.py
-    plugin_backend.py
-  static/
-    app.js                  # boot orchestrator
-    qnc-core.js             # API, bus, shell chrome
-    shell/qnc-shell.js      # tab footer
-  components/               # global portable komponente
-  plugins/                  # tab plugini (jedan folder = jedan plugin)
+    tab_manifest.schema.json
   data/
     shell_config.json
-    shell_runtime.db
+    project_store.db
 ```
 
-Plugin **ne smije** očekivati datoteke izvan svog `plugins/<id>/` i shell `data/` ugovora.
+Plugin **ne smije** očekivati datoteke izvan svog `plugins/<id>/`, `app/`, `qnc-host/` i shell `data/` ugovora.
 
 ---
 
@@ -132,7 +127,7 @@ Koristi se za connectivity check (footer host combo).
     "system": "Linux",
     "release": "...",
     "machine": "aarch64",
-    "python": "3.10.12"
+    "host": "rust"
   },
   "host": { "hostname": "..." },
   "api_port": 8001,
@@ -240,7 +235,7 @@ Sistemski moduli (`removable: false`) ne smiju se isključiti — HTTP 403 ili e
 | `system` | bool | Shell tretira kao core tab |
 | `removable` | bool | Može li se disableati |
 | `components` | array | Plugin-local komponente (vidi §7) |
-| `backend.routes` | string | Relativno: `backend/routes.py` |
+| `backend` | object | Rust host: `implementation`, `host_module`, `actions`, `store` (vidi [plugin-sdk-v1.md](plugin-sdk-v1.md)) |
 
 ### 6.3 Primjer minimalnog plugina (shell-plugin-tab)
 
@@ -342,20 +337,22 @@ Shell ne validira contract u v1 — to je dokumentacija i budući SDK.
 
 ## 8. Plugin backend
 
-Put: `plugins/<plugin_id>/backend/routes.py`
+Backend je **Rust modul u `qnc-host/src/`**, deklariran u `plugin.json`:
 
-```python
-def register(app: FastAPI) -> None:
-    @app.get("/api/my-plugin/...")
-    def ...:
-        ...
+```json
+{
+  "backend": {
+    "implementation": "rust",
+    "host_module": "qnc-host/src/project",
+    "store": { "scope": "project", "path": "project" },
+    "actions": [ { "action": "project.create", "method": "POST", "path": "/api/projects/from-template" } ]
+  }
+}
 ```
 
-- Loader dodaje `plugins/<id>/` na `sys.path`
-- Plugin koristi vlastiti `storage/` paket
-- **Zabranjeno:** import iz `shell/` osim javnog runtime API-ja (kasniji SDK)
-
-Shell globalni `server.py` **ne smije** definirati plugin rute.
+- Rute registrira `qnc-host` pri bootu — **nema** `plugins/*/backend/routes.py`
+- Plugin storage = SQLite u `data/` i per-project `qnc_project.db`
+- Shell globalni router **ne smije** definirati plugin poslovne rute izvan delegacije u plugin module
 
 ---
 
@@ -443,7 +440,7 @@ Novi poslovni modali idu u **plugin komponente**, ne u `APP_HTML`.
 Shell je **usklađen s v1** kad:
 
 - [x] `GET /api/shell/runtime` vraća `shell_api_version: 1`
-- [x] `server.py` nema plugin poslovnih ruta
+- [x] Rust host nema plugin poslovnih ruta izvan `qnc-host/src/<plugin>/`
 - [x] `APP_HTML` nema plugin modale
 - [x] Novi tab zahtijeva samo `plugins/<id>/` + `shell-plugin-tab` (ili composition panel)
 - [x] Integration test: `shell-plugin-tab` u component registry

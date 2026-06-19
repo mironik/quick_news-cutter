@@ -18,14 +18,14 @@ Puni ugovor: **[architecture-db-first.md](architecture-db-first.md)**
 |-----|------|
 | **Produkt** | **Rust `qnc-host`** — `run_host.bat` / `run_host.sh` |
 | **Kod** | **Developer stroj** — repo `quick_news_cutter` (Win / macOS / Linux) |
-| **Python `run_server.sh`** | samo dev referenca na **Linux / macOS / Jetson** — **ne** na Windowsu |
+| **Python** | **uklonjen** iz v2 repoa — nema runtime, seeda, ni test suitea |
 
 ### Windows (obavezno)
 
 - Pokretanje: `run_host.bat` ili `run_host.ps1` — **bez Pythona**
 - Test: `test.ps1` — samo Rust host
-- **Zabranjeno:** instalirati Python radi QNC-a, pokretati `run_server.sh`, `pytest`, `server.py`
-- Novi backend/API ide u **`qnc-host`** (Rust), ne u `shell/*.py`
+- **Zabranjeno:** vraćati Python server, `pytest`, ili Python storage u aktivni repo path
+- Novi backend/API ide isključivo u **`qnc-host`** (Rust)
 
 **Cursor workspace mora biti taj folder na tvom PC/Macu** — ne Jetson, ne edge server.
 

@@ -26,4 +26,4 @@ Dizajn komponenti razvija se ovdje — **ne** u `app/components/registry` dok ni
 
 Design tab → **Components** → timeline: **axis mode** (source / segment / montage), laneovi, overlay slojevi (markeri, slotovi, segmenti, virtual klipovi).
 
-Python `backend/routes.py` = samo dev referenca na Jetsonu (`run_server.sh`).
+Backend je isključivo u Rust hostu (`qnc-host/src/design.rs`).

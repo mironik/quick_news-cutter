@@ -11,8 +11,8 @@ For agent execution rules, git hygiene, runtime data cleanup, and stash safety, 
 ## Produkt
 
 - **Rust `qnc-host`** = jedini server i dev runtime.
+- **Python legacy stack uklonjen** iz repoa (FastAPI server, `shell/*.py`, pytest). Ne vraćati u aktivni path.
 - **Windows:** **nikad Python** — ni dev, ni test, ni runtime. Sve u Rust hostu.
-- **Ne koristiti Python reference** za razvoj QNC v2 workflowa na ovom stroju.
 - **Multiplatform** — bez CUDA/Jetson defaulta.
 
 ## Fokus platforma (Win / Linux / macOS)

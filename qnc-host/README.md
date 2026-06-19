@@ -78,26 +78,6 @@ Statički: `/app/shell`, `/app/shared`, `/app/components`, `/plugins`
 
 Test (Windows): `.\test.ps1` — `cargo check`, release build, integracija uključujući `/api/shell/diagnostics`.
 
-## Legacy Python dev server (referenca)
-
-Repozitorij još sadrži Python FastAPI shell iz ranije faze razvoja. **To nije produkt runtime.**
-
-| Datoteka | Uloga |
-|----------|--------|
-| `server.py` | Minimalni FastAPI entry |
-| `server_app_web.py` | Route registracija za web shell |
-| `run_server.sh` | `uvicorn server:app --host 0.0.0.0 --port 8001` |
-| `requirements-*.txt` | Python ovisnosti za dev server |
-| `shell/*.py` | Stari Python loader/registry |
-
-| Platforma | Preporuka |
-|-----------|-----------|
-| **Windows** | **Ne koristi Python.** Samo `run_host.bat` / `run_host.ps1` |
-| **Linux / macOS** | Produkt: `./run_host.sh`. Python samo za usporedbu ako treba |
-| **Jetson** | Referenca / stari dev put — ne write target za v2 |
-
-Python datoteke ostaju u repou dok se eksplicitno ne odluči o uklanjanju. Novi API i storage idu u **`qnc-host`**.
-
 ## Što još nije u hostu
 
 - AI, FFmpeg jobs
