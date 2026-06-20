@@ -255,6 +255,8 @@ try {
     if ($storyState.selected_shot_id -ne '') { throw "FAIL: story selected_shot_id should be empty" }
     if ($null -eq $storyState.parts -or @($storyState.parts).Count -ne 0) { throw "FAIL: story parts should be empty array" }
     if ($null -eq $storyState.markers -or @($storyState.markers).Count -ne 0) { throw "FAIL: story markers should be empty array" }
+    if ($null -eq $storyState.marker_slots -or @($storyState.marker_slots).Count -ne 0) { throw "FAIL: story marker_slots should be empty array" }
+    if ($storyState.selected_slot_id -ne '') { throw "FAIL: story selected_slot_id should be empty" }
     if ($null -eq $storyState.covers -or @($storyState.covers).Count -ne 0) { throw "FAIL: story covers should be empty array" }
     if ($storyState.summary.part_count -ne 0) { throw "FAIL: story summary.part_count should be 0" }
     if ($storyState.summary.duration_sec -ne 0) { throw "FAIL: story summary.duration_sec should be 0" }
@@ -321,6 +323,74 @@ try {
     if (@($finalStory.parts).Count -ne 1) { throw "FAIL: story final parts count" }
     if ($finalStory.summary.part_count -ne 1) { throw "FAIL: story final summary.part_count" }
     Write-Host "OK: story parts CRUD round-trip (SQLite)"
+
+    $partsForMarkers = Test-PostJson "$Base/api/story/part/create" @{
+        project_id = $newId
+        kind = "tonovi"
+    } '"parts"' "POST /api/story/part/create (marker setup tonovi)"
+    if (@($partsForMarkers.parts).Count -lt 2) {
+        $partsForMarkers = Test-PostJson "$Base/api/story/part/create" @{
+            project_id = $newId
+            kind = "offovi"
+        } '"parts"' "POST /api/story/part/create (marker setup offovi)"
+    }
+    if (@($partsForMarkers.parts).Count -lt 2) { throw "FAIL: story marker setup needs 2 parts" }
+    $markerPartA = $partsForMarkers.parts[0].part_id
+    $markerPartB = $partsForMarkers.parts[1].part_id
+    if (-not $markerPartA -or -not $markerPartB) { throw "FAIL: story marker setup part ids missing" }
+
+    $withMarker = Test-PostJson "$Base/api/story/marker/create" @{
+        project_id = $newId
+        after_part_id = $markerPartA
+        label = "QA cut"
+    } '"markers"' "POST /api/story/marker/create"
+    if (@($withMarker.markers).Count -ne 1) { throw "FAIL: story marker create count" }
+    if (@($withMarker.marker_slots).Count -ne 2) { throw "FAIL: story marker create slot count" }
+    $markerId = $withMarker.markers[0].marker_id
+    if (-not $markerId) { throw "FAIL: story marker_id missing" }
+    if ($withMarker.markers[0].after_part_id -ne $markerPartA) { throw "FAIL: story marker after_part_id" }
+
+    $withTwoMarkers = Test-PostJson "$Base/api/story/marker/create" @{
+        project_id = $newId
+        after_part_id = $markerPartB
+        label = "QA cut 2"
+    } '"markers"' "POST /api/story/marker/create (second)"
+    if (@($withTwoMarkers.markers).Count -ne 2) { throw "FAIL: story second marker count" }
+    if (@($withTwoMarkers.marker_slots).Count -ne 2) { throw "FAIL: story second marker slot count" }
+
+    $slotSelect = Test-PostJson "$Base/api/story/marker_slot/select" @{
+        project_id = $newId
+        slot_id = $withTwoMarkers.marker_slots[0].slot_id
+    } '"selected_slot_id"' "POST /api/story/marker_slot/select"
+    if ($slotSelect.selected_slot_id -ne $withTwoMarkers.marker_slots[0].slot_id) {
+        throw "FAIL: story selected_slot_id after select"
+    }
+
+    $movedMarker = Test-PostJson "$Base/api/story/marker/move" @{
+        project_id = $newId
+        marker_id = $markerId
+        direction = "down"
+    } '"markers"' "POST /api/story/marker/move"
+    if (@($movedMarker.markers).Count -ne 2) { throw "FAIL: story marker move count" }
+    $movedRow = @($movedMarker.markers | Where-Object { $_.marker_id -eq $markerId } | Select-Object -First 1)
+    if (-not $movedRow) { throw "FAIL: story marker move row missing" }
+    if ($movedRow.after_part_id -ne $markerPartB) { throw "FAIL: story marker move after_part_id" }
+
+    $deletedMarker = Test-PostJson "$Base/api/story/marker/delete" @{
+        project_id = $newId
+        marker_id = $markerId
+    } '"markers"' "POST /api/story/marker/delete"
+    if (@($deletedMarker.markers).Count -ne 1) { throw "FAIL: story marker delete count" }
+    if (@($deletedMarker.marker_slots).Count -ne 2) { throw "FAIL: story marker delete slot count" }
+
+    $markerReload = Test-GetJson "$Base/api/story/state?project_id=$([uri]::EscapeDataString($newId))" '"marker_slots"' "GET /api/story/state (markers reload)"
+    if (@($markerReload.marker_slots).Count -ne 2) { throw "FAIL: story marker_slots reload count" }
+    if (@($markerReload.markers).Count -ne 1) { throw "FAIL: story markers reload count" }
+    Write-Host "OK: story markers + slots round-trip (SQLite)"
+
+    Test-Get "$Base/plugins/story/plugin.json" 'story.marker.create' "GET story plugin.json (marker actions)"
+    Test-Get "$Base/plugins/story/static/qnc-story.js" 'story\.marker\.create' "GET qnc-story.js (marker handlers)"
+    Test-Get "$Base/app/components/registry.json" 'story-markers-list' "GET registry (story-markers-list)"
 
     $env:QNC_TEST_PROJECT_DB = $dbPath
     $env:QNC_TEST_PROJECT_ID = $newId

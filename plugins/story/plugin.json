@@ -6,20 +6,22 @@
   "position": "normal",
   "entry_js": "/plugins/story/static/qnc-story.js",
   "entry_css": "/plugins/story/static/qnc-story.css",
-  "asset_version": 2,
+  "asset_version": 3,
   "panel_id": "panel-storyboard",
   "api_namespace": "/api/story",
   "storage": "story",
   "enabled": true,
   "system": true,
   "removable": false,
-  "description": "Story tab — DB-backed montage (Plugin SDK v1, parts CRUD).",
+  "description": "Story tab — DB-backed montage (Plugin SDK v1, parts + markers).",
   "panel_html": "/app/components/story-tab-layout/component.html",
   "uses_components": [
     "story-tab-layout",
     "story-toolbar",
     "story-parts-list",
-    "story-part-editor"
+    "story-part-editor",
+    "story-markers-list",
+    "story-marker-slots-list"
   ],
   "sdk_version": 1,
   "state": {
@@ -72,6 +74,30 @@
         "action": "story.part.select",
         "method": "POST",
         "path": "/api/story/part/select",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.marker.create",
+        "method": "POST",
+        "path": "/api/story/marker/create",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.marker.delete",
+        "method": "POST",
+        "path": "/api/story/marker/delete",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.marker.move",
+        "method": "POST",
+        "path": "/api/story/marker/move",
+        "writes": ["story.state"]
+      },
+      {
+        "action": "story.marker_slot.select",
+        "method": "POST",
+        "path": "/api/story/marker_slot/select",
         "writes": ["story.state"]
       }
     ],

@@ -1161,7 +1161,9 @@
           "shell-plugin-tab",
           "story-toolbar",
           "story-parts-list",
-          "story-part-editor"
+          "story-part-editor",
+          "story-markers-list",
+          "story-marker-slots-list"
         ],
         "owns_state": false
       }
@@ -1259,6 +1261,77 @@
           }
         ],
         "backend_actions": ["story.part.update"],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-markers-list": {
+      "global_id": "story-markers-list",
+      "component_id": "story-markers-list",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story markers list — add/delete/move marker intents.",
+      "embeddable": true,
+      "path": "/app/components/story-markers-list/component.html",
+      "package": "/app/components/story-markers-list",
+      "assets": {
+        "css": ["/app/components/story-markers-list/component.css"],
+        "js": ["/app/components/story-markers-list/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["parts", "markers", "selected_part_id", "busy"],
+        "slots": ["markers", "empty"],
+        "events": [
+          { "action": "story.marker.create", "payload": {} },
+          {
+            "action": "story.marker.delete",
+            "payload": { "marker_id": "string" }
+          },
+          {
+            "action": "story.marker.move",
+            "payload": { "marker_id": "string", "direction": "string" }
+          }
+        ],
+        "backend_actions": [
+          "story.marker.create",
+          "story.marker.delete",
+          "story.marker.move"
+        ],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-marker-slots-list": {
+      "global_id": "story-marker-slots-list",
+      "component_id": "story-marker-slots-list",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story marker slots list — render + select slot intent.",
+      "embeddable": true,
+      "path": "/app/components/story-marker-slots-list/component.html",
+      "package": "/app/components/story-marker-slots-list",
+      "assets": {
+        "css": ["/app/components/story-marker-slots-list/component.css"],
+        "js": ["/app/components/story-marker-slots-list/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["marker_slots", "selected_slot_id", "busy"],
+        "slots": ["slots", "empty"],
+        "events": [
+          {
+            "action": "story.marker_slot.select",
+            "payload": { "slot_id": "string" }
+          }
+        ],
+        "backend_actions": ["story.marker_slot.select"],
         "requires": ["QNC.componentBus"],
         "requires_components": [],
         "owns_state": false

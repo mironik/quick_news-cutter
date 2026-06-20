@@ -1,0 +1,40 @@
+.qnc-story-marker-slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qnc-story-marker-slots-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.qnc-story-marker-slots-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.qnc-story-marker-slot-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--qnc-border, #333);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.qnc-story-marker-slot-row.selected {
+  border-color: var(--qnc-accent, #6cf);
+  background: rgba(102, 204, 255, 0.08);
+}
+
+.qnc-story-marker-slot-meta {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}

@@ -37,14 +37,17 @@ window.QNC = window.QNC || {};
       project_id: db.project_id || ctx.projectId || '',
       selected_part_id: db.selected_part_id || '',
       selected_shot_id: db.selected_shot_id || '',
+      selected_slot_id: db.selected_slot_id || '',
       parts: Array.isArray(db.parts) ? db.parts : [],
+      markers: Array.isArray(db.markers) ? db.markers : [],
+      marker_slots: Array.isArray(db.marker_slots) ? db.marker_slots : [],
       part_count: db.summary?.part_count ?? (Array.isArray(db.parts) ? db.parts.length : 0),
       duration_sec: db.summary?.duration_sec ?? 0,
       draft_updated_at: db.draft_updated_at,
       committed_at: db.committed_at,
       busy: runtime.busy,
       status_note: open
-        ? 'Story — dijelovi u projektnoj bazi (SQLite).'
+        ? 'Story — dijelovi, markeri i slotovi iz SQLite.'
         : 'Prvo otvori projekt na Project tabu.',
     };
   }
@@ -59,6 +62,11 @@ window.QNC = window.QNC || {};
     comp('story-toolbar')?.mount?.(q('[data-qnc-panel="story-toolbar"]'), PLUGIN_CTX);
     comp('story-parts-list')?.mount?.(q('[data-qnc-panel="story-parts-list"]'), PLUGIN_CTX);
     comp('story-part-editor')?.mount?.(q('[data-qnc-panel="story-part-editor"]'), PLUGIN_CTX);
+    comp('story-markers-list')?.mount?.(q('[data-qnc-panel="story-markers-list"]'), PLUGIN_CTX);
+    comp('story-marker-slots-list')?.mount?.(
+      q('[data-qnc-panel="story-marker-slots-list"]'),
+      PLUGIN_CTX
+    );
     runtime.mounted = true;
   }
 
@@ -74,6 +82,12 @@ window.QNC = window.QNC || {};
     comp('story-toolbar')?.update?.(q('[data-qnc-panel="story-toolbar"]'), model, PLUGIN_CTX);
     comp('story-parts-list')?.update?.(q('[data-qnc-panel="story-parts-list"]'), model, PLUGIN_CTX);
     comp('story-part-editor')?.update?.(q('[data-qnc-panel="story-part-editor"]'), model, PLUGIN_CTX);
+    comp('story-markers-list')?.update?.(q('[data-qnc-panel="story-markers-list"]'), model, PLUGIN_CTX);
+    comp('story-marker-slots-list')?.update?.(
+      q('[data-qnc-panel="story-marker-slots-list"]'),
+      model,
+      PLUGIN_CTX
+    );
   }
 
   async function runMutation(ctx, actionId, body) {
@@ -151,7 +165,33 @@ window.QNC = window.QNC || {};
         await runMutation(ctx, 'story.part.select', { part_id: partId });
       });
 
-      QNC.log('[Story] SDK parts CRUD spreman', 'ok');
+      ctx.on('story.marker.create', async () => {
+        const db = snap(ctx);
+        const afterPartId = String(db.selected_part_id || '').trim();
+        if (!afterPartId) return;
+        await runMutation(ctx, 'story.marker.create', { after_part_id: afterPartId });
+      });
+
+      ctx.on('story.marker.delete', async (ev) => {
+        const markerId = String(ev.payload?.marker_id || '').trim();
+        if (!markerId) return;
+        await runMutation(ctx, 'story.marker.delete', { marker_id: markerId });
+      });
+
+      ctx.on('story.marker.move', async (ev) => {
+        const markerId = String(ev.payload?.marker_id || '').trim();
+        const direction = String(ev.payload?.direction || '').trim();
+        if (!markerId || !direction) return;
+        await runMutation(ctx, 'story.marker.move', { marker_id: markerId, direction });
+      });
+
+      ctx.on('story.marker_slot.select', async (ev) => {
+        const slotId = String(ev.payload?.slot_id || '').trim();
+        if (!slotId) return;
+        await runMutation(ctx, 'story.marker_slot.select', { slot_id: slotId });
+      });
+
+      QNC.log('[Story] SDK markers + slots spreman', 'ok');
     },
 
     async onShow(ctx) {

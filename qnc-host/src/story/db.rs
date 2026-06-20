@@ -3,18 +3,26 @@ use serde_json::{json, Value};
 
 use crate::project::db::{now_str, open_project, ProjectPaths};
 
+use super::markers::{
+    create_marker as create_marker_row, delete_marker as delete_marker_row,
+    delete_markers_for_part, ensure_marker_schema, ensure_materialized_slots,
+    finalize_story_mutation, marker_slots_snapshot, markers_snapshot,
+    move_marker as move_marker_row, select_marker_slot as select_marker_slot_row,
+};
+
 #[derive(Default)]
-struct StoryRow {
+pub(crate) struct StoryRow {
     selected_part_id: String,
     selected_shot_id: String,
+    pub(crate) selected_slot_id: String,
     draft_updated_at: String,
     committed_at: String,
     _updated_at: String,
 }
 
 #[derive(Clone)]
-struct StoryPartRow {
-    part_id: String,
+pub(crate) struct StoryPartRow {
+    pub(crate) part_id: String,
     kind: String,
     sort_index: i64,
     title: String,
@@ -60,6 +68,7 @@ fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
         );
         CREATE INDEX IF NOT EXISTS idx_story_parts_sort ON story_parts(sort_index);",
     )?;
+    ensure_marker_schema(conn)?;
     Ok(())
 }
 
@@ -72,26 +81,28 @@ fn ensure_row(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
-fn read_row(conn: &Connection) -> rusqlite::Result<StoryRow> {
+pub(crate) fn read_row(conn: &Connection) -> rusqlite::Result<StoryRow> {
     ensure_row(conn)?;
     conn.query_row(
         "SELECT selected_part_id, selected_shot_id,
-                COALESCE(draft_updated_at, ''), COALESCE(committed_at, ''), COALESCE(updated_at, '')
+                COALESCE(selected_slot_id, ''), COALESCE(draft_updated_at, ''),
+                COALESCE(committed_at, ''), COALESCE(updated_at, '')
          FROM story_state WHERE id = 1",
         [],
         |r| {
             Ok(StoryRow {
                 selected_part_id: r.get(0)?,
                 selected_shot_id: r.get(1)?,
-                draft_updated_at: r.get(2)?,
-                committed_at: r.get(3)?,
-                _updated_at: r.get(4)?,
+                selected_slot_id: r.get(2)?,
+                draft_updated_at: r.get(3)?,
+                committed_at: r.get(4)?,
+                _updated_at: r.get(5)?,
             })
         },
     )
 }
 
-fn touch_draft(conn: &Connection) -> rusqlite::Result<()> {
+pub(crate) fn touch_draft(conn: &Connection) -> rusqlite::Result<()> {
     let now = now_str();
     conn.execute(
         "UPDATE story_state SET draft_updated_at = ?1, updated_at = ?1 WHERE id = 1",
@@ -124,7 +135,7 @@ fn validate_kind(kind: &str) -> Result<&str, String> {
     }
 }
 
-fn list_parts(conn: &Connection) -> rusqlite::Result<Vec<StoryPartRow>> {
+pub(crate) fn list_parts(conn: &Connection) -> rusqlite::Result<Vec<StoryPartRow>> {
     ensure_schema(conn)?;
     let mut stmt = conn.prepare(
         "SELECT part_id, kind, sort_index, title, text, clip_id, virtual_shot_id,
@@ -170,16 +181,24 @@ fn part_json(row: &StoryPartRow) -> Value {
     })
 }
 
-fn snapshot_json(project_id: &str, row: &StoryRow, parts: &[StoryPartRow]) -> Value {
+fn snapshot_json(
+    conn: &Connection,
+    project_id: &str,
+    row: &StoryRow,
+    parts: &[StoryPartRow],
+) -> rusqlite::Result<Value> {
     let part_values: Vec<Value> = parts.iter().map(part_json).collect();
     let part_count = parts.len();
-    json!({
+    let markers = markers_snapshot(conn)?;
+    let marker_slots = marker_slots_snapshot(conn)?;
+    Ok(json!({
         "project_id": project_id,
         "selected_part_id": row.selected_part_id,
         "selected_shot_id": row.selected_shot_id,
+        "selected_slot_id": row.selected_slot_id,
         "parts": part_values,
-        "markers": [],
-        "marker_slots": [],
+        "markers": markers,
+        "marker_slots": marker_slots,
         "covers": [],
         "draft_updated_at": optional_text(&row.draft_updated_at),
         "committed_at": optional_text(&row.committed_at),
@@ -187,13 +206,14 @@ fn snapshot_json(project_id: &str, row: &StoryRow, parts: &[StoryPartRow]) -> Va
             "part_count": part_count,
             "duration_sec": 0,
         },
-    })
+    }))
 }
 
 fn load_snapshot(conn: &Connection, project_id: &str) -> rusqlite::Result<Value> {
     let row = read_row(conn)?;
+    ensure_materialized_slots(conn)?;
     let parts = list_parts(conn)?;
-    Ok(snapshot_json(project_id, &row, &parts))
+    snapshot_json(conn, project_id, &row, &parts)
 }
 
 pub fn load_state(paths: &ProjectPaths, project_id: &str) -> Result<Value, String> {
@@ -266,7 +286,7 @@ pub fn create_part(paths: &ProjectPaths, project_id: &str, kind: &str) -> Result
     )
     .map_err(|e| e.to_string())?;
     set_selected_part_id(&conn, &part_id).map_err(|e| e.to_string())?;
-    touch_draft(&conn).map_err(|e| e.to_string())?;
+    finalize_story_mutation(&conn).map_err(|e| e.to_string())?;
     load_snapshot(&conn, pid).map_err(|e| e.to_string())
 }
 
@@ -305,7 +325,7 @@ pub fn update_part(
         )
         .map_err(|e| e.to_string())?;
     }
-    touch_draft(&conn).map_err(|e| e.to_string())?;
+    finalize_story_mutation(&conn).map_err(|e| e.to_string())?;
     load_snapshot(&conn, pid).map_err(|e| e.to_string())
 }
 
@@ -328,6 +348,7 @@ pub fn delete_part(paths: &ProjectPaths, project_id: &str, part_id: &str) -> Res
         params![part_id],
     )
     .map_err(|e| e.to_string())?;
+    delete_markers_for_part(&conn, part_id).map_err(|e| e.to_string())?;
     let next_selected =
         resolve_selection_after_delete(&conn, part_id, deleted_sort).map_err(|e| e.to_string())?;
     set_selected_part_id(&conn, &next_selected).map_err(|e| e.to_string())?;
@@ -339,7 +360,7 @@ pub fn delete_part(paths: &ProjectPaths, project_id: &str, part_id: &str) -> Res
         )
         .map_err(|e| e.to_string())?;
     }
-    touch_draft(&conn).map_err(|e| e.to_string())?;
+    finalize_story_mutation(&conn).map_err(|e| e.to_string())?;
     load_snapshot(&conn, pid).map_err(|e| e.to_string())
 }
 
@@ -382,7 +403,7 @@ pub fn reorder_part(
         )
         .map_err(|e| e.to_string())?;
     }
-    touch_draft(&conn).map_err(|e| e.to_string())?;
+    finalize_story_mutation(&conn).map_err(|e| e.to_string())?;
     load_snapshot(&conn, pid).map_err(|e| e.to_string())
 }
 
@@ -398,5 +419,51 @@ pub fn select_part(paths: &ProjectPaths, project_id: &str, part_id: &str) -> Res
     }
     set_selected_part_id(&conn, part_id).map_err(|e| e.to_string())?;
     touch_draft(&conn).map_err(|e| e.to_string())?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn create_marker(
+    paths: &ProjectPaths,
+    project_id: &str,
+    after_part_id: &str,
+    label: Option<&str>,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    create_marker_row(&conn, after_part_id, label)?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn delete_marker(
+    paths: &ProjectPaths,
+    project_id: &str,
+    marker_id: &str,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    delete_marker_row(&conn, marker_id)?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn move_marker(
+    paths: &ProjectPaths,
+    project_id: &str,
+    marker_id: &str,
+    direction: &str,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    move_marker_row(&conn, marker_id, direction)?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn select_marker_slot(
+    paths: &ProjectPaths,
+    project_id: &str,
+    slot_id: &str,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    select_marker_slot_row(&conn, slot_id)?;
     load_snapshot(&conn, pid).map_err(|e| e.to_string())
 }
