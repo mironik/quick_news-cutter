@@ -317,20 +317,6 @@ pub fn resolve_card_media_root(scan_root: &Path) -> PathBuf {
     scan_root
 }
 
-/// Ako nema THM/JPG: jedan frame iz videa (proxy na kartici → project proxy → MXF).
-pub fn poster_video_source_path(meta: &Value) -> Option<PathBuf> {
-    proxy_poster_source_path(meta).or_else(|| {
-        for key in ["original_path", "source_path"] {
-            if let Some(p) = path_from_meta(meta, key) {
-                if p.is_file() {
-                    return Some(p);
-                }
-            }
-        }
-        None
-    })
-}
-
 /// Proces 2: samo proxy na kartici / u projektu — nikad MXF.
 pub fn proxy_poster_source_path(meta: &Value) -> Option<PathBuf> {
     for key in ["proxy_path", "project_proxy_path"] {
@@ -341,14 +327,6 @@ pub fn proxy_poster_source_path(meta: &Value) -> Option<PathBuf> {
         }
     }
     None
-}
-
-/// Ključ izvora postera u bazi — samo THM/JPG putanja (ne video).
-pub fn poster_source_key(meta: &Value) -> String {
-    find_card_poster_copy(meta, None)
-        .map(|(p, _)| p.to_string_lossy().to_string())
-        .or_else(|| card_thumb_path(meta).map(|p| p.to_string_lossy().to_string()))
-        .unwrap_or_default()
 }
 
 pub fn is_breaking_news(project: &Value) -> bool {
@@ -375,12 +353,6 @@ pub fn proxy_policy_copy(project: &Value) -> bool {
         .and_then(|v| v.as_str())
         .map(|p| p == "copy_to_project")
         .unwrap_or(true)
-}
-
-/// Decode / filmstrip: proxy na kartici → project proxy → MXF (THM se ne koristi).
-pub fn decode_media_path(meta: &Value, project: &Value) -> Option<PathBuf> {
-    let _ = is_breaking_news(project);
-    poster_video_source_path(meta)
 }
 
 /// Import kopiranje: proxy prije originala; breaking news nikad original.
@@ -444,10 +416,6 @@ fn paths_same_file(a: &Path, b: &Path) -> bool {
         .zip(b.canonicalize().ok())
         .map(|(x, y)| x == y)
         .unwrap_or(false)
-}
-
-pub fn media_path_for_clip(meta: &Value) -> Option<PathBuf> {
-    decode_media_path(meta, &json!({}))
 }
 
 fn find_card_file_in_dir(dir: &Path, base_stem: &str, extensions: &[&str]) -> Option<PathBuf> {
@@ -632,59 +600,24 @@ fn attach_card_thumb_to_groups(map: &mut HashMap<String, MediaGroup>, thumb_path
     }
 }
 
-pub fn enrich_metadata_from_disk(video_path: &Path) -> Value {
-    let parent = video_path
-        .parent()
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("."));
-    let stem = video_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("clip");
-    let base = clip_base_stem(stem);
-    let mut group = MediaGroup {
-        clip_id: clip_id_from_stem(&base),
-        display_name: video_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("clip")
-            .to_string(),
-        original: None,
-        proxy: None,
-        card_thumb: find_card_thumb_for_media_path(video_path),
-        card_dir: parent,
-    };
-    if is_media_file(video_path) {
-        if is_proxy_media_path(video_path) {
-            group.proxy = Some(video_path.to_path_buf());
-        } else {
-            group.original = Some(video_path.to_path_buf());
-        }
-    }
-    if let Ok(entries) = std::fs::read_dir(&group.card_dir) {
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if !p.is_file() || !is_media_file(&p) {
-                continue;
-            }
-            let s = p.file_stem().and_then(|x| x.to_str()).unwrap_or("");
-            if clip_base_stem(s) != base {
-                continue;
-            }
-            if is_proxy_media_path(&p) {
-                group.proxy = Some(p);
-            } else if group.original.is_none() {
-                group.original = Some(p);
-            }
-        }
-    }
-    group.build_metadata(false, false, false)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+
+    /// Test-only: proxy → original → source fallback when THM/JPG poster is unavailable.
+    fn poster_video_source_path(meta: &Value) -> Option<PathBuf> {
+        proxy_poster_source_path(meta).or_else(|| {
+            for key in ["original_path", "source_path"] {
+                if let Some(p) = path_from_meta(meta, key) {
+                    if p.is_file() {
+                        return Some(p);
+                    }
+                }
+            }
+            None
+        })
+    }
 
     fn touch(dir: &Path, name: &str) -> PathBuf {
         let p = dir.join(name);
