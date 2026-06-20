@@ -1,4 +1,4 @@
-/* Story tab — Plugin SDK v1 orchestrator. Stanje samo iz SQLite snapshota. */
+/* Story tab — Jetson editorial UX + Plugin SDK v1 (SQLite snapshot only). */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
@@ -7,7 +7,13 @@ window.QNC = window.QNC || {};
     return;
   }
 
-  const runtime = { mounted: false, busy: false };
+  const runtime = {
+    mounted: false,
+    busy: false,
+    playheadByPart: {},
+    previewOpen: false,
+    previewLabel: '',
+  };
   const PLUGIN_CTX = { pluginId: 'story' };
 
   function panel() {
@@ -30,6 +36,28 @@ window.QNC = window.QNC || {};
     return !!String(ctx.projectId || '').trim();
   }
 
+  function partSpan(part) {
+    const inS = Number(part.in_seconds);
+    const outS = Number(part.out_seconds);
+    if (Number.isFinite(inS) && Number.isFinite(outS) && outS > inS) {
+      return Math.max(0.05, outS - inS);
+    }
+    return 3;
+  }
+
+  function globalPlayheadSec(db) {
+    const partId = db.selected_part_id;
+    if (!partId) return 0;
+    let cursor = 0;
+    for (const part of db.parts || []) {
+      if (part.part_id === partId) {
+        return cursor + partSpan(part) * (Number(runtime.playheadByPart[partId]) || 0);
+      }
+      cursor += partSpan(part);
+    }
+    return 0;
+  }
+
   function storyModel(ctx) {
     const db = snap(ctx);
     const open = hasProject(ctx);
@@ -43,14 +71,16 @@ window.QNC = window.QNC || {};
       parts: Array.isArray(db.parts) ? db.parts : [],
       markers: Array.isArray(db.markers) ? db.markers : [],
       marker_slots: Array.isArray(db.marker_slots) ? db.marker_slots : [],
+      virtual_shots: [],
       part_count: db.summary?.part_count ?? (Array.isArray(db.parts) ? db.parts.length : 0),
       duration_sec: db.summary?.duration_sec ?? 0,
       draft_updated_at: db.draft_updated_at,
       committed_at: db.committed_at,
+      playhead_by_part: runtime.playheadByPart,
+      global_playhead_sec: globalPlayheadSec(db),
+      preview_open: runtime.previewOpen,
+      preview_label: runtime.previewLabel,
       busy: runtime.busy,
-      status_note: open
-        ? 'Story — dijelovi, markeri, slotovi i pokrivanja iz SQLite.'
-        : 'Prvo otvori projekt na Project tabu.',
     };
   }
 
@@ -62,15 +92,10 @@ window.QNC = window.QNC || {};
   function mountComponents() {
     comp('story-tab-layout')?.mount?.(q('[data-qnc-panel="story-tab-layout"]'), PLUGIN_CTX);
     comp('story-toolbar')?.mount?.(q('[data-qnc-panel="story-toolbar"]'), PLUGIN_CTX);
-    comp('story-parts-list')?.mount?.(q('[data-qnc-panel="story-parts-list"]'), PLUGIN_CTX);
-    comp('story-part-editor')?.mount?.(q('[data-qnc-panel="story-part-editor"]'), PLUGIN_CTX);
-    comp('story-markers-list')?.mount?.(q('[data-qnc-panel="story-markers-list"]'), PLUGIN_CTX);
-    comp('story-marker-slots-list')?.mount?.(
-      q('[data-qnc-panel="story-marker-slots-list"]'),
-      PLUGIN_CTX
-    );
-    comp('story-covers-list')?.mount?.(q('[data-qnc-panel="story-covers-list"]'), PLUGIN_CTX);
-    comp('story-cover-editor')?.mount?.(q('[data-qnc-panel="story-cover-editor"]'), PLUGIN_CTX);
+    comp('story-preview-overlay')?.mount?.(q('[data-qnc-panel="story-preview-overlay"]'), PLUGIN_CTX);
+    comp('story-virtual-shots')?.mount?.(q('[data-qnc-panel="story-virtual-shots"]'), PLUGIN_CTX);
+    comp('story-segment-timeline')?.mount?.(q('[data-qnc-panel="story-segment-timeline"]'), PLUGIN_CTX);
+    comp('story-virtual-timeline')?.mount?.(q('[data-qnc-panel="story-virtual-timeline"]'), PLUGIN_CTX);
     runtime.mounted = true;
   }
 
@@ -84,16 +109,18 @@ window.QNC = window.QNC || {};
     const model = storyModel(ctx);
     comp('story-tab-layout')?.update?.(q('[data-qnc-panel="story-tab-layout"]'), model, PLUGIN_CTX);
     comp('story-toolbar')?.update?.(q('[data-qnc-panel="story-toolbar"]'), model, PLUGIN_CTX);
-    comp('story-parts-list')?.update?.(q('[data-qnc-panel="story-parts-list"]'), model, PLUGIN_CTX);
-    comp('story-part-editor')?.update?.(q('[data-qnc-panel="story-part-editor"]'), model, PLUGIN_CTX);
-    comp('story-markers-list')?.update?.(q('[data-qnc-panel="story-markers-list"]'), model, PLUGIN_CTX);
-    comp('story-marker-slots-list')?.update?.(
-      q('[data-qnc-panel="story-marker-slots-list"]'),
+    comp('story-preview-overlay')?.update?.(q('[data-qnc-panel="story-preview-overlay"]'), model, PLUGIN_CTX);
+    comp('story-virtual-shots')?.update?.(q('[data-qnc-panel="story-virtual-shots"]'), model, PLUGIN_CTX);
+    comp('story-segment-timeline')?.update?.(
+      q('[data-qnc-panel="story-segment-timeline"]'),
       model,
       PLUGIN_CTX
     );
-    comp('story-covers-list')?.update?.(q('[data-qnc-panel="story-covers-list"]'), model, PLUGIN_CTX);
-    comp('story-cover-editor')?.update?.(q('[data-qnc-panel="story-cover-editor"]'), model, PLUGIN_CTX);
+    comp('story-virtual-timeline')?.update?.(
+      q('[data-qnc-panel="story-virtual-timeline"]'),
+      model,
+      PLUGIN_CTX
+    );
   }
 
   async function runMutation(ctx, actionId, body) {
@@ -115,6 +142,22 @@ window.QNC = window.QNC || {};
     }
   }
 
+  function setPlayhead(partId, ratio) {
+    if (!partId) return;
+    runtime.playheadByPart[partId] = Math.max(0, Math.min(1, Number(ratio) || 0));
+  }
+
+  async function addMarkerAtPlayhead(ctx) {
+    const db = snap(ctx);
+    const partId = String(db.selected_part_id || '').trim();
+    if (!partId) {
+      ctx.setStatus('Story: odaberi segment.', 'err');
+      return;
+    }
+    const localSec = partSpan(db.parts.find((p) => p.part_id === partId)) * (runtime.playheadByPart[partId] || 0);
+    await runMutation(ctx, 'story.marker.create', { part_id: partId, local_sec: localSec });
+  }
+
   const app = QNC.createPluginApp({
     pluginId: 'story',
     tabId: 'storyboard',
@@ -131,7 +174,24 @@ window.QNC = window.QNC || {};
       mountComponents();
 
       ctx.onShell('project:changed', () => {
+        runtime.playheadByPart = {};
+        runtime.previewOpen = false;
         ctx.store.invalidate('story.state');
+      });
+
+      ctx.on('story.refresh', async () => {
+        if (!hasProject(ctx)) return;
+        runtime.busy = true;
+        renderAll(ctx);
+        try {
+          await ctx.store.reload('story.state');
+          renderAll(ctx);
+        } catch (e) {
+          ctx.setStatus('Story: ' + e.message, 'err');
+        } finally {
+          runtime.busy = false;
+          renderAll(ctx);
+        }
       });
 
       ctx.on('story.part.create', async (ev) => {
@@ -139,65 +199,22 @@ window.QNC = window.QNC || {};
         await runMutation(ctx, 'story.part.create', { kind });
       });
 
-      ctx.on('story.part.update', async (ev) => {
-        const partId = String(ev.payload?.part_id || '').trim();
-        if (!partId) return;
-        await runMutation(ctx, 'story.part.update', {
-          part_id: partId,
-          title: ev.payload?.title,
-          text: ev.payload?.text,
-          kind: ev.payload?.kind,
-        });
-      });
-
       ctx.on('story.part.delete', async (ev) => {
         const db = snap(ctx);
         const partId = String(ev.payload?.part_id || db.selected_part_id || '').trim();
         if (!partId) return;
+        delete runtime.playheadByPart[partId];
         await runMutation(ctx, 'story.part.delete', { part_id: partId });
-      });
-
-      ctx.on('story.part.reorder', async (ev) => {
-        const db = snap(ctx);
-        const partId = String(ev.payload?.part_id || db.selected_part_id || '').trim();
-        const direction = String(ev.payload?.direction || '').trim();
-        if (!partId || !direction) return;
-        await runMutation(ctx, 'story.part.reorder', { part_id: partId, direction });
       });
 
       ctx.on('story.part.select', async (ev) => {
         const partId = String(ev.payload?.part_id || '').trim();
         if (!partId) return;
-        await runMutation(ctx, 'story.part.select', { part_id: partId });
-      });
-
-      ctx.on('story.marker.create', async (ev) => {
-        const timelineSec = ev.payload?.timeline_sec;
-        if (timelineSec != null && Number.isFinite(Number(timelineSec))) {
-          await runMutation(ctx, 'story.marker.create', { timeline_sec: Number(timelineSec) });
-          return;
+        if (ev.payload?.playhead_ratio != null) {
+          setPlayhead(partId, ev.payload.playhead_ratio);
         }
-        const db = snap(ctx);
-        const partId = String(ev.payload?.part_id || db.selected_part_id || '').trim();
-        if (!partId) return;
-        const localSec = ev.payload?.local_sec ?? ev.payload?.origin_local_sec ?? 0;
-        await runMutation(ctx, 'story.marker.create', {
-          part_id: partId,
-          local_sec: Number(localSec),
-        });
-      });
-
-      ctx.on('story.marker.delete', async (ev) => {
-        const markerId = String(ev.payload?.marker_id || '').trim();
-        if (!markerId) return;
-        await runMutation(ctx, 'story.marker.delete', { marker_id: markerId });
-      });
-
-      ctx.on('story.marker.move', async (ev) => {
-        const markerId = String(ev.payload?.marker_id || '').trim();
-        const direction = String(ev.payload?.direction || '').trim();
-        if (!markerId || !direction) return;
-        await runMutation(ctx, 'story.marker.move', { marker_id: markerId, direction });
+        await runMutation(ctx, 'story.part.select', { part_id: partId });
+        renderAll(ctx);
       });
 
       ctx.on('story.marker_slot.select', async (ev) => {
@@ -209,42 +226,67 @@ window.QNC = window.QNC || {};
       ctx.on('story.cover.create', async (ev) => {
         const db = snap(ctx);
         const slotId = String(ev.payload?.slot_id || db.selected_slot_id || '').trim();
-        if (!slotId) return;
-        await runMutation(ctx, 'story.cover.create', {
-          slot_id: slotId,
-          title: ev.payload?.title,
-          note: ev.payload?.note,
-          clip_id: ev.payload?.clip_id,
-          virtual_shot_id: ev.payload?.virtual_shot_id,
-        });
+        if (!slotId) {
+          ctx.setStatus('Story: odaberi odsječak na timelineu.', 'err');
+          return;
+        }
+        await runMutation(ctx, 'story.cover.create', { slot_id: slotId });
       });
 
-      ctx.on('story.cover.update', async (ev) => {
-        const coverId = String(ev.payload?.cover_id || '').trim();
-        if (!coverId) return;
-        await runMutation(ctx, 'story.cover.update', {
-          cover_id: coverId,
-          title: ev.payload?.title,
-          note: ev.payload?.note,
-          clip_id: ev.payload?.clip_id,
-          virtual_shot_id: ev.payload?.virtual_shot_id,
-        });
+      ctx.on('story.test', () => {
+        runtime.previewOpen = true;
+        runtime.previewLabel = 'TEST reprodukcija — uskoro';
+        ctx.setStatus('Story TEST: reprodukcija u sljedećoj fazi.', 'busy');
+        renderAll(ctx);
       });
 
-      ctx.on('story.cover.delete', async (ev) => {
+      ctx.on('story.commit', () => {
+        ctx.setStatus('Story GOTOVO: commit API u sljedećoj fazi.', 'ok');
+      });
+
+      ctx.on('story.preview.close', () => {
+        runtime.previewOpen = false;
+        renderAll(ctx);
+      });
+
+      ctx.on('story.timeline.scrub', (ev) => {
         const db = snap(ctx);
-        const coverId = String(ev.payload?.cover_id || db.selected_cover_id || '').trim();
-        if (!coverId) return;
-        await runMutation(ctx, 'story.cover.delete', { cover_id: coverId });
+        const ratio = Number(ev.payload?.ratio);
+        if (!Number.isFinite(ratio)) return;
+        const parts = db.parts || [];
+        const dur = Number(db.summary?.duration_sec) || parts.reduce((s, p) => s + partSpan(p), 0);
+        const target = ratio * dur;
+        let cursor = 0;
+        for (const part of parts) {
+          const span = partSpan(part);
+          if (target <= cursor + span + 0.001) {
+            setPlayhead(part.part_id, span > 0 ? (target - cursor) / span : 0);
+            runMutation(ctx, 'story.part.select', { part_id: part.part_id });
+            return;
+          }
+          cursor += span;
+        }
       });
 
-      ctx.on('story.cover.select', async (ev) => {
-        const coverId = String(ev.payload?.cover_id || '').trim();
-        if (!coverId) return;
-        await runMutation(ctx, 'story.cover.select', { cover_id: coverId });
+      document.addEventListener('keydown', (ev) => {
+        if (QNC.getActiveTab?.() !== 'storyboard') return;
+        if (ev.key === 'm' || ev.key === 'M') {
+          ev.preventDefault();
+          addMarkerAtPlayhead(ctx);
+        }
+        if (ev.key === 'F10') {
+          ev.preventDefault();
+          const db = snap(ctx);
+          const slotId = String(db.selected_slot_id || '').trim();
+          if (!slotId) {
+            ctx.setStatus('Story: odaberi odsječak.', 'err');
+            return;
+          }
+          runMutation(ctx, 'story.cover.create', { slot_id: slotId });
+        }
       });
 
-      QNC.log('[Story] SDK markers + slots + covers spreman', 'ok');
+      QNC.log('[Story] Jetson editorial UX + SDK', 'ok');
     },
 
     async onShow(ctx) {

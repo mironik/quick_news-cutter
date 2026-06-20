@@ -14,6 +14,7 @@ use tracing::info;
 
 mod app_html;
 mod app_state;
+mod asr;
 mod components;
 mod config;
 mod db_first;
@@ -55,6 +56,7 @@ async fn main() {
     let ingest_import = Arc::new(ingest::ImportWorker::new(
         project_state.paths.clone(),
         ingest_thumbs.clone(),
+        filmstrip.clone(),
     ));
     ingest_thumbs.clone().spawn();
     filmstrip.clone().spawn();
@@ -104,6 +106,7 @@ async fn main() {
         .merge(routes::design_tools::router())
         .merge(ingest::router())
         .merge(media_pool::router())
+        .merge(asr::router())
         .merge(sdk_demo::router())
         .merge(story::router())
         .with_state(state);

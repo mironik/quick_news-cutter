@@ -13,9 +13,10 @@ window.QNC = window.QNC || {};
 
   const ROWS_ID = 'pool-timeline-rows';
   const THUMB_W = 112;
-  const THUMB_H = 64;
-  const THUMB_GAP = 3;
-  const THUMB_MAX_FRAMES = 24;
+
+  function maxFilmstripFrames() {
+    return QNC.filmstrip?.DEFAULTS?.maxFrames || 24;
+  }
 
   const handles = {
     thumbRev: 0,
@@ -23,6 +24,10 @@ window.QNC = window.QNC || {};
     buildingTimeline: new Set(),
     transcribingClips: new Set(), // in-flight mutex only — not used for transcript UI status
     liveTranscriptClip: null,
+    lastPoolSignature: '',
+    lastClips: [],
+    importWatchUntil: 0,
+    importWatchCount: 0,
   };
 
   function snap(ctx) {
@@ -100,7 +105,6 @@ window.QNC = window.QNC || {};
 
   function timelineRowsEl() {
     return (
-      document.querySelector('#panel-pool [data-qnc-panel="timeline-sequence"] [data-qnc-slot="rows"]') ||
       ref('timeline-rows') ||
       document.querySelector('#panel-pool [data-qnc-ref="timeline-rows"]') ||
       document.querySelector('#panel-pool [data-qnc-slot="clip-rows"]') ||
@@ -108,47 +112,63 @@ window.QNC = window.QNC || {};
     );
   }
 
-  function timelineSequencePanel() {
-    return document.querySelector('#panel-pool [data-qnc-panel="timeline-sequence"]');
+  function clipListPanel() {
+    return document.querySelector('#panel-pool [data-qnc-panel="media-pool-clip-list"]');
   }
 
-  function updateTimelineSequence() {
-    const panel = timelineSequencePanel();
-    const api = QNC.components?.get?.('timeline-sequence');
-    if (!panel || !api?.update) return false;
-    const player = $('pool-player');
-    api.update(
-      panel,
-      {
-        clips: snapClips(),
-        selected_ids: selectedIds(),
-        current_clip_id: wfCurrentClipId(),
-        playhead_sec: player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
-        duration_sec: player && Number.isFinite(player.duration) ? player.duration : 0,
-        mark_in_sec: wfMarkIn(),
-        mark_out_sec: wfMarkOut(),
-        thumb_rev: handles.thumbRev,
-        project_id: poolProjectId(),
-        thumbUrl: (id, sec) => thumbUrl(id, sec),
-      },
-      { pluginId: 'media_pool' }
-    );
-    return true;
+  function buildRowNotes() {
+    const notes = {};
+    handles.transcribingClips.forEach((id) => {
+      notes[id] = 'ASR…';
+    });
+    return notes;
   }
 
-  function updateTimelinePlayback() {
-    const panel = timelineSequencePanel();
-    const api = QNC.components?.get?.('timeline-sequence');
-    if (!panel || !api?.updatePlayback) return;
+  function clipListPayload(prevClips, forceFull) {
     const player = $('pool-player');
-    api.updatePlayback(panel, {
+    const currentId = wfCurrentClipId();
+    return {
       clips: snapClips(),
-      current_clip_id: wfCurrentClipId(),
-      playhead_sec: player && Number.isFinite(player.currentTime) ? player.currentTime : 0,
-      duration_sec: player && Number.isFinite(player.duration) ? player.duration : 0,
+      prev_clips: prevClips || handles.lastClips || [],
+      forceFull: !!forceFull,
+      selected_ids: selectedIds(),
+      current_clip_id: currentId,
+      thumb_rev: handles.thumbRev,
+      project_id: poolProjectId(),
+      row_notes: buildRowNotes(),
+      thumbUrl: (id, sec) => thumbUrl(id, sec),
+      snapFn: (sec, clip) => snapToFrame(sec, clip),
+      virtual_shots: snapVirtualShots(),
+      active_virtual_shot_id: wfActiveVirtualShotId(),
       mark_in_sec: wfMarkIn(),
       mark_out_sec: wfMarkOut(),
-    });
+      playhead_sec: player && currentId ? Number(player.currentTime || 0) : 0,
+      duration_sec:
+        player && currentId && Number.isFinite(player.duration) ? Number(player.duration) : 0,
+    };
+  }
+
+  function syncClipRowPlayback() {
+    const panel = clipListPanel();
+    const api = QNC.components?.get?.('media-pool-clip-list');
+    if (!panel || !api?.updatePlayback) return;
+    api.updatePlayback(panel, clipListPayload(handles.lastClips || []), { pluginId: 'media_pool' });
+  }
+
+  async function updateClipList(options) {
+    const opts = options || {};
+    const panel = clipListPanel();
+    const api = QNC.components?.get?.('media-pool-clip-list');
+    if (!panel || !api?.update) {
+      QNC.log('[Media Pool] clip-list nije spreman (panel=' + !!panel + ', api=' + !!api?.update + ')', 'err');
+      return false;
+    }
+    const prev = handles.lastClips || [];
+    await api.update(panel, clipListPayload(prev, opts.forceFull), { pluginId: 'media_pool' });
+    handles.lastClips = snapClips().slice();
+    updateUi();
+    updatePlayerChrome();
+    return true;
   }
 
   function thumbUrl(clipId, seek) {
@@ -173,245 +193,13 @@ window.QNC = window.QNC || {};
     );
   }
 
-  function stripSlotCount() {
-    const rows = timelineRowsEl();
-    const panelId = QNC.filmstrip?.PANEL_ID || 'filmstrip-viewer';
-    const strip =
-      rows?.querySelector('[data-qnc-panel="' + panelId + '"] [data-qnc-slot="frames"]') ||
-      rows?.querySelector('.thumbnail-strip');
-    const ws = rows?.closest('.pool-workspace');
-    const fallbackWidth = ws && ws.clientWidth > 0 ? ws.clientWidth - 220 - THUMB_W - 64 - 36 : 0;
-    if (!QNC.filmstrip?.stripSlotCount) return 6;
-    return QNC.filmstrip.stripSlotCount(strip || fallbackWidth, {
-      thumbW: THUMB_W,
-      thumbGap: THUMB_GAP,
-      maxFrames: THUMB_MAX_FRAMES,
-      fallbackWidth,
-    });
-  }
-
-  function seeksForDisplay(clipId) {
-    const slots = stripSlotCount();
-    const clip = clipById(clipId);
-    const seeks = clip?.timeline_seeks;
-    if (!seeks?.length) {
-      return { slots, list: null };
-    }
-    if (!QNC.filmstrip?.seeksFromTimeline) {
-      return { slots, list: seeks.slice(0, slots) };
-    }
-    return { slots, list: QNC.filmstrip.seeksFromTimeline(seeks, slots) };
-  }
-
-  function filmstripPanelForRow(row) {
-    if (!row) return null;
-    return (
-      row.querySelector('[data-qnc-panel="filmstrip-viewer"]') ||
-      row.querySelector('[data-qnc-component="filmstrip-viewer"]')
-    );
-  }
-
-  function syncFilmstripForClip(clip, rowEl) {
-    const row =
-      rowEl ||
-      document.querySelector('.timeline-row[data-clip-id="' + CSS.escape(clip.clip_id) + '"]');
-    const panel = filmstripPanelForRow(row);
-    if (!panel || !QNC.filmstrip?.update) return;
-    QNC.filmstrip.mountPanel(panel, 'media_pool');
-    const { slots, list } = seeksForDisplay(clip.clip_id);
-    QNC.filmstrip.update(panel, {
-      hostPluginId: 'media_pool',
-      clip,
-      filmstrip: {
-        status: list === null ? 'missing' : 'ready',
-        seeks: list || [],
-        error: clip.filmstrip_error || '',
-      },
-      seeks: list,
-      loading: list === null,
-      slots,
-      durationSec: clip.timeline_duration_sec || clipDuration(clip),
-      thumbRev: handles.thumbRev,
-      thumbUrl: (id, sec) => thumbUrl(id, sec),
-      formatDuration,
-      snapFn: (sec) => snapToFrame(sec, clip),
-      placeholder: 'Sličice se generiraju…',
-    });
-  }
-
-  async function mountFilmstripsIn(root) {
-    if (!root || !QNC.resolveComponents) return;
-    await QNC.resolveComponents(root);
-  }
-
-  async function syncAllFilmstrips(root) {
-    const scope = root || timelineRowsEl();
-    if (!scope) return;
-    await mountFilmstripsIn(scope);
-    snapClips().forEach((clip) => {
-      const row = scope.querySelector('.timeline-row[data-clip-id="' + CSS.escape(clip.clip_id) + '"]');
-      syncFilmstripForClip(clip, row);
-    });
-  }
-
-  function rowHtml(c) {
-    const id = c.clip_id || '';
-    const sel = workflowSelectedIds().includes(id);
-    const st = transcriptStatus(c);
-    const dur = clipDuration(c);
-    const rowCls =
-      'timeline-row' +
-      (wfCurrentClipId() === id ? ' pool-row-active' : '') +
-      (st === 'complete' ? ' pool-row-ok' : '') +
-      (st === 'failed' ? ' pool-row-err' : '');
-    const note = clipNote(id, c);
-    return (
-      '<div class="' +
-      rowCls +
-      '" data-clip-id="' +
-      QNC.esc(id) +
-      '">' +
-      '<div class="timeline-label">' +
-      '<div class="timeline-title">' +
-      '<input type="checkbox" class="pool-row-chk" data-id="' +
-      QNC.esc(id) +
-      '"' +
-      (sel ? ' checked' : '') +
-      '/>' +
-      '<span class="timeline-filename">' +
-      QNC.esc(id) +
-      '</span></div>' +
-      '<div class="timeline-meta">' +
-      QNC.esc(formatDuration(dur)) +
-      ' | ' +
-      QNC.esc(transcriptLabel(c)) +
-      ' | ' +
-      QNC.esc(note) +
-      '</div></div>' +
-      '<section class="qnc-component qnc-filmstrip-viewer qnc-filmstrip-inline" data-qnc-panel="filmstrip-viewer">' +
-      '<div class="thumbnail-strip" data-qnc-slot="frames"></div></section>' +
-      '<button type="button" class="clip-edge-btn" data-id="' +
-      QNC.esc(id) +
-      '">' +
-      QNC.esc(formatDuration(dur)) +
-      '</button></div>'
-    );
-  }
-
-  function bindClipRow(rowsRoot, clip) {
-    const id = clip.clip_id;
-    const row = rowsRoot.querySelector('.timeline-row[data-clip-id="' + CSS.escape(id) + '"]');
-    if (!row) return;
-    const chk = row.querySelector('.pool-row-chk[data-id="' + CSS.escape(id) + '"]');
-    if (chk) {
-      chk.addEventListener('click', (e) => e.stopPropagation());
-      chk.addEventListener('change', () => {
-        writeWorkflow(sdkCtx, { toggle_clip_id: id, clip_selected: chk.checked })
-          .then(() => updateUi())
-          .catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
-      });
-    }
-    row.addEventListener('click', (ev) => {
-      if (ev.target.closest('.pool-row-chk, .clip-edge-btn, .thumb-btn, .qnc-media-thumb-btn')) return;
-      playClip(clip, 0).catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
-    });
-    syncFilmstripForClip(clip, row);
-    const edge = row.querySelector('.clip-edge-btn[data-id="' + CSS.escape(id) + '"]');
-    if (edge) {
-      edge.onclick = () => {
-        const d = clipDuration(clip);
-        playClip(clip, Math.max(0, d - 0.5)).catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
-      };
-    }
-  }
-
-  async function renderRows() {
-    if (updateTimelineSequence()) {
-      updateUi();
-      return;
-    }
-    const rows = timelineRowsEl();
-    if (!rows) {
-      QNC.log('[Media Pool] nema timeline-rows slota u panel-pool', 'err');
-      return;
-    }
-    if (!snapClips().length) {
-      rows.innerHTML =
-        '<p class="grid-empty muted">Nema uvezenih klipova — prvo Uvezi na Ingest tabu, zatim Osvježi pool.</p>';
-      updateUi();
-      return;
-    }
-    rows.innerHTML = snapClips().map(rowHtml).join('');
-    await syncAllFilmstrips(rows);
-    snapClips().forEach((clip) => bindClipRow(rows, clip));
-    updateUi();
-  }
-
-  function timelineKey(clip) {
-    return (clip.timeline_seeks || []).join(',');
+  async function renderRows(options) {
+    await updateClipList(options);
   }
 
   function reconcileClipRows(oldClips, nextClips, nextVirtualShots) {
-    const rows = timelineRowsEl();
-    const oldIds = oldClips.map((c) => c.clip_id).filter(Boolean);
-    const oldById = new Map(oldClips.map((clip) => [clip.clip_id, clip]));
-    const wasEmpty = !oldIds.length;
-    const nextIds = nextClips.map((c) => c.clip_id).filter(Boolean);
-    const oldSet = new Set(oldIds);
-    const nextSet = new Set(nextIds);
-    const removed = oldIds.some((id) => !nextSet.has(id));
-    const orderChanged =
-      oldIds.length &&
-      (oldIds.length !== nextIds.length ||
-        nextIds.slice(0, oldIds.length).some((id, idx) => id !== oldIds[idx]));
-
     applyVirtualShots(nextVirtualShots);
-
-    if (updateTimelineSequence()) {
-      updateUi();
-      return;
-    }
-
-    if (!rows) return;
-
-    if (wasEmpty || removed || orderChanged) {
-      renderRows().catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
-      return;
-    }
-
-    for (const clip of nextClips) {
-      const id = clip.clip_id;
-      if (!id) continue;
-      if (!oldSet.has(id)) {
-        if (rows.querySelector('.grid-empty')) rows.innerHTML = '';
-        rows.insertAdjacentHTML('beforeend', rowHtml(clip));
-        mountFilmstripsIn(rows.lastElementChild)
-          .then(() => syncFilmstripForClip(clip, rows.lastElementChild))
-          .catch(() => {});
-        bindClipRow(rows, clip);
-        continue;
-      }
-      const old = oldById.get(id) || {};
-      if (timelineKey(old) !== timelineKey(clip)) {
-        const row = rows.querySelector('.timeline-row[data-clip-id="' + CSS.escape(id) + '"]');
-        syncFilmstripForClip(clip, row);
-      }
-      const transcriptChanged = !!old.has_transcript !== !!clip.has_transcript;
-      const noteChanged = clipNote(id, old) !== clipNote(id, clip);
-      if (transcriptChanged || noteChanged) {
-        const row = rows.querySelector('.timeline-row[data-clip-id="' + CSS.escape(id) + '"]');
-        const meta = row?.querySelector('.timeline-meta');
-        if (meta) {
-          meta.textContent =
-            formatDuration(clipDuration(clip)) +
-            ' | ' +
-            transcriptLabel(clip) +
-            ' | ' +
-            clipNote(id, clip);
-        }
-      }
-    }
-    updateUi();
+    updateClipList().catch((e) => QNC.setBox('Pool: ' + e.message, 'err'));
   }
 
   async function loadPool(ctx) {
@@ -422,10 +210,17 @@ window.QNC = window.QNC || {};
     const oldClips = snapClips(activeCtx);
     const d = await activeCtx.store.reload('media_pool.clips');
     if (d.project_id && QNC.setActiveProjectId) QNC.setActiveProjectId(d.project_id);
+    const signature = poolSnapshotSignature(d);
+    if (signature === handles.lastPoolSignature) {
+      return d;
+    }
+    handles.lastPoolSignature = signature;
     const nextClips = d.clips || [];
     const nextVirtualShots = d.virtual_shots || [];
+    handles.lastClips = oldClips.slice();
     reconcileClipRows(oldClips, nextClips, nextVirtualShots);
     requestMissingTimelines();
+    maybeEndImportWatch();
     return d;
   }
 
@@ -513,7 +308,12 @@ window.QNC = window.QNC || {};
   }
 
   function mediaUrl(clipId) {
-    return '/api/media-pool/media?clip_id=' + encodeURIComponent(clipId);
+    const pid = poolProjectId();
+    const q =
+      'clip_id=' +
+      encodeURIComponent(clipId) +
+      (pid ? '&project_id=' + encodeURIComponent(pid) : '');
+    return '/api/media-pool/media?' + q;
   }
 
   function syncSelectAll() {
@@ -602,7 +402,7 @@ window.QNC = window.QNC || {};
     }
     updateCutMarkers();
     highlightTranscriptAtTime(t);
-    updateTimelinePlayback();
+    syncClipRowPlayback();
   }
 
   const SENTENCE_END = /[.!?…]["')\]]*$|[.!?…]$/;
@@ -1050,35 +850,76 @@ window.QNC = window.QNC || {};
     renderVirtualShots();
   }
 
+  function virtualShotsSignature(shots) {
+    return (shots || [])
+      .map((s) => [s.id, s.clip_id, s.in_seconds, s.out_seconds].join(':'))
+      .join('|');
+  }
+
+  function poolSnapshotSignature(d) {
+    const clips = d?.clips || [];
+    const wf = d?.workflow || {};
+    return JSON.stringify({
+      clips: clips.map((c) => [
+        c.clip_id,
+        c.transferred,
+        c.has_transcript,
+        c.transcript_status || '',
+        c.filmstrip_status || 'missing',
+        c.filmstrip_error || '',
+        (c.timeline_seeks || []).join(','),
+        (c.filmstrip_frames || [])
+          .map((f) => String(f.frame_index ?? f.index ?? '') + '@' + Number(f.seek_sec ?? 0).toFixed(3))
+          .join(','),
+        c.timeline_duration_sec || 0,
+        c.name || '',
+      ]),
+      virtual: virtualShotsSignature(d?.virtual_shots),
+      selected: (wf.selected_clip_ids || []).slice().sort().join(','),
+      current: wf.current_clip_id || '',
+    });
+  }
+
+  function highlightActiveRow(clipId) {
+    document.querySelectorAll('.timeline-row[data-clip-id]').forEach((row) => {
+      row.classList.toggle('pool-row-active', row.getAttribute('data-clip-id') === clipId);
+    });
+  }
+
   async function playClip(clip, startAt, resetMarks) {
     const player = $('pool-player');
     if (!player || !clip?.clip_id) return;
     const seekSec = Number(startAt || 0);
-    const patch = { current_clip_id: clip.clip_id };
-    if (resetMarks !== false) {
-      patch.clear_marks = true;
-    }
-    await writeWorkflow(sdkCtx, patch);
     const sameClip = wfCurrentClipId() === clip.clip_id && player.src;
     const applySeek = () => {
       player.currentTime = seekSec;
       syncTransport();
     };
-    if (!sameClip) {
-      player.src = mediaUrl(clip.clip_id);
-      player.onloadedmetadata = () => applySeek();
-    } else if (player.readyState >= 1) {
-      applySeek();
-    } else {
-      player.onloadedmetadata = () => applySeek();
+
+    if (sameClip) {
+      if (player.readyState >= 1) applySeek();
+      else player.onloadedmetadata = () => applySeek();
+      player.play().catch(() => {});
+      highlightActiveRow(clip.clip_id);
+      updatePlayerChrome();
+      return;
     }
+
+    const patch = { current_clip_id: clip.clip_id };
+    if (resetMarks !== false) {
+      patch.clear_marks = true;
+    }
+    const d = await writeWorkflow(sdkCtx, patch);
+    handles.lastPoolSignature = poolSnapshotSignature(d);
+    handles.lastClips = snapClips().slice();
+    highlightActiveRow(clip.clip_id);
+    player.src = mediaUrl(clip.clip_id);
+    player.onloadedmetadata = () => applySeek();
     player.play().catch(() => {});
-    document.querySelectorAll('.timeline-row').forEach((row) => {
-      row.classList.toggle('pool-row-active', row.dataset.clipId === clip.clip_id);
-    });
     updatePlayerChrome();
     renderVirtualShots();
     loadTranscript(clip.clip_id);
+    await updateClipList();
   }
 
   function requestMissingTimelines() {
@@ -1090,7 +931,8 @@ window.QNC = window.QNC || {};
           clip.transferred &&
           !(clip.timeline_seeks || []).length &&
           status !== 'building' &&
-          status !== 'ready'
+          status !== 'ready' &&
+          status !== 'error'
         );
       })
       .filter((clip) => !handles.buildingTimeline.has(clip.clip_id))
@@ -1101,13 +943,13 @@ window.QNC = window.QNC || {};
       const buildReq = sdkCtx
         ? sdkCtx.action('filmstrip.build', {
             clip_id: clip.clip_id,
-            frames: Math.min(10, THUMB_MAX_FRAMES),
+            frames: maxFilmstripFrames(),
             project_id: pid,
             media_path: clip.proxy_path || '',
           })
         : QNC.api('POST', '/api/media-pool/timeline/build', {
             clip_id: clip.clip_id,
-            frames: Math.min(10, THUMB_MAX_FRAMES),
+            frames: maxFilmstripFrames(),
             project_id: pid,
             media_path: clip.proxy_path || '',
           });
@@ -1123,12 +965,55 @@ window.QNC = window.QNC || {};
     });
   }
 
+  function beginImportWatch(count) {
+    handles.importWatchUntil = Date.now() + 180000;
+    handles.importWatchCount = Math.max(0, Number(count) || 0);
+    handles.lastPoolSignature = '';
+    handles.lastClips = [];
+  }
+
+  function importWatchActive() {
+    return handles.importWatchUntil > Date.now();
+  }
+
+  function maybeEndImportWatch() {
+    if (!importWatchActive()) return;
+    const clips = snapClips();
+    if (!clips.length) return;
+    const pending = clips.some((clip) => {
+      const fs = String(clip.filmstrip_status || 'missing');
+      return (
+        fs === 'building' ||
+        (clip.transferred && !(clip.timeline_seeks || []).length && fs !== 'ready' && fs !== 'error')
+      );
+    });
+    if (!pending) {
+      handles.importWatchUntil = 0;
+      handles.importWatchCount = 0;
+    }
+  }
+
+  function poolNeedsPoll() {
+    if (importWatchActive()) return true;
+    return snapClips().some((clip) => {
+      const status = String(clip.filmstrip_status || 'missing');
+      return (
+        status === 'building' ||
+        (clip.transferred &&
+          !(clip.timeline_seeks || []).length &&
+          status !== 'ready' &&
+          status !== 'error')
+      );
+    });
+  }
+
   function startPoolPolling() {
     if (handles.pollTimer) return;
     handles.pollTimer = setInterval(() => {
       if (QNC.getActiveTab?.() !== 'pool') return;
+      if (!poolNeedsPoll()) return;
       loadPool().catch((e) => QNC.log('[Media Pool] auto refresh: ' + e.message, 'err'));
-    }, 2000);
+    }, 3000);
   }
 
   function stopPoolPolling() {
@@ -1157,6 +1042,10 @@ window.QNC = window.QNC || {};
     activeCtx?.store?.invalidate?.('media_pool.clips');
     handles.buildingTimeline.clear();
     handles.transcribingClips.clear();
+    handles.lastPoolSignature = '';
+    handles.lastClips = [];
+    handles.importWatchUntil = 0;
+    handles.importWatchCount = 0;
   }
 
   function fpsForClip(clip) {
@@ -1359,7 +1248,7 @@ window.QNC = window.QNC || {};
       const clipId = event.payload?.clip_id || event.root?.dataset?.clipId;
       const sec = Number(event.payload?.seconds);
       const clip = clipId ? clipById(clipId) : null;
-      if (clip && Number.isFinite(sec)) playClip(clip, sec).catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
+      if (clip && Number.isFinite(sec)) playClip(clip, sec, false).catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
     });
     ctx.on('mark.in', setMarkIn);
     ctx.on('mark.out', setMarkOut);
@@ -1480,10 +1369,10 @@ window.QNC = window.QNC || {};
   });
 
   app.lifecycle({
-    onInit(ctx) {
+    async onInit(ctx) {
       sdkCtx = ctx;
       bindPlayer();
-      bindPoolShortcuts();
+      await bindPoolShortcuts();
       installActionBridge(ctx);
 
       ctx.onShell('project:changed', () => {
@@ -1500,17 +1389,31 @@ window.QNC = window.QNC || {};
         releaseProjectHold(ctx);
       });
 
-      renderRows();
+      ctx.onShell('ingest:import-queued', (payload) => {
+        beginImportWatch(payload?.count || payload?.clip_ids?.length || 0);
+        startPoolPolling();
+        loadPool(ctx)
+          .then(() => updateClipList({ forceFull: true }))
+          .catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
+      });
+
+      ctx.onShell('keyboard-shortcuts:changed', () => {
+        bindPoolShortcuts().catch(() => {});
+      });
+
+      renderRows({ forceFull: true });
       QNC.log('[Media Pool] SDK modul spreman', 'ok');
     },
 
-    onShow(ctx) {
+    async onShow(ctx) {
       sdkCtx = ctx;
+      await bindPoolShortcuts();
       startPoolPolling();
-      handles.thumbRev += 1;
       loadPool(ctx)
         .then(() => {
-          if (snapClips(ctx).length) renderRows();
+          if (snapClips(ctx).length && !handles.lastClips.length) {
+            updateClipList({ forceFull: true });
+          }
         })
         .catch((e) => ctx.setStatus('Pool: ' + e.message, 'err'));
     },

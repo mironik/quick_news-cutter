@@ -1,0 +1,130 @@
+/* Story virtual shots component. */
+
+.story-pool {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.story-pool-head {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 12px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #c8c8c8;
+  border-bottom: 1px solid #2f2f2f;
+  background: #232323;
+}
+
+[data-qnc-panel="storyboard.virtual-shots"] [data-qnc-ref="shots-grid"] {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 8px;
+  align-content: start;
+}
+
+[data-qnc-panel="storyboard.virtual-shots"] [data-qnc-ref="shots-grid"] .grid-empty {
+  grid-column: 1 / -1;
+  padding: 24px 12px;
+  text-align: center;
+  color: #888;
+  font-size: 0.88rem;
+}
+
+.story-shot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid #3a3a3a;
+  background: #252526;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.story-shot-card:hover {
+  border-color: #5a5a5a;
+  background: #2a2a2c;
+}
+
+.story-shot-card.state-ok {
+  border-left: 3px solid #4ec9b0;
+}
+
+.story-shot-card.state-usable {
+  border-left: 3px solid #dcdcaa;
+}
+
+.story-shot-card.state-err {
+  border-left: 3px solid #f48771;
+}
+
+.story-shot-card.story-shot-selected {
+  border-color: #707070;
+  background: #303030;
+}
+
+.story-shot-card:focus-visible {
+  outline: 2px solid #707070;
+  outline-offset: 1px;
+}
+
+.story-shot-thumb-wrap {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #111;
+}
+
+.story-shot-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.story-shot-thumb.placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  color: #666;
+}
+
+.story-shot-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.story-shot-clip {
+  flex: 1 1 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.story-shot-dur {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  color: #9a9a9a;
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+}

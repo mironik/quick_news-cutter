@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-use crate::filmstrip::{get_filmstrip, list_frames_for_clip};
+use crate::filmstrip::{get_filmstrip, list_frames_for_clip, sync_filmstrip_from_disk};
 use crate::project::db::{ensure_project_dirs, ProjectPaths};
 
 use super::db::{open_db, pool_summary, sync_pool_from_ingest_db};
@@ -27,7 +27,7 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
         let source_path = row.get("source_path").and_then(|v| v.as_str());
         let original_path = row.get("original_path").and_then(|v| v.as_str());
         let card_thumb_path = row.get("card_thumb_path").and_then(|v| v.as_str());
-        let transferred = proxy_path.is_some();
+        let transferred = true;
         let has_transcript = clip_has_transcript(&conn, &clip_id).unwrap_or(false);
         let transcript_status: String = conn
             .query_row(
@@ -60,6 +60,7 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
             "card_thumb_path": card_thumb_path,
             "duration_sec": duration,
         });
+        sync_filmstrip_from_disk(paths, project_id, &clip_id, duration).ok();
         if let Some(fs) = get_filmstrip(paths, project_id, &clip_id) {
             let st = fs
                 .get("status")
@@ -88,6 +89,16 @@ pub fn list_clips_enriched(paths: &ProjectPaths, project_id: &str) -> Result<Val
                             })
                             .collect();
                         obj.insert("timeline_seeks".into(), json!(seeks));
+                        let filmstrip_frames: Vec<Value> = frames
+                            .iter()
+                            .map(|f| {
+                                json!({
+                                    "frame_index": f.get("index").and_then(|v| v.as_i64()).unwrap_or(0),
+                                    "seek_sec": f.get("seek_sec").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                                })
+                            })
+                            .collect();
+                        obj.insert("filmstrip_frames".into(), json!(filmstrip_frames));
                     }
                 }
             }

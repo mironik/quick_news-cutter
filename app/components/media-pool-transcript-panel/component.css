@@ -1,0 +1,118 @@
+.qnc-media-transcript-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #303030;
+  background: #181818;
+}
+.qnc-media-transcript-panel strong { font-size: 0.8rem; }
+.qnc-media-transcript-panel .pool-active-transcript {
+  min-height: 0;
+  max-height: 280px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #d8d8d8;
+}
+.qnc-media-transcript-panel .pool-transcript-scroll {
+  position: relative;
+  max-height: 280px;
+  overflow: auto;
+}
+.qnc-media-transcript-panel .pool-transcript-body {
+  padding: 4px 2px 8px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.qnc-media-transcript-panel .transcript-chunk {
+  display: block;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 2px 4px;
+  transition: background 0.12s ease;
+}
+.qnc-media-transcript-panel .transcript-chunk:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.qnc-media-transcript-panel .transcript-chunk-active {
+  background: rgba(255, 255, 255, 0.1);
+}
+.qnc-media-transcript-panel .transcript-chunk-playing {
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.35);
+}
+.qnc-media-transcript-panel .transcript-chunk-in-range {
+  background: rgba(215, 186, 125, 0.14);
+}
+.qnc-media-transcript-panel .transcript-chunk-izrez {
+  background: rgba(215, 186, 125, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(215, 186, 125, 0.45);
+}
+.qnc-media-transcript-panel .transcript-chunk-mark-in::before {
+  content: 'I';
+  display: inline-block;
+  margin-right: 3px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #121212;
+  background: #8fd4a8;
+  border-radius: 2px;
+  padding: 1px 3px;
+  vertical-align: super;
+}
+.qnc-media-transcript-panel .transcript-chunk-mark-out::after {
+  content: 'O';
+  display: inline-block;
+  margin-left: 3px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #121212;
+  background: #f0a07a;
+  border-radius: 2px;
+  padding: 1px 3px;
+  vertical-align: super;
+}
+.qnc-media-transcript-panel .pool-transcript-hud {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  border: 1px solid #444;
+  border-radius: 3px;
+  background: #1f1f1f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.qnc-media-transcript-panel .pool-transcript-hud-time {
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  color: #eee;
+}
+.qnc-media-transcript-panel .pool-transcript-hud-frames {
+  color: #888;
+}
+.qnc-media-transcript-panel .pool-transcript-hud-mark {
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 2px;
+  display: none;
+}
+.qnc-media-transcript-panel .pool-transcript-hud-mark.is-on { display: inline-block; }
+.qnc-media-transcript-panel .pool-transcript-hud-mark.in {
+  color: #121212;
+  background: #8fd4a8;
+}
+.qnc-media-transcript-panel .pool-transcript-hud-mark.out {
+  color: #121212;
+  background: #f0a07a;
+}
+.qnc-media-transcript-panel .muted { color: #888; }

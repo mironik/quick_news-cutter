@@ -12,7 +12,7 @@ use crate::app_state::AppState;
 
 use super::collab::{start_session, touch_session};
 use super::db::{open_global, ProjectPaths};
-use super::keyboard_settings::{load_keyboard_user, save_keyboard_user};
+use super::keyboard_settings::{list_keyboard_presets, load_keyboard_user, save_keyboard_user};
 use super::store::{
     cleanup_orphan_project_dirs, create_project, delete_projects, get_active_project_id,
     list_projects, open_project, orphan_project_dir_names,
@@ -22,7 +22,7 @@ use super::templates::{
     get_project_settings, get_project_template, get_project_workspace, list_project_templates,
     list_source_templates, save_project_settings,
 };
-use super::ui_state::{get_ui_state, save_ui_state, touch_collab_session};
+use super::ui_state::{effective_template_settings, get_ui_state, get_ui_state_for_api, save_ui_state, touch_collab_session};
 
 #[derive(Clone)]
 pub struct ProjectState {
@@ -106,13 +106,17 @@ pub fn router() -> Router<AppState> {
             "/api/settings/keyboard-shortcuts",
             get(api_keyboard_shortcuts_get).post(api_keyboard_shortcuts_save),
         )
+        .route(
+            "/api/settings/keyboard-shortcuts/presets",
+            get(api_keyboard_presets_list),
+        )
 }
 
 async fn api_projects_ui_state_get(
     State(app): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     app.project.with_db(|conn| {
-        let ui_state = get_ui_state(conn).map_err(|e| e.to_string())?;
+        let ui_state = get_ui_state_for_api(conn).map_err(|e| e.to_string())?;
         Ok(Json(json!({ "status": "ok", "ui_state": ui_state })))
     })
 }
@@ -145,6 +149,20 @@ async fn api_keyboard_shortcuts_save(
         let saved = save_keyboard_user(conn, &user).map_err(|e| e.to_string())?;
         Ok(Json(json!({ "status": "ok", "user": saved })))
     })
+}
+
+async fn api_keyboard_presets_list(State(app): State<AppState>) -> Json<Value> {
+    let root = app
+        .project
+        .paths
+        .data_dir
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."));
+    let catalog = list_keyboard_presets(root);
+    Json(json!({
+        "status": "ok",
+        "presets": catalog.get("presets").cloned().unwrap_or_else(|| json!([])),
+    }))
 }
 
 async fn api_projects_list(
@@ -237,9 +255,10 @@ async fn api_project_template_create(
     app.project.with_db(|conn| {
         ensure_templates_seeded(conn, &app.project.paths.seed_path).map_err(|e| e.to_string())?;
         let settings = if body.settings.is_null() {
-            None
+            let ui = get_ui_state(conn).map_err(|e| e.to_string())?;
+            Some(effective_template_settings(conn, &ui).map_err(|e| e.to_string())?)
         } else {
-            Some(&body.settings)
+            Some(body.settings.clone())
         };
         let source_val = Value::Array(body.source_template_ids.clone());
         let sources = if body.source_template_ids.is_empty() {
@@ -251,7 +270,7 @@ async fn api_project_template_create(
             conn,
             &body.name,
             &body.description,
-            settings,
+            settings.as_ref(),
             sources,
             &body.user_id,
             &body.base_template_id,
@@ -279,17 +298,27 @@ async fn api_projects_from_template(
 ) -> Result<Json<Value>, (StatusCode, String)> {
     match app.project.with_db(|conn| {
         ensure_templates_seeded(conn, &app.project.paths.seed_path).map_err(|e| e.to_string())?;
-        let override_val = if body.settings_override.is_null() {
-            None
+        let override_val = if body.settings_override.is_null()
+            || body
+                .settings_override
+                .as_object()
+                .map(|o| o.is_empty())
+                .unwrap_or(true)
+        {
+            let ui = get_ui_state(conn).map_err(|e| e.to_string())?;
+            ui.get("settings_override")
+                .filter(|v| v.is_object() && !v.as_object().unwrap().is_empty())
+                .cloned()
         } else {
-            Some(&body.settings_override)
+            Some(body.settings_override.clone())
         };
+        let override_ref = override_val.as_ref();
         let result = create_project_from_template(
             conn,
             &app.project.paths,
             &body.name,
             &body.template_id,
-            override_val,
+            override_ref,
             &body.user_id,
         )
         .map_err(|e| {
@@ -333,8 +362,9 @@ async fn api_project_workspace_get(
     State(app): State<AppState>,
     Path(project_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let workspace = get_project_workspace(&app.project.paths, &project_id)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let workspace = app.project.with_db(|conn| {
+        get_project_workspace(conn, &app.project.paths, &project_id).map_err(|e| e.to_string())
+    })?;
     Ok(Json(json!({ "status": "ok", "workspace": workspace })))
 }
 
@@ -387,6 +417,10 @@ async fn api_projects_open(
     match app.project.with_db(|conn| {
         let proj =
             open_project(conn, &app.project.paths, &body.project_id).map_err(|e| e.to_string())?;
+        if proj.is_some() {
+            get_project_workspace(conn, &app.project.paths, &body.project_id)
+                .map_err(|e| e.to_string())?;
+        }
         match proj {
             Some(p) => {
                 let active = get_active_project_id(conn).map_err(|e| e.to_string())?;

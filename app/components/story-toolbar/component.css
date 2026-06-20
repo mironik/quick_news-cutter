@@ -1,22 +1,26 @@
-.qnc-story-toolbar {
+/* Story toolbar component. */
+
+.story-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-  align-items: center;
+  align-items: baseline;
+  gap: 12px;
+  flex: 0 0 auto;
 }
 
-.qnc-story-toolbar-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+.story-toolbar .tab-title {
+  margin: 0;
 }
 
-.qnc-story-toolbar .qbtn-danger {
-  border-color: #a33;
-  color: #fbb;
+.story-shots-count {
+  font-size: 0.82rem;
+  margin-left: auto;
 }
 
-.qnc-story-toolbar .qbtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.story-draft-status {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.story-draft-status.ok {
+  color: #b8b8b8;
 }

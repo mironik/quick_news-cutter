@@ -1,7 +1,7 @@
 {
   "component_id": "filmstrip-viewer",
   "global_id": "filmstrip-viewer",
-  "version": "1.0.1",
+      "version": "1.0.3",
   "source_plugin_id": "core",
   "kind": "panel",
   "description": "Prenosivi filmstrip viewer — globalna QNC komponenta.",

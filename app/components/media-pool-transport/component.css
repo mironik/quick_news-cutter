@@ -1,0 +1,39 @@
+.qnc-media-transport-block { display: grid; gap: 6px; }
+.qnc-media-transport-block .pool-transport {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  gap: 8px;
+  align-items: center;
+  color: #aaa;
+  font-size: 0.78rem;
+}
+.qnc-media-transport-block .pool-cut-timeline { position: relative; min-width: 0; height: 22px; display: grid; align-items: center; }
+.qnc-media-transport-block .pool-cut-timeline input[type="range"] { width: 100%; margin: 0; }
+.qnc-media-transport-block .pool-cut-selection {
+  position: absolute;
+  top: 6px;
+  height: 10px;
+  background: rgba(78, 201, 176, 0.22);
+  border: 1px solid rgba(78, 201, 176, 0.55);
+  pointer-events: none;
+}
+.qnc-media-transport-block .pool-cut-marker {
+  position: absolute;
+  top: -7px;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  font-size: 0.65rem;
+  line-height: 1;
+  pointer-events: none;
+}
+.qnc-media-transport-block .pool-cut-marker.in { background: #4ec9b0; color: #071018; }
+.qnc-media-transport-block .pool-cut-marker.out { background: #f48771; color: #071018; }
+.qnc-media-transport-block .pool-mark-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.qnc-media-transport-block .pool-mark-actions { display: flex; align-items: center; gap: 6px; }
+.qnc-media-transport-block .pool-mark-val { min-width: 42px; color: #aaa; font-size: 0.78rem; }
+.qnc-media-transport-block .pool-mark-duration { min-width: 58px; }

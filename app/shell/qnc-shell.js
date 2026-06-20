@@ -48,8 +48,37 @@ window.QNC = window.QNC || {};
     return id;
   }
 
+  function registeredTabId(raw) {
+    const id = resolveWorkspaceTabId(raw);
+    if (!id) return "";
+    return availableTabs.some((t) => t.tab_id === id && t.enabled) ? id : "";
+  }
+
+  /** Redoslijed tabova iz SQLite workspace (steps + tabs), bez DOM-a. */
+  function dbWorkflowTabIds(workspace) {
+    const out = [];
+    const push = (raw) => {
+      const id = resolveWorkspaceTabId(raw);
+      if (!id || id === "project" || out.includes(id)) return;
+      out.push(id);
+    };
+    const steps = Array.isArray(workspace?.steps) ? workspace.steps.slice() : [];
+    steps.sort((a, b) => Number(a?.position || 0) - Number(b?.position || 0));
+    const activeStepId = String(workspace?.active_step_id || workspace?.entry_step_id || "").trim();
+    if (activeStepId) {
+      const step = steps.find((item) => String(item?.step_id || "") === activeStepId);
+      push(step?.tab_id);
+    }
+    steps
+      .filter((item) => String(item?.status || "") === "active")
+      .forEach((item) => push(item?.tab_id));
+    steps.forEach((item) => push(item?.tab_id));
+    (Array.isArray(workspace?.tabs) ? workspace.tabs : []).forEach((raw) => push(raw));
+    return out;
+  }
+
   function footerHasTab(tabId) {
-    const id = String(tabId || "").trim();
+    const id = resolveWorkspaceTabId(tabId);
     if (!id) return false;
     return activeTabs.some((t) => t.tab_id === id && t.enabled);
   }
@@ -146,23 +175,11 @@ window.QNC = window.QNC || {};
       return next ? next.tab_id : "";
     },
 
-    /** Prvi workflow tab nakon project u redoslijedu iz baze (workspace.tabs). */
+    /** Prvi workflow tab iz SQLite workspace (ne ovisi o trenutnom footer DOM-u). */
     workflowEntryTab(workspace) {
-      const steps = Array.isArray(workspace?.steps) ? workspace.steps : [];
-      const activeStepId = String(workspace?.active_step_id || workspace?.entry_step_id || "").trim();
-      if (activeStepId) {
-        const step = steps.find((item) => String(item?.step_id || "") === activeStepId);
-        const tabId = resolveWorkspaceTabId(step?.tab_id);
-        if (tabId && tabId !== "project" && footerHasTab(tabId)) return tabId;
-      }
-      const entryStep = steps.find((item) => String(item?.status || "") === "active");
-      const entryTab = resolveWorkspaceTabId(entryStep?.tab_id);
-      if (entryTab && entryTab !== "project" && footerHasTab(entryTab)) return entryTab;
-      const manual = Array.isArray(workspace?.tabs) ? workspace.tabs : [];
-      for (const raw of manual) {
-        const id = resolveWorkspaceTabId(raw);
-        if (!id || id === "project") continue;
-        if (footerHasTab(id)) return id;
+      for (const raw of dbWorkflowTabIds(workspace)) {
+        const id = registeredTabId(raw);
+        if (id && id !== "project") return id;
       }
       return "";
     },

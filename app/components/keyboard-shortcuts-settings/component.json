@@ -1,0 +1,24 @@
+{
+  "component_id": "keyboard-shortcuts-settings",
+  "version": "1.0.0",
+  "kind": "panel",
+  "path": "/app/components/keyboard-shortcuts-settings/component.html",
+  "description": "Globalne postavke tipkovnice — odabir gotovog NLE preseta.",
+  "embeddable": true,
+  "portable": true,
+  "contract": {
+    "version": 1,
+    "inputs": [],
+    "slots": [],
+    "events": [],
+    "backend_actions": [],
+    "requires": ["QNC.keyboardShortcuts"],
+    "requires_components": [],
+    "owns_state": false
+  },
+  "assets": {
+    "css": ["/app/components/keyboard-shortcuts-settings/component.css"],
+    "js": ["/app/components/keyboard-shortcuts-settings/component.js"]
+  },
+  "package": "/app/components/keyboard-shortcuts-settings"
+}

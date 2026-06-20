@@ -465,6 +465,8 @@
   async function installWorkflowBoot() {
     if (!QNC.bus || QNC._workflowBootInstalled) return;
     QNC._workflowBootInstalled = true;
+    QNC.openProjectWorkflow = openWorkflowAfterProject;
+    QNC.applyWorkspaceFooterOnly = applyWorkspaceFooterOnly;
     QNC.bus.on('project:opened', (payload) => {
       Promise.resolve(openWorkflowAfterProject(payload)).catch((e) => {
         QNC.setBox?.('Workflow: ' + (e.message || e), 'err');
@@ -475,6 +477,7 @@
   async function openWorkflowAfterProject(payload) {
     const projectId = payload?.projectId || QNC.getProjectId?.() || '';
     if (!projectId) return;
+    QNC.setActiveProjectId?.(projectId);
     const d = await QNC.api(
       'GET',
       '/api/projects/' + encodeURIComponent(projectId) + '/workspace'
@@ -482,11 +485,24 @@
     const workspace = d.workspace || {};
     QNC.shell?.applyWorkspace?.(workspace);
     const entry = QNC.shell?.workflowEntryTab?.(workspace) || '';
-    if (entry && QNC.shell?.footerHasTab?.(entry)) {
+    if (entry) {
       if (QNC.pluginLoader?.ensure) await QNC.pluginLoader.ensure(entry);
       await QNC.switchTab?.(entry);
     }
     QNC.bus?.emit('project:changed', { projectId });
+  }
+
+  async function applyWorkspaceFooterOnly(projectId) {
+    if (!projectId) {
+      QNC.shell?.showProjectOnly?.();
+      return;
+    }
+    const d = await QNC.api(
+      'GET',
+      '/api/projects/' + encodeURIComponent(projectId) + '/workspace'
+    );
+    QNC.shell?.applyWorkspace?.(d.workspace || {});
+    await QNC.switchTab?.('project');
   }
 
   async function syncActiveProjectFromApi() {
@@ -525,6 +541,9 @@
     pluginLoader.registerAll(plugins);
 
     await syncActiveProjectFromApi();
+    if (QNC.keyboardShortcuts?.applyForActiveProject) {
+      await QNC.keyboardShortcuts.applyForActiveProject().catch(() => {});
+    }
 
     if (QNC.shell) QNC.shell.installTabs(plugins, { deferRender: true });
     ensurePluginSlots(plugins);

@@ -247,7 +247,7 @@
     "filmstrip-viewer": {
       "global_id": "filmstrip-viewer",
       "component_id": "filmstrip-viewer",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "source_plugin_id": "core",
       "kind": "panel",
       "description": "Prenosivi filmstrip viewer — globalna QNC komponenta.",
@@ -381,6 +381,33 @@
         "owns_state": false
       }
     },
+    "keyboard-shortcuts-settings": {
+      "global_id": "keyboard-shortcuts-settings",
+      "component_id": "keyboard-shortcuts-settings",
+      "version": "1.0.2",
+      "source_plugin_id": "core",
+      "kind": "panel",
+      "description": "NLE preset u flowu „Novi template“ (keyboard-shortcuts.json).",
+      "embeddable": true,
+      "portable": true,
+      "path": "/app/components/keyboard-shortcuts-settings/component.html",
+      "package": "/app/components/keyboard-shortcuts-settings",
+      "assets": {
+        "css": ["/app/components/keyboard-shortcuts-settings/component.css"],
+        "js": ["/app/components/keyboard-shortcuts-settings/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": [],
+        "slots": [],
+        "events": [],
+        "backend_actions": [],
+        "requires": ["QNC.keyboardShortcuts"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
     "folder-picker": {
       "global_id": "folder-picker",
       "component_id": "folder-picker",
@@ -507,7 +534,7 @@
     "project-template-settings": {
       "global_id": "project-template-settings",
       "component_id": "project-template-settings",
-      "version": "1.3.2",
+      "version": "1.3.6",
       "source_plugin_id": "app",
       "kind": "panel",
       "description": "Odabir project templatea, naziv projekta i pregled template postavki.",
@@ -973,7 +1000,7 @@
     "media-pool-workspace": {
       "global_id": "media-pool-workspace",
       "component_id": "media-pool-workspace",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "source_plugin_id": "media_pool",
       "kind": "panel",
       "path": "/app/components/media-pool-workspace/component.html",
@@ -986,7 +1013,7 @@
       "contract": {
         "version": 1,
         "inputs": [],
-        "slots": ["toolbar", "viewer", "transport", "actions", "timeline-sequence"],
+        "slots": ["toolbar", "viewer", "transport", "actions", "clip-list"],
         "events": [],
         "backend_actions": [],
         "requires": ["QNC.componentBus"],
@@ -997,8 +1024,45 @@
           "media-pool-transcript-panel",
           "media-pool-transport",
           "media-pool-actions",
-          "timeline-sequence"
+          "media-pool-clip-list"
         ],
+        "owns_state": false
+      }
+    },
+    "media-pool-clip-list": {
+      "global_id": "media-pool-clip-list",
+      "component_id": "media-pool-clip-list",
+      "version": "1.1.0",
+      "source_plugin_id": "media_pool",
+      "kind": "panel",
+      "description": "Scrollable Media Pool clip rows with inline filmstrip.",
+      "path": "/app/components/media-pool-clip-list/component.html",
+      "package": "/app/components/media-pool-clip-list",
+      "assets": {
+        "css": [
+          "/app/components/media-pool-clip-list/component.css",
+          "/app/components/filmstrip-viewer/component.css",
+          "/app/components/media-thumb/component.css"
+        ],
+        "js": [
+          "/app/components/media-thumb/component.js",
+          "/app/components/filmstrip-viewer/component.js",
+          "/app/components/media-pool-clip-list/component.js"
+        ]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["clips", "selected_ids", "current_clip_id", "thumb_rev", "row_notes"],
+        "slots": ["clip-rows"],
+        "events": [
+          { "action": "clip.toggle", "payload": { "clip_id": "string", "checked": "boolean" } },
+          { "action": "clip.play", "payload": { "clip_id": "string", "edge": "boolean" } },
+          { "action": "filmstrip.seek", "payload": { "clip_id": "string", "seconds": "number" } }
+        ],
+        "backend_actions": [],
+        "requires": ["QNC.filmstrip", "QNC.componentBus"],
+        "requires_components": ["filmstrip-viewer"],
         "owns_state": false
       }
     },
@@ -1022,7 +1086,7 @@
       "kind": "panel",
       "path": "/app/components/media-pool-player/component.html",
       "package": "/app/components/media-pool-player",
-      "assets": { "css": [], "js": [] },
+      "assets": { "css": ["/app/components/media-pool-player/component.css"], "js": [] },
       "variants": {},
       "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
     },
@@ -1034,7 +1098,7 @@
       "kind": "panel",
       "path": "/app/components/media-pool-transport/component.html",
       "package": "/app/components/media-pool-transport",
-      "assets": { "css": [], "js": [] },
+      "assets": { "css": ["/app/components/media-pool-transport/component.css"], "js": [] },
       "variants": {},
       "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
     },
@@ -1058,7 +1122,7 @@
       "kind": "panel",
       "path": "/app/components/media-pool-virtual-shot-panel/component.html",
       "package": "/app/components/media-pool-virtual-shot-panel",
-      "assets": { "css": [], "js": [] },
+      "assets": { "css": ["/app/components/media-pool-virtual-shot-panel/component.css"], "js": [] },
       "variants": {},
       "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
     },
@@ -1070,12 +1134,11 @@
       "kind": "panel",
       "path": "/app/components/media-pool-transcript-panel/component.html",
       "package": "/app/components/media-pool-transcript-panel",
-      "assets": { "css": [], "js": [] },
+      "assets": { "css": ["/app/components/media-pool-transcript-panel/component.css"], "js": [] },
       "variants": {},
       "contract": { "version": 1, "inputs": [], "slots": [], "events": [], "backend_actions": [], "requires": [], "requires_components": [], "owns_state": false }
     },
     "sdk-demo-tab-layout": {
-      "global_id": "sdk-demo-tab-layout",
       "component_id": "sdk-demo-tab-layout",
       "version": "1.0.0",
       "source_plugin_id": "sdk_demo",
@@ -1138,7 +1201,7 @@
       "version": "1.1.0",
       "source_plugin_id": "story",
       "kind": "layout",
-      "description": "Story tab — shell layout s toolbarom, listom dijelova i uređivačem.",
+      "description": "Story tab — Jetson editorial workspace layout.",
       "embeddable": false,
       "path": "/app/components/story-tab-layout/component.html",
       "package": "/app/components/story-tab-layout",
@@ -1160,13 +1223,126 @@
         "requires_components": [
           "shell-plugin-tab",
           "story-toolbar",
-          "story-parts-list",
-          "story-part-editor",
-          "story-markers-list",
-          "story-marker-slots-list",
-          "story-covers-list",
-          "story-cover-editor"
+          "story-preview-overlay",
+          "story-virtual-shots",
+          "story-segment-timeline",
+          "story-virtual-timeline"
         ],
+        "owns_state": false
+      }
+    },
+    "story-segment-timeline": {
+      "global_id": "story-segment-timeline",
+      "component_id": "story-segment-timeline",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Jetson-style story segment cut stack + TONOVI/OFFOVI/GOTOVO bar.",
+      "embeddable": true,
+      "path": "/app/components/story-segment-timeline/component.html",
+      "package": "/app/components/story-segment-timeline",
+      "assets": {
+        "css": ["/app/components/story-segment-timeline/component.css"],
+        "js": ["/app/components/story-segment-timeline/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["parts", "marker_slots", "covers", "selected_part_id", "selected_slot_id", "playhead_by_part", "busy"],
+        "slots": ["segment-items"],
+        "events": [
+          { "action": "story.part.create", "payload": { "kind": "string" } },
+          { "action": "story.part.delete", "payload": { "part_id": "string" } },
+          { "action": "story.part.select", "payload": { "part_id": "string", "playhead_ratio": "number" } },
+          { "action": "story.marker_slot.select", "payload": { "slot_id": "string" } },
+          { "action": "story.cover.create", "payload": {} },
+          { "action": "story.test", "payload": {} },
+          { "action": "story.commit", "payload": {} }
+        ],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-virtual-timeline": {
+      "global_id": "story-virtual-timeline",
+      "component_id": "story-virtual-timeline",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Jetson-style virtual story timeline footer.",
+      "embeddable": true,
+      "path": "/app/components/story-virtual-timeline/component.html",
+      "package": "/app/components/story-virtual-timeline",
+      "assets": {
+        "css": ["/app/components/story-virtual-timeline/component.css"],
+        "js": ["/app/components/story-virtual-timeline/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["parts", "markers", "marker_slots", "covers", "duration_sec", "selected_part_id", "selected_slot_id", "playhead_by_part", "global_playhead_sec", "busy"],
+        "slots": ["vt-body", "vt-duration", "vt-tc"],
+        "events": [
+          { "action": "story.marker_slot.select", "payload": { "slot_id": "string" } },
+          { "action": "story.timeline.scrub", "payload": { "ratio": "number" } }
+        ],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-virtual-shots": {
+      "global_id": "story-virtual-shots",
+      "component_id": "story-virtual-shots",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Virtual shots strip (left column).",
+      "embeddable": true,
+      "path": "/app/components/story-virtual-shots/component.html",
+      "package": "/app/components/story-virtual-shots",
+      "assets": {
+        "css": ["/app/components/story-virtual-shots/component.css"],
+        "js": ["/app/components/story-virtual-shots/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["virtual_shots", "selected_shot_id"],
+        "slots": ["virtual-shot-items"],
+        "events": [{ "action": "story.shot.select", "payload": { "virtual_shot_id": "string" } }],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-preview-overlay": {
+      "global_id": "story-preview-overlay",
+      "component_id": "story-preview-overlay",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story playback preview overlay.",
+      "embeddable": true,
+      "path": "/app/components/story-preview-overlay/component.html",
+      "package": "/app/components/story-preview-overlay",
+      "assets": {
+        "css": ["/app/components/story-preview-overlay/component.css"],
+        "js": ["/app/components/story-preview-overlay/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["preview_open", "preview_label"],
+        "slots": ["preview-label"],
+        "events": [{ "action": "story.preview.close", "payload": {} }],
+        "backend_actions": [],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
         "owns_state": false
       }
     },

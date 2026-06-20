@@ -48,6 +48,21 @@ window.QNC = window.QNC || {};
     return parts.join(' · ') || '-';
   }
 
+  function transcriptStatus(clip) {
+    if (clip.has_transcript || clip.transcript_status === 'complete') return 'complete';
+    if (clip.transcript_status === 'failed') return 'failed';
+    if (clip.transcript_status === 'pending') return 'pending';
+    return 'none';
+  }
+
+  function transcriptLabel(clip) {
+    const st = transcriptStatus(clip);
+    if (st === 'complete') return 'Transkript OK';
+    if (st === 'failed') return 'Transkript greška';
+    if (st === 'pending') return 'Transkript…';
+    return 'Transkript —';
+  }
+
   function filmstripHtml() {
     return (
       '<section class="qnc-component qnc-filmstrip-viewer qnc-filmstrip-inline" data-qnc-panel="' +
@@ -74,9 +89,14 @@ window.QNC = window.QNC || {};
     const selected = (data.selected_ids || []).includes(id);
     const active = data.current_clip_id === id;
     const duration = clipDuration(clip);
+    const st = transcriptStatus(clip);
+    const rowCls =
+      (active ? ' is-active pool-row-active' : '') +
+      (st === 'complete' ? ' pool-row-ok' : '') +
+      (st === 'failed' ? ' pool-row-err' : '');
     return (
       '<div class="qnc-timeline-sequence__row timeline-row' +
-      (active ? ' is-active pool-row-active' : '') +
+      rowCls +
       '" data-clip-id="' +
       esc(id) +
       '">' +
@@ -93,6 +113,8 @@ window.QNC = window.QNC || {};
       '</div>' +
       '<div class="qnc-timeline-sequence__meta timeline-meta">' +
       esc(formatDuration(duration)) +
+      ' | ' +
+      esc(transcriptLabel(clip)) +
       ' | ' +
       esc(clipNote(clip)) +
       '</div>' +

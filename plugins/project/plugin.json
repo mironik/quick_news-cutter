@@ -6,7 +6,7 @@
   "position": "first",
   "entry_js": "/plugins/project/static/qnc-project.js",
   "entry_css": "/plugins/project/static/qnc-project.css",
-  "asset_version": 46,
+  "asset_version": 55,
   "panel_id": "panel-project",
   "keep_alive": true,
   "api_namespace": "/api/projects",

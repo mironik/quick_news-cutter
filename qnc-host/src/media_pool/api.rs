@@ -1,8 +1,8 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use serde_json::{json, Value};
@@ -11,6 +11,7 @@ use crate::app_state::AppState;
 use crate::filmstrip::{frame_path_for_index, frame_path_for_seek, get_filmstrip};
 use crate::ingest::thumb::extract_poster_jpeg_at_seek;
 use crate::media_pool::db::{add_virtual_shot, list_virtual_shots};
+use crate::media_pool::virtual_shots::{cover_path_for_shot, delete_virtual_shot};
 use crate::media_pool::ingest_db::proxy_path_for_clip;
 use crate::media_pool::store::{list_clips_enriched, mark_filmstrip_building};
 use crate::media_pool::transcripts::{get_transcript, save_transcript};
@@ -79,6 +80,20 @@ struct VirtualShotBody {
 }
 
 #[derive(serde::Deserialize)]
+struct VirtualShotThumbQuery {
+    #[serde(default)]
+    project_id: String,
+    #[serde(default)]
+    kind: String,
+}
+
+#[derive(serde::Deserialize)]
+struct VirtualShotDeleteQuery {
+    #[serde(default)]
+    project_id: String,
+}
+
+#[derive(serde::Deserialize)]
 struct TranscriptQuery {
     #[serde(default)]
     project_id: String,
@@ -95,6 +110,14 @@ pub fn router() -> Router<AppState> {
         .route("/api/media-pool/thumbnail", get(api_thumbnail))
         .route("/api/media-pool/timeline/build", post(api_timeline_build))
         .route("/api/media-pool/virtual-shot", post(api_virtual_shot))
+        .route(
+            "/api/media-pool/virtual-shot/{shot_id}/thumb",
+            get(api_virtual_shot_thumb),
+        )
+        .route(
+            "/api/media-pool/virtual-shot/{shot_id}",
+            delete(api_virtual_shot_delete),
+        )
 }
 
 async fn api_clips(
@@ -304,6 +327,45 @@ async fn api_virtual_shot(
     Ok(Json(json!({
         "status": "ok",
         "shot": shot,
+        "virtual_shots": virtual_shots,
+    })))
+}
+
+async fn api_virtual_shot_thumb(
+    State(app): State<AppState>,
+    Path(shot_id): Path<String>,
+    Query(q): Query<VirtualShotThumbQuery>,
+) -> Result<Response, (StatusCode, String)> {
+    let pid = resolve_project_id(&app, &q.project_id)?;
+    let sid = shot_id.trim();
+    if sid.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "shot_id je prazan".into()));
+    }
+    let path = cover_path_for_shot(&app.project.paths, &pid, sid, &q.kind)
+        .map_err(internal)?
+        .ok_or((StatusCode::NOT_FOUND, "Virtualni kadar nije pronađen".into()))?;
+    serve_file(path).await
+}
+
+async fn api_virtual_shot_delete(
+    State(app): State<AppState>,
+    Path(shot_id): Path<String>,
+    Query(q): Query<VirtualShotDeleteQuery>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(&app, &q.project_id)?;
+    let sid = shot_id.trim();
+    if sid.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "shot_id je prazan".into()));
+    }
+    if !delete_virtual_shot(&app.project.paths, &pid, sid).map_err(internal)? {
+        return Err((
+            StatusCode::NOT_FOUND,
+            "Virtualni kadar nije pronađen".into(),
+        ));
+    }
+    let virtual_shots = list_virtual_shots(&app.project.paths, &pid).map_err(internal)?;
+    Ok(Json(json!({
+        "status": "ok",
         "virtual_shots": virtual_shots,
     })))
 }

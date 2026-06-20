@@ -28,12 +28,41 @@ pub fn get_ui_state(conn: &Connection) -> rusqlite::Result<Value> {
     Ok(normalize_ui_state(state))
 }
 
+/// UI snapshot za API: samo SQLite + server-side merge (bez JS deepMerge).
+pub fn get_ui_state_for_api(conn: &Connection) -> rusqlite::Result<Value> {
+    let ui = get_ui_state(conn)?;
+    attach_effective_settings(conn, ui)
+}
+
 pub fn save_ui_state(conn: &Connection, patch: &Value) -> rusqlite::Result<Value> {
     let mut current = get_ui_state(conn)?;
     merge_ui_patch(&mut current, patch);
     normalize_ui_state_in_place(&mut current);
     super::db::set_setting(conn, UI_STATE_KEY, &super::db::json_string(&current))?;
-    Ok(current)
+    attach_effective_settings(conn, current)
+}
+
+pub fn effective_template_settings(conn: &Connection, ui: &Value) -> rusqlite::Result<Value> {
+    let template_id = ui
+        .get("selected_template_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("tpl_breaking_news");
+    let base = super::templates::get_project_template(conn, template_id)?
+        .and_then(|t| t.get("settings").cloned())
+        .unwrap_or_else(|| json!({}));
+    let ov = ui
+        .get("settings_override")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    Ok(super::db::deep_merge(&base, &ov))
+}
+
+fn attach_effective_settings(conn: &Connection, mut ui: Value) -> rusqlite::Result<Value> {
+    let effective = effective_template_settings(conn, &ui)?;
+    if let Some(obj) = ui.as_object_mut() {
+        obj.insert("effective_settings".into(), effective);
+    }
+    Ok(ui)
 }
 
 fn normalize_ui_state(mut state: Value) -> Value {

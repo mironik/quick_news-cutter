@@ -139,6 +139,53 @@ window.QNC = window.QNC || {};
     );
   }
 
+  const KEYBOARD_PRESETS_FALLBACK = [
+    { id: 'default', name: 'QNC' },
+    { id: 'resolve', name: 'DaVinci Resolve' },
+    { id: 'premiere', name: 'Adobe Premiere Pro' },
+    { id: 'finalcut', name: 'Final Cut Pro 11' },
+    { id: 'edius', name: 'Grass Valley EDIUS' },
+    { id: 'avid', name: 'Avid Media Composer' },
+  ];
+
+  function activeKeyboardPreset(merged) {
+    const id = merged?.keyboard_shortcuts?.active_preset;
+    return typeof id === 'string' && id.trim() ? id.trim() : 'default';
+  }
+
+  async function loadKeyboardPresets() {
+    try {
+      const d = await QNC.api('GET', '/api/settings/keyboard-shortcuts/presets');
+      const presets = Array.isArray(d?.presets) ? d.presets : [];
+      if (presets.length) return presets;
+    } catch {
+      /* fallback ispod */
+    }
+    return KEYBOARD_PRESETS_FALLBACK;
+  }
+
+  async function syncTemplateKeyboardField(panel, merged, open) {
+    const sel = panel?.querySelector('[data-pts-kbd-preset]');
+    if (!sel || !open) return;
+    const presetId = activeKeyboardPreset(merged);
+    const presets = await loadKeyboardPresets();
+    const keepValue = document.activeElement === sel ? sel.value : presetId;
+    sel.innerHTML = presets
+      .map(
+        (p) =>
+          '<option value="' +
+          QNC.esc(p.id) +
+          '"' +
+          (p.id === presetId ? ' selected' : '') +
+          '>' +
+          QNC.esc(p.name) +
+          '</option>'
+      )
+      .join('');
+    if (presets.some((p) => p.id === keepValue)) sel.value = keepValue;
+    else sel.value = presetId;
+  }
+
   function aiSettingsHtml(s) {
     const ai = s?.ai || {};
     return (
@@ -370,7 +417,13 @@ window.QNC = window.QNC || {};
   function syncTemplateCreatePanel(open, root) {
     const panel = panelRoot(root);
     const box = panel?.querySelector('[data-pts-section="custom_template_save"]');
-    if (box) box.hidden = !open;
+    if (!box) return;
+    box.hidden = !open;
+    if (open) {
+      requestAnimationFrame(() => {
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
   }
 
   function setStatus(root, message, kind) {
@@ -385,6 +438,10 @@ window.QNC = window.QNC || {};
     const templates = Array.isArray(data?.templates) ? data.templates : [];
     const id = data?.ui?.selected_template_id || data?.selectedTemplateId || '';
     return templates.find((t) => t.template_id === id) || templates[0] || null;
+  }
+
+  function syncNewTemplateKeyboard(panel, data) {
+    syncTemplateKeyboardField(panel, data?.mergedSettings || {}, !!data?.templateCreateOpen).catch(() => {});
   }
 
   function mount(root, options) {
@@ -425,6 +482,10 @@ window.QNC = window.QNC || {};
 
     panel.addEventListener('change', (e) => {
       const el = e.target;
+      if (el?.matches?.('[data-pts-kbd-preset]')) {
+        emit(pluginId, 'keyboard.preset.select', { preset_id: el.value || 'default' });
+        return;
+      }
       if (el?.matches?.('.qnc-template-module')) {
         const tabs = qAll('.qnc-template-module', panel)
           .filter((item) => item.checked || item.value === 'project')
@@ -475,6 +536,7 @@ window.QNC = window.QNC || {};
 
     renderSettingsPanels(tpl, availableModules, panel, merged);
     syncTemplateCreatePanel(!!data?.templateCreateOpen, panel);
+    syncNewTemplateKeyboard(panel, { mergedSettings: merged, templateCreateOpen: !!data?.templateCreateOpen });
 
     if (data?.templateCreateOpen && data?.focusTemplateName) {
       byBind('template.name', panel)?.focus();

@@ -96,8 +96,11 @@ window.QNC = window.QNC || {};
   }
 
   function effectiveSettings(ctx) {
-    const tpl = selectedTemplate(ctx);
-    return deepMerge(tpl?.settings || {}, snapUi(ctx).settings_override || {});
+    const ui = snapUi(ctx);
+    if (ui.effective_settings && typeof ui.effective_settings === 'object') {
+      return ui.effective_settings;
+    }
+    return {};
   }
 
   function defaultProjectName() {
@@ -279,8 +282,13 @@ window.QNC = window.QNC || {};
       syncActiveProject(ctx);
       await patchUi(ctx, { selected_project_id: id });
       await ensureSession(ctx);
-      renderAll(ctx);
-      ctx.emitShell('project:opened', { projectId: id });
+      await renderAll(ctx);
+      if (QNC.openProjectWorkflow) {
+        await QNC.openProjectWorkflow({ projectId: id });
+      } else {
+        ctx.emitShell('project:opened', { projectId: id });
+      }
+      await applyProjectKeyboard();
       ctx.setStatus('Projekt otvoren.', 'ok');
     } catch (e) {
       ctx.setStatus('Projekt: ' + e.message, 'err');
@@ -313,7 +321,6 @@ window.QNC = window.QNC || {};
       const d = await ctx.action('project.create', {
         name,
         template_id: tpl.template_id,
-        settings_override: ui.settings_override || {},
         user_id: session?.user_id || '',
         session_id: session?.session_id || '',
       });
@@ -322,8 +329,13 @@ window.QNC = window.QNC || {};
       if (!id) throw new Error('Server nije vratio project_id');
       syncActiveProject(ctx);
       await patchUi(ctx, { selected_project_id: id, project_name: defaultProjectName() });
-      renderAll(ctx);
-      ctx.emitShell('project:opened', { projectId: id });
+      await renderAll(ctx);
+      if (QNC.openProjectWorkflow) {
+        await QNC.openProjectWorkflow({ projectId: id });
+      } else {
+        ctx.emitShell('project:opened', { projectId: id });
+      }
+      await applyProjectKeyboard();
       ctx.setStatus('Projekt kreiran.', 'ok');
     } catch (e) {
       ctx.setStatus('Template: ' + e.message, 'err');
@@ -342,10 +354,11 @@ window.QNC = window.QNC || {};
     const session = await ensureSession(ctx);
     ctx.setStatus('Spremam custom template...', 'busy');
     try {
+      const settings = effectiveSettings(ctx);
       const d = await ctx.action('template.save-custom', {
         name,
         description: String(ui.template_draft_description || ''),
-        settings: effectiveSettings(ctx),
+        settings: Object.keys(settings).length ? settings : null,
         source_template_ids: tpl.source_template_ids || [],
         base_template_id: tpl.template_id,
         user_id: session?.user_id || '',
@@ -355,6 +368,7 @@ window.QNC = window.QNC || {};
         template_create_open: false,
         template_draft_name: '',
         template_draft_description: '',
+        reset_settings_override: true,
       });
       await ctx.store.reload('project.templates');
       renderTemplateSettings(ctx);
@@ -399,15 +413,23 @@ window.QNC = window.QNC || {};
     try {
       ctx.emitShell('project:deleting', { projectId: id });
       await new Promise((r) => setTimeout(r, 200));
-      await ctx.action('project.delete', { project_ids: [id] });
-      await ctx.store.reload(['project.index', 'project.ui']);
+      const d = await ctx.action('project.delete', { project_ids: [id] });
+      const nextProjects = Array.isArray(d.projects) ? d.projects : [];
+      const activeId = String(d.active_project_id || '').trim();
+      const selectedId = activeId || nextProjects[0]?.project_id || '';
       runtime.session = null;
-      syncActiveProject(ctx);
-      await ensureSelectedProject(ctx);
-      renderAll(ctx);
-      const activeId = syncActiveProject(ctx);
+      QNC.setActiveProjectId(activeId);
+      await patchUi(ctx, { selected_project_id: selectedId || '' });
+      await ctx.store.reload('project.index');
+      renderProjectList(ctx, {
+        projects: nextProjects,
+        selectedId: selectedId || null,
+        activeId,
+      });
+      renderTemplateSettings(ctx);
       if (activeId) {
-        ctx.emitShell('project:opened', { projectId: activeId });
+        await QNC.applyWorkspaceFooterOnly?.(activeId);
+        ctx.emitShell('project:changed', { projectId: activeId });
       } else {
         QNC.shell?.showProjectOnly?.();
         ctx.emitShell('project:changed', { projectId: '' });
@@ -457,6 +479,12 @@ window.QNC = window.QNC || {};
   async function persistSettingsPath(ctx, path, value) {
     await patchUi(ctx, { settings_path: { path, value } });
     renderTemplateSettings(ctx);
+  }
+
+  async function applyProjectKeyboard() {
+    if (QNC.keyboardShortcuts?.applyForActiveProject) {
+      await QNC.keyboardShortcuts.applyForActiveProject();
+    }
   }
 
   async function persistWorkflowTabs(ctx, tabs) {
@@ -560,6 +588,13 @@ window.QNC = window.QNC || {};
       ctx.on('workflow-tabs.change', async (event) => {
         await persistWorkflowTabs(ctx, event.payload?.tabs || []);
       });
+      ctx.on('keyboard.preset.select', async (event) => {
+        await persistSettingsPath(
+          ctx,
+          'keyboard_shortcuts.active_preset',
+          event.payload?.preset_id || 'default'
+        );
+      });
       ctx.on('template.create-panel.open', async () => {
         await setTemplateCreateOpen(ctx, true);
       });
@@ -574,6 +609,7 @@ window.QNC = window.QNC || {};
       try {
         await refreshAndRender(ctx);
         await ensureSession(ctx);
+        await applyProjectKeyboard();
         QNC.shell?.showProjectOnly?.();
         QNC.log('[Projekt] SDK modul spreman', 'ok');
       } catch (e) {

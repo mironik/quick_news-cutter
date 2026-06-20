@@ -1,6 +1,6 @@
 {
   "component_id": "project-template-settings",
-  "version": "1.3.2",
+  "version": "1.3.7",
   "kind": "panel",
   "path": "/app/components/project-template-settings/component.html",
   "description": "Odabir project templatea, naziv projekta i pregled template postavki.",
@@ -61,6 +61,12 @@
       {
         "action": "projects-root.pick",
         "payload": {}
+      },
+      {
+        "action": "keyboard.preset.select",
+        "payload": {
+          "preset_id": "string"
+        }
       }
     ],
     "backend_actions": [],

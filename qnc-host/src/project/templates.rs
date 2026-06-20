@@ -247,17 +247,42 @@ pub fn get_project_settings(paths: &ProjectPaths, project_id: &str) -> rusqlite:
     }))
 }
 
-pub fn get_project_workspace(paths: &ProjectPaths, project_id: &str) -> rusqlite::Result<Value> {
-    let item = get_project_settings(paths, project_id)?;
-    let settings = item.get("settings").cloned().unwrap_or_else(|| json!({}));
-    let conn = open_project(paths, project_id)?;
-    ensure_project_workflow(&conn, project_id, &settings)?;
+pub fn get_project_workspace(
+    global: &Connection,
+    paths: &ProjectPaths,
+    project_id: &str,
+) -> rusqlite::Result<Value> {
+    let pid = project_id.trim();
+    let item = get_project_settings(paths, pid)?;
+    let template_id = item
+        .get("template_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let settings_raw = item.get("settings").cloned().unwrap_or_else(|| json!({}));
+    let conn = open_project(paths, pid)?;
+    let settings = normalize_settings_workspace(&hydrate_project_settings(
+        global,
+        &conn,
+        pid,
+        &template_id,
+        settings_raw.clone(),
+    )?);
+    if settings != settings_raw && settings_have_workflow_tabs(&settings) {
+        let tid = resolve_persist_template_id(global, &conn, pid, &template_id)?;
+        let _ = persist_project_settings_kv(&conn, pid, &tid, &settings);
+    }
+    ensure_project_workflow(&conn, pid, &settings)?;
     let steps = list_workflow_steps(&conn, project_id)?;
     let state = workflow_state(&conn, project_id)?;
-    let tabs = steps
+    let tabs: Vec<String> = steps
         .iter()
-        .filter_map(|s| s.get("tab_id").and_then(|v| v.as_str()).map(str::to_string))
-        .collect::<Vec<_>>();
+        .filter_map(|s| {
+            s.get("tab_id")
+                .and_then(|v| v.as_str())
+                .map(normalize_workspace_tab_id)
+        })
+        .collect();
     let mut labels = serde_json::Map::new();
     for step in &steps {
         if let (Some(tab_id), Some(label)) = (
@@ -268,7 +293,7 @@ pub fn get_project_workspace(paths: &ProjectPaths, project_id: &str) -> rusqlite
         }
     }
     Ok(json!({
-        "project_id": project_id,
+        "project_id": pid,
         "template_id": item.get("template_id").cloned().unwrap_or(Value::Null),
         "tabs": tabs,
         "tab_labels": Value::Object(labels),
@@ -666,17 +691,140 @@ fn write_project_workflow(
     Ok(())
 }
 
+fn settings_have_workflow_tabs(settings: &Value) -> bool {
+    let (tabs, _) = workflow_tabs_from_settings(settings);
+    tabs.iter().any(|t| t != "project")
+}
+
+fn workflow_tab_ids_in_db(conn: &Connection, project_id: &str) -> rusqlite::Result<Vec<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT tab_id FROM project_workflow_steps WHERE project_id = ?1 ORDER BY position, step_id",
+    )?;
+    let rows = stmt.query_map(params![project_id], |r| r.get::<_, String>(0))?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(normalize_workspace_tab_id(&row?));
+    }
+    Ok(normalize_workspace_tab_list(out))
+}
+
+fn hydrate_project_settings(
+    global: &Connection,
+    project_conn: &Connection,
+    project_id: &str,
+    template_id: &str,
+    settings: Value,
+) -> rusqlite::Result<Value> {
+    if settings_have_workflow_tabs(&settings) {
+        return Ok(settings);
+    }
+    let mut merged = settings;
+    let snapshot = load_object(
+        project_conn,
+        "project_snapshot_kv",
+        "project_id",
+        project_id,
+    )?;
+    if snapshot.is_object() && !snapshot.as_object().is_some_and(|o| o.is_empty()) {
+        let snap_settings = snapshot
+            .get("settings")
+            .cloned()
+            .unwrap_or_else(|| snapshot.clone());
+        merged = deep_merge(&snap_settings, &merged);
+        if settings_have_workflow_tabs(&merged) {
+            return Ok(merged);
+        }
+    }
+    let mut tid = template_id.to_string();
+    if tid.is_empty() {
+        tid = snapshot
+            .get("template_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+    }
+    if !tid.is_empty() {
+        if let Some(tpl) = get_project_template(global, &tid)? {
+            if let Some(tpl_settings) = tpl.get("settings") {
+                merged = deep_merge(tpl_settings, &merged);
+            }
+        }
+    }
+    if !settings_have_workflow_tabs(&merged) {
+        if let Some(tpl) = get_project_template(global, "tpl_breaking_news")? {
+            if let Some(tpl_settings) = tpl.get("settings") {
+                merged = deep_merge(tpl_settings, &merged);
+            }
+        }
+    }
+    Ok(merged)
+}
+
+fn resolve_persist_template_id(
+    global: &Connection,
+    project_conn: &Connection,
+    project_id: &str,
+    template_id: &str,
+) -> rusqlite::Result<String> {
+    if !template_id.trim().is_empty() {
+        return Ok(template_id.trim().to_string());
+    }
+    let snapshot = load_object(
+        project_conn,
+        "project_snapshot_kv",
+        "project_id",
+        project_id,
+    )?;
+    if let Some(tid) = snapshot.get("template_id").and_then(|v| v.as_str()) {
+        if !tid.trim().is_empty() {
+            return Ok(tid.trim().to_string());
+        }
+    }
+    if get_project_template(global, "tpl_breaking_news")?.is_some() {
+        return Ok("tpl_breaking_news".to_string());
+    }
+    Ok(String::new())
+}
+
+fn persist_project_settings_kv(
+    conn: &Connection,
+    project_id: &str,
+    template_id: &str,
+    settings: &Value,
+) -> rusqlite::Result<()> {
+    replace_object(conn, "project_settings_kv", "project_id", project_id, settings)?;
+    let now = now_str();
+    conn.execute(
+        "INSERT INTO project_settings (project_id, template_id, settings_json, created_at, updated_at)
+         VALUES (?1, ?2, '{}', ?3, ?3)
+         ON CONFLICT(project_id) DO UPDATE SET
+            template_id = CASE
+                WHEN excluded.template_id != '' THEN excluded.template_id
+                ELSE project_settings.template_id
+            END,
+            updated_at = excluded.updated_at",
+        params![project_id, template_id, now],
+    )?;
+    Ok(())
+}
+
 fn ensure_project_workflow(
     conn: &Connection,
     project_id: &str,
     settings: &Value,
 ) -> rusqlite::Result<()> {
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM project_workflow_steps WHERE project_id = ?1",
-        params![project_id],
-        |r| r.get(0),
-    )?;
-    if count == 0 {
+    let (expected, _) = workflow_tabs_from_settings(settings);
+    let current = workflow_tab_ids_in_db(conn, project_id)?;
+    let state = workflow_state(conn, project_id)?;
+    let entry = state
+        .get("entry_step_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
+    let needs_repair = current.is_empty()
+        || current != expected
+        || (expected.len() > 1 && entry.is_empty());
+    if needs_repair {
         write_project_workflow(conn, project_id, settings)?;
     }
     Ok(())

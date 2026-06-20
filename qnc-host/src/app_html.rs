@@ -36,10 +36,11 @@ pub const APP_HTML: &str = r#"<!DOCTYPE html>
   </div>
 
   <script src="/app/shell/qnc-core.js?v=8"></script>
+  <script src="/app/shell/qnc-keyboard-shortcuts.js?v=4"></script>
   <script src="/app/shell/qnc-shell.js?v=6"></script>
   <script src="/app/shell/qnc-bus.js?v=2"></script>
   <script src="/app/shell/qnc-tab-registry.js?v=4"></script>
   <script src="/app/shell/qnc-plugin-sdk.js?v=1"></script>
-  <script src="/app/shell/app.js?v=12"></script>
+  <script src="/app/shell/app.js?v=14"></script>
 </body>
 </html>"#;

@@ -1,90 +1,120 @@
-.qnc-story-workspace {
+/* Story workspace owns only tab-level layout. */
+
+#panel-storyboard.story-panel.tab-panel.active .story-main {
+  flex: 1 1 0;
+  min-height: 120px;
+}
+
+#panel-storyboard .story-main {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 12rem;
+  margin-top: 8px;
+  border: 1px solid #3a3a3a;
+  overflow: hidden;
+  background: #1c1c1c;
 }
 
-.qnc-story-head {
-  margin: 0;
-}
-
-.qnc-story-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.25rem;
-}
-
-.qnc-story-subtitle {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.qnc-story-stats {
+#panel-storyboard .story-workspace {
+  flex: 1 1 0;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: 0.75rem 1rem;
-  margin: 0;
+  grid-template-columns: minmax(260px, 42%) 1px minmax(280px, 1fr);
+  grid-template-rows: 1fr;
+  gap: 0;
+  overflow: hidden;
+  background: #1c1c1c;
 }
 
-.qnc-story-stat dt {
-  margin: 0;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.75;
+#panel-storyboard .story-left-col {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: #1a1a1a;
 }
 
-.qnc-story-stat dd {
-  margin: 0.15rem 0 0;
-  font-size: 1rem;
+#panel-storyboard .story-divider {
+  background: #3a3a3a;
+  width: 1px;
+  grid-column: 2;
+  grid-row: 1;
 }
 
-.qnc-story-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
-  word-break: break-all;
+#panel-storyboard .qnc-story-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
-.qnc-story-main {
-  display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1.2fr);
-  gap: 1rem;
-  align-items: start;
+#panel-storyboard.qnc-shell-plugin-tab.story-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
-@media (max-width: 720px) {
-  .qnc-story-main {
-    grid-template-columns: 1fr;
-  }
+#panel-storyboard .qnc-shell-plugin-tab-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.qnc-story-markers-row {
-  display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(12rem, 1fr);
-  gap: 1rem;
-  align-items: start;
+#panel-storyboard .story-virtual-timeline {
+  flex: 0 0 auto;
+  padding: 8px 10px 10px;
+  border-top: 1px solid #333;
+  background: #181818;
 }
 
-@media (max-width: 720px) {
-  .qnc-story-markers-row {
-    grid-template-columns: 1fr;
-  }
+.story-video-strip {
+  flex: 1 1 auto;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: #888;
+  background: linear-gradient(180deg, #1a1a1a 0%, #101010 100%);
+  border: 1px solid #333;
 }
 
-.qnc-story-covers-row {
-  display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1.2fr);
-  gap: 1rem;
-  align-items: start;
+.story-marker-slots,
+.story-cover-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-@media (max-width: 720px) {
-  .qnc-story-covers-row {
-    grid-template-columns: 1fr;
-  }
+.story-marker-slots .story-marker-slot {
+  pointer-events: auto;
 }
 
-.qnc-story-note {
-  margin: 0;
-  font-size: 0.9rem;
+.story-cut-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #e6e6e6;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.story-cut-progress {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(180, 180, 180, 0.08);
+  pointer-events: none;
+  z-index: 1;
 }

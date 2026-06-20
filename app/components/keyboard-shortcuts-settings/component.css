@@ -1,0 +1,80 @@
+.qnc-kbd-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qnc-kbd-head {
+  margin: 0;
+}
+
+.qnc-kbd-title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.qnc-kbd-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.qnc-kbd-sub code {
+  font-size: 0.8em;
+}
+
+.qnc-kbd-controls,
+.qnc-kbd-scope-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.qnc-kbd-preset-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.qnc-kbd-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--qnc-border, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+}
+
+.qnc-kbd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.qnc-kbd-table th,
+.qnc-kbd-table td {
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--qnc-border, rgba(255, 255, 255, 0.08));
+  vertical-align: middle;
+}
+
+.qnc-kbd-table th {
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.qnc-kbd-table tr:last-child td {
+  border-bottom: none;
+}
+
+.qnc-kbd-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.qnc-kbd-status.is-ok {
+  color: var(--qnc-ok, #6dd68a);
+}
+
+.qnc-kbd-status.is-err {
+  color: var(--qnc-err, #ff8a8a);
+}

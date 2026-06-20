@@ -1,19 +1,32 @@
-@import url('/app/components/media-pool-workspace/component.css');
-@import url('/app/components/filmstrip-viewer/component.css');
-
-.qnc-media-clip-list .timeline-row {
+.qnc-media-clip-list { min-height: 0; overflow: hidden; height: 100%; }
+.qnc-media-clip-list .pool-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px 16px;
+}
+.qnc-media-clip-list .timeline-view .timeline-row.pool-row-active {
+  border: 2px solid #facc15;
+  border-radius: 4px;
+  background: #1c1c1c;
+  padding: 4px 6px;
+  margin: 2px 0;
+}
+.qnc-media-clip-list .timeline-view .timeline-row.pool-row-ok { border-left: 3px solid #4ec9b0; }
+.qnc-media-clip-list .timeline-view .timeline-row.pool-row-err { border-left: 3px solid #f48771; }
+.qnc-media-clip-list .timeline-view .timeline-row {
   display: grid;
-  grid-template-columns: 200px 1fr 64px;
-  gap: 0.35rem;
+  grid-template-columns: 220px minmax(0, 1fr) 56px;
   align-items: center;
+  gap: 8px;
   padding: 0.35rem 0;
-  border-bottom: 1px solid var(--qnc-border, #222);
+  border-bottom: 1px solid #2a2a2e;
 }
-
-.qnc-media-clip-list .timeline-row.pool-row-active {
-  background: rgba(80, 120, 200, 0.08);
+.qnc-media-clip-list .timeline-label { min-width: 0; }
+.qnc-media-clip-list .timeline-title,
+.qnc-media-clip-list .timeline-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.qnc-media-clip-list .grid-empty {
-  padding: 1rem;
-}
+.qnc-media-clip-list .clip-edge-btn { width: 56px; }

@@ -6,7 +6,7 @@
   "position": "normal",
   "entry_js": "/plugins/media_pool/static/qnc-media-pool.js",
   "entry_css": "/plugins/media_pool/static/qnc-media-pool.css",
-  "asset_version": 21,
+  "asset_version": 30,
   "panel_id": "panel-pool",
   "api_namespace": "/api/media-pool",
   "storage": "media_pool",
@@ -23,7 +23,7 @@
     "media-pool-player",
     "media-pool-transport",
     "media-pool-actions",
-    "timeline-sequence",
+    "media-pool-clip-list",
     "media-pool-virtual-shot-panel",
     "media-pool-transcript-panel",
     "filmstrip-viewer"
@@ -38,10 +38,10 @@
         "query": ["project_id"]
       }
     ],
-    "invalidates_on": ["project:changed", "project:deleting"]
+    "invalidates_on": ["project:changed", "project:deleting", "ingest:import-queued"]
   },
   "consumes": {
-    "shell_events": ["project:changed", "project:deleting"],
+    "shell_events": ["project:changed", "project:deleting", "ingest:import-queued", "keyboard-shortcuts:changed"],
     "snapshots": ["ingest.state"]
   },
   "events": {
@@ -85,6 +85,12 @@
         "action": "virtual-shot.create",
         "method": "POST",
         "path": "/api/media-pool/virtual-shot",
+        "writes": ["virtual_shots"]
+      },
+      {
+        "action": "virtual-shot.delete",
+        "method": "DELETE",
+        "path": "/api/media-pool/virtual-shot/{shot_id}",
         "writes": ["virtual_shots"]
       },
       {

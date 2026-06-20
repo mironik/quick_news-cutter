@@ -199,8 +199,13 @@ window.QNC = window.QNC || {};
     renderAll(ctx);
     try {
       await writeAndReload(ctx, 'ingest.import', { clip_ids: ids });
-      ctx.setStatus('Uvoz u pozadini: ' + ids.length + ' klip(ova).', 'busy');
-      await QNC.nextTab?.('ingest');
+      ctx.setStatus('Uvoz pokrenut u pozadini (' + ids.length + ' klipova).', 'ok');
+      QNC.bus?.emit?.('ingest:import-queued', {
+        project_id: ctx.projectId || QNC.getProjectId?.() || '',
+        clip_ids: ids,
+        count: ids.length,
+      });
+      QNC.switchTab?.('pool');
     } catch (e) {
       ctx.setStatus('Uvoz: ' + e.message, 'err');
     } finally {

@@ -74,8 +74,10 @@
           "enabled": false,
           "coverage_suggestions": true
         },
+        "keyboard_shortcuts": {
+          "active_preset": "default"
+        },
         "workspace": {
-          "tabs": ["project", "ingest", "pool", "off", "storyboard", "preview"],
           "tab_labels": {
             "ingest": "Ingest",
             "pool": "Media",
@@ -123,6 +125,9 @@
         "ai": {
           "enabled": false,
           "coverage_suggestions": true
+        },
+        "keyboard_shortcuts": {
+          "active_preset": "resolve"
         },
         "workspace": {
           "tabs": [

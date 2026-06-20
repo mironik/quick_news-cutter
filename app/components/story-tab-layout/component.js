@@ -1,4 +1,4 @@
-/* Story tab layout — render model only; no backend calls (Phase A). */
+/* Story tab layout — Jetson workspace shell (render-only). */
 window.QNC = window.QNC || {};
 
 (function (QNC) {
@@ -10,11 +10,6 @@ window.QNC = window.QNC || {};
     return root.querySelector?.('[data-qnc-panel="' + PANEL_ID + '"]') || null;
   }
 
-  function setSlot(panel, name, text) {
-    const el = panel.querySelector('[data-qnc-slot="' + name + '"]');
-    if (el) el.textContent = text == null ? '' : String(text);
-  }
-
   function mount(root) {
     const panel = panelRoot(root);
     if (!panel || panel.dataset.qncComponentMounted === '1') return panel;
@@ -22,14 +17,8 @@ window.QNC = window.QNC || {};
     return panel;
   }
 
-  function update(root, model) {
-    const panel = panelRoot(root);
-    if (!panel) return;
-    const m = model || {};
-    setSlot(panel, 'part-count', m.part_count ?? 0);
-    setSlot(panel, 'duration-sec', m.duration_sec ?? 0);
-    setSlot(panel, 'project-id', m.project_id || '—');
-    setSlot(panel, 'status-note', m.status_note || '');
+  function update(root) {
+    panelRoot(root);
   }
 
   QNC.components.register(PANEL_ID, { mount, update });

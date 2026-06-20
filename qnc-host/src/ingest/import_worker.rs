@@ -8,7 +8,9 @@ use rusqlite::params;
 use serde_json::json;
 use tracing::{info, warn};
 
+use crate::filmstrip::FilmstripWorker;
 use crate::media::{import_source_path, is_breaking_news, proxy_policy_copy};
+use crate::media_pool::sync_pool_from_ingest_db;
 use crate::project::db::{ensure_project_dirs, project_settings_snapshot, ProjectPaths};
 
 use super::asset_row::IngestAssetRow;
@@ -21,15 +23,23 @@ pub struct ImportWorker {
     pending: Arc<Mutex<HashSet<String>>>,
     blocked: Arc<Mutex<HashSet<String>>>,
     thumbs: Arc<super::worker::ThumbWorker>,
+    filmstrip: Arc<FilmstripWorker>,
 }
 
+const FILMSTRIP_FRAMES: u32 = 10;
+
 impl ImportWorker {
-    pub fn new(paths: ProjectPaths, thumbs: Arc<super::worker::ThumbWorker>) -> Self {
+    pub fn new(
+        paths: ProjectPaths,
+        thumbs: Arc<super::worker::ThumbWorker>,
+        filmstrip: Arc<FilmstripWorker>,
+    ) -> Self {
         Self {
             paths,
             pending: Arc::new(Mutex::new(HashSet::new())),
             blocked: Arc::new(Mutex::new(HashSet::new())),
             thumbs,
+            filmstrip,
         }
     }
 
@@ -133,9 +143,6 @@ impl ImportWorker {
             if self.is_blocked(project_id) {
                 break;
             }
-            if row.status == "processing" {
-                continue;
-            }
             conn.execute(
                 "UPDATE ingest_assets SET import_status = 'processing' WHERE source_id = ?1 AND clip_id = ?2",
                 params![row.source_id, row.clip_id],
@@ -198,12 +205,23 @@ impl ImportWorker {
                     )
                     .map_err(|e| e.to_string())?;
                     done += 1;
+                    if dest_or_link.is_file() {
+                        self.filmstrip.enqueue(
+                            project_id,
+                            &row.clip_id,
+                            &dest_or_link,
+                            FILMSTRIP_FRAMES,
+                        );
+                    }
                 }
                 Err(err) => {
                     row_import_error(&conn, &row.source_id, &row.clip_id, &err)
                         .map_err(|e| e.to_string())?;
                 }
             }
+        }
+        if done > 0 {
+            sync_pool_from_ingest_db(&self.paths, project_id).ok();
         }
         Ok(done)
     }

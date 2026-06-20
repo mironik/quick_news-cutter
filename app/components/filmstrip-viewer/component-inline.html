@@ -1,3 +1,13 @@
 <section class="qnc-component qnc-filmstrip-viewer qnc-filmstrip-inline" data-qnc-panel="filmstrip-viewer">
-  <div class="thumbnail-strip" data-qnc-slot="frames"></div>
+  <div class="qnc-filmstrip-track-stack">
+    <div class="qnc-filmstrip-inout" data-qnc-slot="inout-lane" title="Klik za seek">
+      <div class="qnc-filmstrip-inout-range"></div>
+      <div class="qnc-filmstrip-vshot-segments" data-qnc-slot="vshot-segments"></div>
+      <div class="qnc-filmstrip-inout-mark qnc-filmstrip-inout-mark--in">IN</div>
+      <div class="qnc-filmstrip-inout-mark qnc-filmstrip-inout-mark--out">OUT</div>
+    </div>
+    <div class="qnc-filmstrip-vshots" data-qnc-slot="virtual-shots"></div>
+    <div class="thumbnail-strip" data-qnc-slot="frames"></div>
+    <div class="qnc-filmstrip-playhead" data-qnc-slot="playhead"></div>
+  </div>
 </section>

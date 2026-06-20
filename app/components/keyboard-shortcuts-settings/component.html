@@ -1,0 +1,34 @@
+<section class="qnc-kbd-settings" data-qnc-panel="keyboard-shortcuts-settings">
+  <header class="qnc-kbd-head">
+    <h3 class="qnc-kbd-title">Tipkovnica</h3>
+    <p class="qnc-kbd-sub muted">
+      Odaberi NLE mapu za novi template (QNC, Resolve, Premiere, FCP 11, EDIUS, Avid). Sprema se u template pri
+      „Spremi novi template“.
+    </p>
+  </header>
+
+  <div class="qnc-kbd-controls">
+    <label class="qnc-ui-label" for="qnc-kbd-preset">NLE preset</label>
+    <select id="qnc-kbd-preset" class="qnc-ui-select" data-kbd-preset></select>
+    <p class="qnc-kbd-preset-desc muted" data-kbd-preset-desc></p>
+  </div>
+
+  <div class="qnc-kbd-scope-row">
+    <label class="qnc-ui-label" for="qnc-kbd-scope">Modul — pregled tipki</label>
+    <select id="qnc-kbd-scope" class="qnc-ui-select" data-kbd-scope></select>
+  </div>
+
+  <div class="qnc-kbd-table-wrap">
+    <table class="qnc-kbd-table">
+      <thead>
+        <tr>
+          <th>Akcija</th>
+          <th>Tipka</th>
+        </tr>
+      </thead>
+      <tbody data-kbd-rows></tbody>
+    </table>
+  </div>
+
+  <p class="qnc-kbd-status muted" data-kbd-status>Spreman.</p>
+</section>

@@ -259,12 +259,14 @@ pub fn list_virtual_shots(paths: &ProjectPaths, project_id: &str) -> Result<Vec<
     let conn = open_db(paths, project_id)?;
     let mut stmt = conn
         .prepare(
-            "SELECT shot_id, clip_id, source, quality, duration_seconds, in_seconds, out_seconds, created_at
+            "SELECT shot_id, clip_id, source, quality, duration_seconds, in_seconds, out_seconds, data_json, created_at
              FROM virtual_shots ORDER BY created_at",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |row| {
+            let data = serde_json::from_str::<Value>(&row.get::<_, String>(7)?)
+                .unwrap_or(json!({}));
             Ok(json!({
                 "id": row.get::<_, String>(0)?,
                 "shot_id": row.get::<_, String>(0)?,
@@ -274,7 +276,11 @@ pub fn list_virtual_shots(paths: &ProjectPaths, project_id: &str) -> Result<Vec<
                 "duration_seconds": row.get::<_, f64>(4)?,
                 "in_seconds": row.get::<_, f64>(5)?,
                 "out_seconds": row.get::<_, f64>(6)?,
-                "created_at": row.get::<_, Option<String>>(7)?,
+                "cover_path": data.get("cover_path").cloned().unwrap_or(json!(null)),
+                "out_cover_path": data.get("out_cover_path").cloned().unwrap_or(json!(null)),
+                "in_tc": data.get("in_tc").cloned().unwrap_or(json!(null)),
+                "out_tc": data.get("out_tc").cloned().unwrap_or(json!(null)),
+                "created_at": row.get::<_, Option<String>>(8)?,
             }))
         })
         .map_err(|e| e.to_string())?
@@ -305,11 +311,25 @@ pub fn add_virtual_shot(
         now_str()
     );
     let now = now_str();
+    let (cover, out_cover) = super::virtual_shots::write_shot_covers(
+        paths, project_id, &shot_id, clip_id, in_r, out_r,
+    )?;
+    let in_tc = super::virtual_shots::seconds_to_timecode(in_r, 25);
+    let out_tc = super::virtual_shots::seconds_to_timecode(out_r, 25);
+    let data_json = json!({
+        "cover_path": cover.to_string_lossy(),
+        "out_cover_path": out_cover.to_string_lossy(),
+        "in_tc": in_tc,
+        "out_tc": out_tc,
+        "categories": ["manual_cut"],
+        "description": "Ručno označen virtualni kadar.",
+    })
+    .to_string();
     let conn = open_db(paths, project_id)?;
     conn.execute(
         "INSERT INTO virtual_shots (shot_id, clip_id, source, quality, duration_seconds, in_seconds, out_seconds, data_json, created_at, updated_at)
-         VALUES (?1, ?2, 'manual', 'real', ?3, ?4, ?5, '{}', ?6, ?6)",
-        params![shot_id, clip_id, duration, in_r, out_r, now],
+         VALUES (?1, ?2, 'manual', 'ok', ?3, ?4, ?5, ?6, ?7, ?7)",
+        params![shot_id, clip_id, duration, in_r, out_r, data_json, now],
     )
     .map_err(|e| e.to_string())?;
     Ok(json!({
@@ -320,6 +340,11 @@ pub fn add_virtual_shot(
         "out_seconds": out_r,
         "duration_seconds": duration,
         "source": "manual",
+        "quality": "ok",
+        "cover_path": cover.to_string_lossy(),
+        "out_cover_path": out_cover.to_string_lossy(),
+        "in_tc": in_tc,
+        "out_tc": out_tc,
     }))
 }
 

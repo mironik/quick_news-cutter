@@ -57,6 +57,15 @@
       <p class="muted qnc-pts-custom-base-line">Baza: <span data-qnc-slot="template-base">—</span></p>
       <input class="qnc-ui-input" data-qnc-bind="template.name" placeholder="Naziv novog templatea" />
       <textarea class="qnc-ui-textarea" data-qnc-bind="template.description" rows="2" placeholder="Kratki opis"></textarea>
+      <label class="qnc-ui-label" for="qnc-pts-kbd-preset">Tipkovnica</label>
+      <select id="qnc-pts-kbd-preset" class="qnc-ui-select" data-pts-kbd-preset>
+        <option value="default">QNC</option>
+        <option value="resolve">DaVinci Resolve</option>
+        <option value="premiere">Adobe Premiere Pro</option>
+        <option value="finalcut">Final Cut Pro 11</option>
+        <option value="edius">Grass Valley EDIUS</option>
+        <option value="avid">Avid Media Composer</option>
+      </select>
       <div class="qnc-pts-custom-actions">
         <button type="button" class="qnc-ui-button qnc-pts-btn" data-qnc-action="template.duplicate">Spremi novi template</button>
       </div>
