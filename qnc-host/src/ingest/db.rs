@@ -256,35 +256,37 @@ pub fn parse_json(raw: &str, fallback: Value) -> Value {
     serde_json::from_str(raw).unwrap_or(fallback)
 }
 
-pub fn ingest_asset_meta(
-    source_path: &str,
-    original_path: &str,
-    proxy_path: &str,
-    project_proxy_path: &str,
-    card_thumb_path: &str,
-    file_extension: &str,
-    read_from_card: bool,
-    card_locked: bool,
-    poster_source: &str,
-) -> Value {
+pub struct IngestAssetMetaInput {
+    pub source_path: String,
+    pub original_path: String,
+    pub proxy_path: String,
+    pub project_proxy_path: String,
+    pub card_thumb_path: String,
+    pub file_extension: String,
+    pub read_from_card: bool,
+    pub card_locked: bool,
+    pub poster_source: String,
+}
+
+pub fn ingest_asset_meta(input: &IngestAssetMetaInput) -> Value {
     let mut obj = serde_json::Map::new();
     for (key, val) in [
-        ("source_path", source_path),
-        ("original_path", original_path),
-        ("proxy_path", proxy_path),
-        ("project_proxy_path", project_proxy_path),
-        ("card_thumb_path", card_thumb_path),
-        ("extension", file_extension),
-        ("poster_source", poster_source),
+        ("source_path", input.source_path.as_str()),
+        ("original_path", input.original_path.as_str()),
+        ("proxy_path", input.proxy_path.as_str()),
+        ("project_proxy_path", input.project_proxy_path.as_str()),
+        ("card_thumb_path", input.card_thumb_path.as_str()),
+        ("extension", input.file_extension.as_str()),
+        ("poster_source", input.poster_source.as_str()),
     ] {
         if !val.trim().is_empty() {
             obj.insert(key.into(), Value::String(val.to_string()));
         }
     }
-    if read_from_card {
+    if input.read_from_card {
         obj.insert("read_from_card".into(), Value::Bool(true));
     }
-    if card_locked {
+    if input.card_locked {
         obj.insert("card_locked".into(), Value::Bool(true));
     }
     Value::Object(obj)

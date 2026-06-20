@@ -255,19 +255,6 @@ pub fn sync_pool_from_ingest_db(paths: &ProjectPaths, project_id: &str) -> Resul
     Ok(())
 }
 
-pub fn pool_clip_ids(paths: &ProjectPaths, project_id: &str) -> Result<Vec<String>, String> {
-    let conn = open_db(paths, project_id)?;
-    let mut stmt = conn
-        .prepare("SELECT clip_id FROM pool_clips WHERE status = 'active' ORDER BY clip_id")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| r.get::<_, String>(0))
-        .map_err(|e| e.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
-    Ok(rows)
-}
-
 pub fn list_virtual_shots(paths: &ProjectPaths, project_id: &str) -> Result<Vec<Value>, String> {
     let conn = open_db(paths, project_id)?;
     let mut stmt = conn

@@ -6,6 +6,7 @@ use tracing::info;
 use crate::media::{find_card_poster_copy, proxy_poster_source_path, CardPosterKind};
 use crate::project::db::ProjectPaths;
 
+use super::asset_row::IngestAssetRow;
 use super::db::{
     copy_card_image_to_poster, ensure_ingest_dirs, get_meta, ingest_asset_meta, open_ingest,
     poster_exists, set_thumb_ready_path, set_thumb_status, thumbnail_path,
@@ -81,36 +82,8 @@ pub fn copy_thumbs_from_card(
              ORDER BY clip_id",
         )
         .map_err(|e| e.to_string())?;
-    let rows: Vec<(
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        i64,
-        i64,
-        String,
-        String,
-    )> = stmt
-        .query_map([], |r| {
-            Ok((
-                r.get::<_, String>(0)?,
-                r.get::<_, String>(1)?,
-                r.get::<_, String>(2)?,
-                r.get::<_, String>(3)?,
-                r.get::<_, String>(4)?,
-                r.get::<_, String>(5)?,
-                r.get::<_, String>(6)?,
-                r.get::<_, String>(7)?,
-                r.get::<_, i64>(8)?,
-                r.get::<_, i64>(9)?,
-                r.get::<_, String>(10)?,
-                r.get::<_, String>(11)?,
-            ))
-        })
+    let rows: Vec<IngestAssetRow> = stmt
+        .query_map([], IngestAssetRow::from_row)
         .map_err(|e| e.to_string())?
         .collect::<Result<_, _>>()
         .map_err(|e| e.to_string())?;
@@ -118,39 +91,21 @@ pub fn copy_thumbs_from_card(
     let mut copied = 0usize;
     let mut no_thumb = Vec::new();
 
-    for (
-        source_id,
-        clip_id,
-        source_path,
-        original_path,
-        proxy_path,
-        project_proxy_path,
-        card_thumb_path,
-        file_extension,
-        read_from_card,
-        card_locked,
-        poster_source,
-        status,
-    ) in rows
-    {
-        if status == "processing" {
-            set_thumb_status(&conn, &source_id, &clip_id, "pending", "")
+    for row in rows {
+        if row.status == "processing" {
+            set_thumb_status(&conn, &row.source_id, &row.clip_id, "pending", "")
                 .map_err(|e| e.to_string())?;
         }
 
-        let mut meta = ingest_asset_meta(
-            &source_path,
-            &original_path,
-            &proxy_path,
-            &project_proxy_path,
-            &card_thumb_path,
-            &file_extension,
-            read_from_card != 0,
-            card_locked != 0,
-            &poster_source,
-        );
+        let mut meta = ingest_asset_meta(&row.meta_input());
 
-        if apply_card_poster_copy(paths, project_id, &clip_id, &mut meta, card_root.as_deref()) {
+        if apply_card_poster_copy(
+            paths,
+            project_id,
+            &row.clip_id,
+            &mut meta,
+            card_root.as_deref(),
+        ) {
             let card_thumb = meta
                 .get("card_thumb_path")
                 .and_then(|v| v.as_str())
@@ -169,9 +124,9 @@ pub fn copy_thumbs_from_card(
                     metadata_json = '{}'
                  WHERE source_id = ?1 AND clip_id = ?2",
                 rusqlite::params![
-                    source_id,
-                    clip_id,
-                    thumbnail_path(paths, project_id, &clip_id).to_string_lossy(),
+                    row.source_id,
+                    row.clip_id,
+                    thumbnail_path(paths, project_id, &row.clip_id).to_string_lossy(),
                     card_thumb,
                     poster_src,
                 ],
@@ -179,9 +134,9 @@ pub fn copy_thumbs_from_card(
             .map_err(|e| e.to_string())?;
             copied += 1;
         } else {
-            set_thumb_status(&conn, &source_id, &clip_id, "no_card_thumb", "")
+            set_thumb_status(&conn, &row.source_id, &row.clip_id, "no_card_thumb", "")
                 .map_err(|e| e.to_string())?;
-            no_thumb.push(clip_id);
+            no_thumb.push(row.clip_id);
         }
     }
 
@@ -229,76 +184,30 @@ pub fn generate_thumbs_from_proxy(
              ORDER BY clip_id",
         )
         .map_err(|e| e.to_string())?;
-    let rows: Vec<(
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        i64,
-        i64,
-        String,
-        String,
-    )> = stmt
-        .query_map([], |r| {
-            Ok((
-                r.get::<_, String>(0)?,
-                r.get::<_, String>(1)?,
-                r.get::<_, String>(2)?,
-                r.get::<_, String>(3)?,
-                r.get::<_, String>(4)?,
-                r.get::<_, String>(5)?,
-                r.get::<_, String>(6)?,
-                r.get::<_, String>(7)?,
-                r.get::<_, i64>(8)?,
-                r.get::<_, i64>(9)?,
-                r.get::<_, String>(10)?,
-                r.get::<_, String>(11)?,
-            ))
-        })
+    let rows: Vec<IngestAssetRow> = stmt
+        .query_map([], IngestAssetRow::from_row)
         .map_err(|e| e.to_string())?
         .collect::<Result<_, _>>()
         .map_err(|e| e.to_string())?;
 
     let mut done = 0usize;
-    for (
-        source_id,
-        clip_id,
-        source_path,
-        original_path,
-        proxy_path,
-        project_proxy_path,
-        card_thumb_path,
-        file_extension,
-        read_from_card,
-        card_locked,
-        poster_source,
-        _,
-    ) in rows
-    {
+    for row in rows {
         if let Some(ref ids) = filter {
-            if !ids.contains(&clip_id) {
+            if !ids.contains(&row.clip_id) {
                 continue;
             }
         }
 
-        let poster = thumbnail_path(paths, project_id, &clip_id);
-        let mut meta = ingest_asset_meta(
-            &source_path,
-            &original_path,
-            &proxy_path,
-            &project_proxy_path,
-            &card_thumb_path,
-            &file_extension,
-            read_from_card != 0,
-            card_locked != 0,
-            &poster_source,
-        );
+        let poster = thumbnail_path(paths, project_id, &row.clip_id);
+        let mut meta = ingest_asset_meta(&row.meta_input());
 
-        if apply_card_poster_copy(paths, project_id, &clip_id, &mut meta, card_root.as_deref()) {
+        if apply_card_poster_copy(
+            paths,
+            project_id,
+            &row.clip_id,
+            &mut meta,
+            card_root.as_deref(),
+        ) {
             let card_thumb = meta
                 .get("card_thumb_path")
                 .and_then(|v| v.as_str())
@@ -317,9 +226,9 @@ pub fn generate_thumbs_from_proxy(
                     metadata_json = '{}'
                  WHERE source_id = ?1 AND clip_id = ?2",
                 rusqlite::params![
-                    source_id,
-                    clip_id,
-                    thumbnail_path(paths, project_id, &clip_id).to_string_lossy(),
+                    row.source_id,
+                    row.clip_id,
+                    thumbnail_path(paths, project_id, &row.clip_id).to_string_lossy(),
                     card_thumb,
                     poster_src,
                 ],
@@ -330,13 +239,13 @@ pub fn generate_thumbs_from_proxy(
         }
 
         if poster_exists(&poster) {
-            set_thumb_ready_path(&conn, &source_id, &clip_id, &poster)
+            set_thumb_ready_path(&conn, &row.source_id, &row.clip_id, &poster)
                 .map_err(|e| e.to_string())?;
             done += 1;
             continue;
         }
 
-        set_thumb_status(&conn, &source_id, &clip_id, "processing", "")
+        set_thumb_status(&conn, &row.source_id, &row.clip_id, "processing", "")
             .map_err(|e| e.to_string())?;
 
         let proxy = proxy_poster_source_path(&meta);
@@ -345,7 +254,7 @@ pub fn generate_thumbs_from_proxy(
             Some(video) => {
                 info!(
                     "ingest proxy thumb ffmpeg: clip={} from={}",
-                    clip_id,
+                    row.clip_id,
                     video.display()
                 );
                 extract_poster_jpeg(&video, &poster)
@@ -363,7 +272,7 @@ pub fn generate_thumbs_from_proxy(
                         poster_source = 'proxy_ffmpeg',
                         metadata_json = '{}'
                      WHERE source_id = ?1 AND clip_id = ?2",
-                    rusqlite::params![source_id, clip_id, poster.to_string_lossy()],
+                    rusqlite::params![row.source_id, row.clip_id, poster.to_string_lossy()],
                 )
                 .map_err(|e| e.to_string())?;
                 done += 1;
@@ -371,8 +280,8 @@ pub fn generate_thumbs_from_proxy(
             Ok(()) => {
                 set_thumb_status(
                     &conn,
-                    &source_id,
-                    &clip_id,
+                    &row.source_id,
+                    &row.clip_id,
                     "error",
                     "poster nije kreiran iz proxya",
                 )
@@ -384,7 +293,7 @@ pub fn generate_thumbs_from_proxy(
                 } else {
                     err
                 };
-                set_thumb_status(&conn, &source_id, &clip_id, "error", &msg)
+                set_thumb_status(&conn, &row.source_id, &row.clip_id, "error", &msg)
                     .map_err(|e| e.to_string())?;
             }
         }

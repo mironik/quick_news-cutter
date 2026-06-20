@@ -1,4 +1,5 @@
 mod api;
+pub(crate) mod asset_row;
 pub(crate) mod db;
 mod import_worker;
 mod scanner;

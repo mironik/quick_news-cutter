@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 
-use crate::ingest::db::ingest_asset_meta;
+use crate::ingest::db::{ingest_asset_meta, IngestAssetMetaInput};
 use crate::project::db::{open_project, ProjectPaths};
 
 const VIDEO_EXT: &[&str] = &["mp4", "mov", "m4v", "mxf", "mts", "mkv", "avi", "webm"];
@@ -53,17 +53,17 @@ pub fn read_imported_clips(paths: &ProjectPaths, project_id: &str) -> Result<Vec
             let read_from_card = row.get::<_, i64>(12).unwrap_or(0) != 0;
             let card_locked = row.get::<_, i64>(13).unwrap_or(0) != 0;
             let poster_source = row.get::<_, String>(14).unwrap_or_default();
-            let meta = ingest_asset_meta(
-                &source_path,
-                &original_path,
-                &ingest_proxy_path,
-                &project_proxy_path,
-                &card_thumb_path,
-                &file_extension,
+            let meta = ingest_asset_meta(&IngestAssetMetaInput {
+                source_path: source_path.clone(),
+                original_path: original_path.clone(),
+                proxy_path: ingest_proxy_path.clone(),
+                project_proxy_path: project_proxy_path.clone(),
+                card_thumb_path: card_thumb_path.clone(),
+                file_extension: file_extension.clone(),
                 read_from_card,
                 card_locked,
-                &poster_source,
-            );
+                poster_source: poster_source.clone(),
+            });
             let proxy_path = Some(project_proxy_path.as_str())
                 .filter(|s| !s.trim().is_empty())
                 .or_else(|| Some(ingest_proxy_path.as_str()).filter(|s| !s.trim().is_empty()))

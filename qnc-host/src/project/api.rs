@@ -62,23 +62,6 @@ impl ProjectState {
             }
         })
     }
-
-    pub fn project_ids(&self) -> Vec<String> {
-        self.with_db(|conn| {
-            list_projects(conn)
-                .map(|rows| {
-                    rows.iter()
-                        .filter_map(|v| {
-                            v.get("project_id")
-                                .and_then(|id| id.as_str())
-                                .map(str::to_string)
-                        })
-                        .collect()
-                })
-                .map_err(|e| e.to_string())
-        })
-        .unwrap_or_default()
-    }
 }
 
 pub fn router() -> Router<AppState> {

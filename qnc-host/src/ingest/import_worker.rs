@@ -11,6 +11,7 @@ use tracing::{info, warn};
 use crate::media::{import_source_path, is_breaking_news, proxy_policy_copy};
 use crate::project::db::{ensure_project_dirs, project_settings_snapshot, ProjectPaths};
 
+use super::asset_row::IngestAssetRow;
 use super::db::{ingest_asset_meta, open_ingest, thumbnail_path};
 use super::store::{reconcile_thumbnail_rows, row_import_error};
 
@@ -118,36 +119,8 @@ impl ImportWorker {
                  ORDER BY clip_id",
             )
             .map_err(|e| e.to_string())?;
-        let rows: Vec<(
-            String,
-            String,
-            String,
-            String,
-            String,
-            String,
-            String,
-            String,
-            i64,
-            i64,
-            String,
-            String,
-        )> = stmt
-            .query_map([], |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                    r.get::<_, String>(3)?,
-                    r.get::<_, String>(4)?,
-                    r.get::<_, String>(5)?,
-                    r.get::<_, String>(6)?,
-                    r.get::<_, String>(7)?,
-                    r.get::<_, i64>(8)?,
-                    r.get::<_, i64>(9)?,
-                    r.get::<_, String>(10)?,
-                    r.get::<_, String>(11)?,
-                ))
-            })
+        let rows: Vec<IngestAssetRow> = stmt
+            .query_map([], IngestAssetRow::from_row)
             .map_err(|e| e.to_string())?
             .collect::<Result<_, _>>()
             .map_err(|e| e.to_string())?;
@@ -156,51 +129,27 @@ impl ImportWorker {
         fs::create_dir_all(&proxy_dir).map_err(|e| e.to_string())?;
 
         let mut done = 0usize;
-        for (
-            source_id,
-            clip_id,
-            source_path,
-            original_path,
-            proxy_path,
-            _project_proxy_path,
-            card_thumb_path,
-            file_extension,
-            read_from_card,
-            card_locked,
-            poster_source,
-            status,
-        ) in rows
-        {
+        for row in rows {
             if self.is_blocked(project_id) {
                 break;
             }
-            if status == "processing" {
+            if row.status == "processing" {
                 continue;
             }
             conn.execute(
                 "UPDATE ingest_assets SET import_status = 'processing' WHERE source_id = ?1 AND clip_id = ?2",
-                params![source_id, clip_id],
+                params![row.source_id, row.clip_id],
             )
             .map_err(|e| e.to_string())?;
 
-            let meta = ingest_asset_meta(
-                &source_path,
-                &original_path,
-                &proxy_path,
-                "",
-                &card_thumb_path,
-                &file_extension,
-                read_from_card != 0,
-                card_locked != 0,
-                &poster_source,
-            );
+            let meta = ingest_asset_meta(&row.meta_input_without_project_proxy());
             let result = if breaking {
-                import_breaking_card(&meta, &project, copy_proxy, &proxy_dir, &clip_id)
+                import_breaking_card(&meta, &project, copy_proxy, &proxy_dir, &row.clip_id)
             } else {
                 let src = import_source_path(&meta, &project);
                 match src {
                     Some(path) if path.is_file() => {
-                        let dest = copy_into_proxy(&proxy_dir, &clip_id, &path)?;
+                        let dest = copy_into_proxy(&proxy_dir, &row.clip_id, &path)?;
                         Ok((dest, "ready".to_string(), false))
                     }
                     Some(path) => Err(format!("izvor ne postoji: {}", path.display())),
@@ -217,7 +166,7 @@ impl ImportWorker {
                     };
                     let read_from_card = on_card;
                     let card_locked = on_card;
-                    let poster = thumbnail_path(&self.paths, project_id, &clip_id);
+                    let poster = thumbnail_path(&self.paths, project_id, &row.clip_id);
                     let thumb_st = if poster.is_file() { "ready" } else { "pending" };
                     let thumb_path = if poster.is_file() {
                         poster.to_string_lossy().to_string()
@@ -237,8 +186,8 @@ impl ImportWorker {
                             metadata_json = '{}'
                          WHERE source_id = ?1 AND clip_id = ?2",
                         params![
-                            source_id,
-                            clip_id,
+                            row.source_id,
+                            row.clip_id,
                             asset_status,
                             thumb_st,
                             project_proxy_path,
@@ -251,7 +200,7 @@ impl ImportWorker {
                     done += 1;
                 }
                 Err(err) => {
-                    row_import_error(&conn, &source_id, &clip_id, &err)
+                    row_import_error(&conn, &row.source_id, &row.clip_id, &err)
                         .map_err(|e| e.to_string())?;
                 }
             }
