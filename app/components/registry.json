@@ -1163,7 +1163,9 @@
           "story-parts-list",
           "story-part-editor",
           "story-markers-list",
-          "story-marker-slots-list"
+          "story-marker-slots-list",
+          "story-covers-list",
+          "story-cover-editor"
         ],
         "owns_state": false
       }
@@ -1332,6 +1334,88 @@
           }
         ],
         "backend_actions": ["story.marker_slot.select"],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-covers-list": {
+      "global_id": "story-covers-list",
+      "component_id": "story-covers-list",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story covers list — create/select/delete cover intents for selected slot.",
+      "embeddable": true,
+      "path": "/app/components/story-covers-list/component.html",
+      "package": "/app/components/story-covers-list",
+      "assets": {
+        "css": ["/app/components/story-covers-list/component.css"],
+        "js": ["/app/components/story-covers-list/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["covers", "selected_slot_id", "selected_cover_id", "busy"],
+        "slots": ["covers", "empty"],
+        "events": [
+          {
+            "action": "story.cover.create",
+            "payload": { "slot_id": "string" }
+          },
+          {
+            "action": "story.cover.select",
+            "payload": { "cover_id": "string" }
+          },
+          {
+            "action": "story.cover.delete",
+            "payload": { "cover_id": "string" }
+          }
+        ],
+        "backend_actions": [
+          "story.cover.create",
+          "story.cover.select",
+          "story.cover.delete"
+        ],
+        "requires": ["QNC.componentBus"],
+        "requires_components": [],
+        "owns_state": false
+      }
+    },
+    "story-cover-editor": {
+      "global_id": "story-cover-editor",
+      "component_id": "story-cover-editor",
+      "version": "1.0.0",
+      "source_plugin_id": "story",
+      "kind": "panel",
+      "description": "Story cover editor — title/note save and delete intents.",
+      "embeddable": true,
+      "path": "/app/components/story-cover-editor/component.html",
+      "package": "/app/components/story-cover-editor",
+      "assets": {
+        "css": ["/app/components/story-cover-editor/component.css"],
+        "js": ["/app/components/story-cover-editor/component.js"]
+      },
+      "variants": {},
+      "contract": {
+        "version": 1,
+        "inputs": ["covers", "selected_cover_id", "busy"],
+        "slots": ["empty", "form"],
+        "events": [
+          {
+            "action": "story.cover.update",
+            "payload": {
+              "cover_id": "string",
+              "title": "string",
+              "note": "string"
+            }
+          },
+          {
+            "action": "story.cover.delete",
+            "payload": { "cover_id": "string" }
+          }
+        ],
+        "backend_actions": ["story.cover.update", "story.cover.delete"],
         "requires": ["QNC.componentBus"],
         "requires_components": [],
         "owns_state": false

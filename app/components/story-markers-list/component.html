@@ -1,8 +1,12 @@
 <section class="qnc-story-markers-list" data-qnc-panel="story-markers-list">
   <header class="qnc-story-markers-head">
     <h3 class="qnc-story-markers-title">Markeri</h3>
-    <button type="button" class="qnc-story-markers-add" data-action="add-marker">+ Marker</button>
+    <label class="qnc-story-markers-add-row">
+      <span class="muted">timeline_sec</span>
+      <input type="number" class="qnc-story-markers-sec" data-qnc-slot="timeline-sec" min="0" step="0.001" value="0" />
+      <button type="button" class="qnc-story-markers-add" data-action="add-marker">+ Marker</button>
+    </label>
   </header>
   <ul class="qnc-story-markers-items" data-qnc-slot="markers"></ul>
-  <p class="qnc-story-markers-empty muted" data-qnc-slot="empty">Nema markera — dodaj nakon odabranog dijela.</p>
+  <p class="qnc-story-markers-empty muted" data-qnc-slot="empty">Nema markera — dodaj na virtualnoj vremenskoj liniji.</p>
 </section>

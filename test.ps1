@@ -257,6 +257,7 @@ try {
     if ($null -eq $storyState.markers -or @($storyState.markers).Count -ne 0) { throw "FAIL: story markers should be empty array" }
     if ($null -eq $storyState.marker_slots -or @($storyState.marker_slots).Count -ne 0) { throw "FAIL: story marker_slots should be empty array" }
     if ($storyState.selected_slot_id -ne '') { throw "FAIL: story selected_slot_id should be empty" }
+    if ($storyState.selected_cover_id -ne '') { throw "FAIL: story selected_cover_id should be empty" }
     if ($null -eq $storyState.covers -or @($storyState.covers).Count -ne 0) { throw "FAIL: story covers should be empty array" }
     if ($storyState.summary.part_count -ne 0) { throw "FAIL: story summary.part_count should be 0" }
     if ($storyState.summary.duration_sec -ne 0) { throw "FAIL: story summary.duration_sec should be 0" }
@@ -335,57 +336,177 @@ try {
         } '"parts"' "POST /api/story/part/create (marker setup offovi)"
     }
     if (@($partsForMarkers.parts).Count -lt 2) { throw "FAIL: story marker setup needs 2 parts" }
-    $markerPartA = $partsForMarkers.parts[0].part_id
-    $markerPartB = $partsForMarkers.parts[1].part_id
-    if (-not $markerPartA -or -not $markerPartB) { throw "FAIL: story marker setup part ids missing" }
 
-    $withMarker = Test-PostJson "$Base/api/story/marker/create" @{
+    # Parts alone do not create cover slots (only implicit start marker => needs >=2 markers).
+    $partsOnlyState = Test-GetJson "$Base/api/story/state?project_id=$([uri]::EscapeDataString($newId))" '"marker_slots"' "GET /api/story/state (parts only slots)"
+    if (@($partsOnlyState.marker_slots).Count -ne 0) { throw "FAIL: parts alone must not materialize slots" }
+
+    $partA = $partsForMarkers.parts[0].part_id
+    $partB = $partsForMarkers.parts[1].part_id
+    $fromPartLocal = Test-PostJson "$Base/api/story/marker/create" @{
         project_id = $newId
-        after_part_id = $markerPartA
-        label = "QA cut"
-    } '"markers"' "POST /api/story/marker/create"
-    if (@($withMarker.markers).Count -ne 1) { throw "FAIL: story marker create count" }
-    if (@($withMarker.marker_slots).Count -ne 2) { throw "FAIL: story marker create slot count" }
-    $markerId = $withMarker.markers[0].marker_id
-    if (-not $markerId) { throw "FAIL: story marker_id missing" }
-    if ($withMarker.markers[0].after_part_id -ne $markerPartA) { throw "FAIL: story marker after_part_id" }
+        part_id = $partB
+        local_sec = 1.5
+        label = "QA part-local"
+    } '"markers"' "POST /api/story/marker/create (part_id + local_sec)"
+    $localMarker = @($fromPartLocal.markers | Where-Object { $_.label -eq "QA part-local" } | Select-Object -First 1)
+    if (-not $localMarker) { throw "FAIL: part-local marker missing" }
+    if ([math]::Abs($localMarker.timeline_sec - 4.5) -gt 0.05) {
+        throw "FAIL: part B local 1.5 should map to cumulative timeline_sec 4.5 (part A default span 3s)"
+    }
+    $null = Test-PostJson "$Base/api/story/marker/delete" @{
+        project_id = $newId
+        marker_id = $localMarker.marker_id
+    } '"markers"' "POST delete part-local marker"
+
+    $withMarker5 = Test-PostJson "$Base/api/story/marker/create" @{
+        project_id = $newId
+        timeline_sec = 5
+        label = "QA cut 5"
+    } '"markers"' "POST /api/story/marker/create at 5s"
+    $userMarkers5 = @($withMarker5.markers | Where-Object { $_.timeline_sec -gt 0.001 })
+    if (@($userMarkers5).Count -ne 1) { throw "FAIL: story marker create count at 5s" }
+    if ([math]::Abs($withMarker5.markers[-1].timeline_sec - 5) -gt 0.01) { throw "FAIL: story marker timeline_sec not 5" }
+    if (@($withMarker5.marker_slots).Count -ne 1) { throw "FAIL: implicit start + marker@5 => one slot [0,5]" }
+    $slot05 = $withMarker5.marker_slots[0]
+    if ([math]::Abs($slot05.start_sec - 0) -gt 0.01 -or [math]::Abs($slot05.end_sec - 5) -gt 0.01) {
+        throw "FAIL: slot [0,5] boundaries"
+    }
 
     $withTwoMarkers = Test-PostJson "$Base/api/story/marker/create" @{
         project_id = $newId
-        after_part_id = $markerPartB
-        label = "QA cut 2"
-    } '"markers"' "POST /api/story/marker/create (second)"
-    if (@($withTwoMarkers.markers).Count -ne 2) { throw "FAIL: story second marker count" }
-    if (@($withTwoMarkers.marker_slots).Count -ne 2) { throw "FAIL: story second marker slot count" }
+        timeline_sec = 12
+        label = "QA cut 12"
+    } '"markers"' "POST /api/story/marker/create at 12s"
+    if (@($withTwoMarkers.markers).Count -lt 3) { throw "FAIL: story markers count with implicit start" }
+    if (@($withTwoMarkers.marker_slots).Count -ne 2) { throw "FAIL: slots [0,5] and [5,12]" }
+    $slot512 = @($withTwoMarkers.marker_slots | Where-Object {
+        [math]::Abs($_.start_sec - 5) -lt 0.01 -and [math]::Abs($_.end_sec - 12) -lt 0.01
+    } | Select-Object -First 1)
+    if (-not $slot512) { throw "FAIL: slot [5,12] missing" }
+    $markerAt5 = @($withTwoMarkers.markers | Where-Object { [math]::Abs($_.timeline_sec - 5) -lt 0.01 } | Select-Object -First 1).marker_id
+    $markerAt12 = @($withTwoMarkers.markers | Where-Object { [math]::Abs($_.timeline_sec - 12) -lt 0.01 } | Select-Object -First 1).marker_id
+    if (-not $markerAt5 -or -not $markerAt12) { throw "FAIL: marker ids at 5/12 missing" }
 
     $slotSelect = Test-PostJson "$Base/api/story/marker_slot/select" @{
         project_id = $newId
-        slot_id = $withTwoMarkers.marker_slots[0].slot_id
+        slot_id = $slot512.slot_id
     } '"selected_slot_id"' "POST /api/story/marker_slot/select"
-    if ($slotSelect.selected_slot_id -ne $withTwoMarkers.marker_slots[0].slot_id) {
+    if ($slotSelect.selected_slot_id -ne $slot512.slot_id) {
         throw "FAIL: story selected_slot_id after select"
     }
 
+    $slotForCover = $slot512.slot_id
+    $slot05Id = $slot05.slot_id
+    if (-not $slotForCover -or -not $slot05Id) { throw "FAIL: story cover setup slot ids missing" }
+
+    $withCover = Test-PostJson "$Base/api/story/cover/create" @{
+        project_id = $newId
+        slot_id = $slotForCover
+        title = "QA cover"
+        note = "QA cover note"
+    } '"covers"' "POST /api/story/cover/create"
+    if (@($withCover.covers).Count -ne 1) { throw "FAIL: story cover create count" }
+    if ($withCover.selected_cover_id -ne $withCover.covers[0].cover_id) { throw "FAIL: story cover create selected_cover_id" }
+    $coverId = $withCover.covers[0].cover_id
+    if (-not $coverId) { throw "FAIL: story cover_id missing" }
+    if ([math]::Abs($withCover.covers[0].timeline_start_sec - 5) -gt 0.01) { throw "FAIL: story cover timeline_start_sec" }
+    if ([math]::Abs($withCover.covers[0].timeline_end_sec - 12) -gt 0.01) { throw "FAIL: story cover timeline_end_sec" }
+    if (-not $withCover.covers[0].slot_signature) { throw "FAIL: story cover slot_signature missing" }
+    if ($withCover.covers[0].title -ne "QA cover") { throw "FAIL: story cover title" }
+
+    $coverSelect = Test-PostJson "$Base/api/story/cover/select" @{
+        project_id = $newId
+        cover_id = $coverId
+    } '"selected_cover_id"' "POST /api/story/cover/select"
+    if ($coverSelect.selected_cover_id -ne $coverId) { throw "FAIL: story selected_cover_id after select" }
+
+    $coverUpdated = Test-PostJson "$Base/api/story/cover/update" @{
+        project_id = $newId
+        cover_id = $coverId
+        title = "QA cover edited"
+        note = "QA note edited"
+    } '"covers"' "POST /api/story/cover/update"
+    $coverRow = @($coverUpdated.covers | Where-Object { $_.cover_id -eq $coverId } | Select-Object -First 1)
+    if (-not $coverRow) { throw "FAIL: story cover update row missing" }
+    if ($coverRow.title -ne "QA cover edited") { throw "FAIL: story cover update title" }
+    if ($coverRow.note -ne "QA note edited") { throw "FAIL: story cover update note" }
+
+    $withCover2 = Test-PostJson "$Base/api/story/cover/create" @{
+        project_id = $newId
+        slot_id = $slot05Id
+        title = "QA cover slot05"
+    } '"covers"' "POST /api/story/cover/create (slot [0,5])"
+    if (@($withCover2.covers).Count -ne 2) { throw "FAIL: story second cover count" }
+
+    # Marker interval change 12 -> 15: cover on [5,12] must be normalized away.
+    $deleted12 = Test-PostJson "$Base/api/story/marker/delete" @{
+        project_id = $newId
+        marker_id = $markerAt12
+    } '"markers"' "POST delete marker at 12"
+    $at15 = Test-PostJson "$Base/api/story/marker/create" @{
+        project_id = $newId
+        timeline_sec = 15
+        label = "QA cut 15"
+    } '"markers"' "POST /api/story/marker/create at 15s"
+    $coverAfterMove = @($at15.covers | Where-Object { $_.cover_id -eq $coverId })
+    if ($coverAfterMove.Count -ne 0) { throw "FAIL: cover on [5,12] should be deleted when interval gone" }
+
+    $cover2Id = @($withCover2.covers | Where-Object { $_.title -eq "QA cover slot05" } | Select-Object -First 1).cover_id
+    if (-not $cover2Id) { throw "FAIL: story cover2 id missing" }
+
+    $afterDelM15 = Test-PostJson "$Base/api/story/marker/delete" @{
+        project_id = $newId
+        marker_id = ($at15.markers | Where-Object { [math]::Abs($_.timeline_sec - 15) -lt 0.01 } | Select-Object -First 1).marker_id
+    } '"covers"' "POST /api/story/marker/delete (cover normalize m15)"
+    if (@($afterDelM15.marker_slots).Count -ne 1) { throw "FAIL: one slot [0,5] after delete m15" }
+    $keptAfter15 = @($afterDelM15.covers | Where-Object { $_.cover_id -eq $cover2Id })
+    if ($keptAfter15.Count -ne 1) { throw "FAIL: cover on [0,5] should remain after delete m15" }
+
+    $coverDeleted = Test-PostJson "$Base/api/story/cover/delete" @{
+        project_id = $newId
+        cover_id = $cover2Id
+    } '"covers"' "POST /api/story/cover/delete"
+    if (@($coverDeleted.covers).Count -ne 0) { throw "FAIL: story cover delete count" }
+
+    $afterDelM5 = Test-PostJson "$Base/api/story/marker/delete" @{
+        project_id = $newId
+        marker_id = $markerAt5
+    } '"markers"' "POST /api/story/marker/delete (cover normalize m5)"
+    if (@($afterDelM5.marker_slots).Count -ne 0) { throw "FAIL: no slots with only implicit start marker" }
+    if (@($afterDelM5.covers).Count -ne 0) { throw "FAIL: no covers after slots gone" }
+
+    $coverReload = Test-GetJson "$Base/api/story/state?project_id=$([uri]::EscapeDataString($newId))" '"covers"' "GET /api/story/state (covers reload)"
+    if ($null -eq $coverReload.covers) { throw "FAIL: story covers reload missing" }
+    Write-Host "OK: story covers round-trip (SQLite)"
+
+    Test-Get "$Base/plugins/story/plugin.json" 'story.cover.create' "GET story plugin.json (cover actions)"
+    Test-Get "$Base/plugins/story/static/qnc-story.js" 'story\.cover\.create' "GET qnc-story.js (cover handlers)"
+    Test-Get "$Base/app/components/registry.json" 'story-covers-list' "GET registry (story-covers-list)"
+    Test-Get "$Base/app/components/registry.json" 'story-cover-editor' "GET registry (story-cover-editor)"
+
+    $moveA = Test-PostJson "$Base/api/story/marker/create" @{
+        project_id = $newId
+        timeline_sec = 5
+        label = "move A"
+    } '"markers"' "POST marker create (move setup A)"
+    $moveB = Test-PostJson "$Base/api/story/marker/create" @{
+        project_id = $newId
+        timeline_sec = 10
+        label = "move B"
+    } '"markers"' "POST marker create (move setup B)"
+    $moveMarkerId = @($moveA.markers | Where-Object { [math]::Abs($_.timeline_sec - 5) -lt 0.01 } | Select-Object -First 1).marker_id
     $movedMarker = Test-PostJson "$Base/api/story/marker/move" @{
         project_id = $newId
-        marker_id = $markerId
+        marker_id = $moveMarkerId
         direction = "down"
     } '"markers"' "POST /api/story/marker/move"
-    if (@($movedMarker.markers).Count -ne 2) { throw "FAIL: story marker move count" }
-    $movedRow = @($movedMarker.markers | Where-Object { $_.marker_id -eq $markerId } | Select-Object -First 1)
+    $movedRow = @($movedMarker.markers | Where-Object { $_.marker_id -eq $moveMarkerId } | Select-Object -First 1)
     if (-not $movedRow) { throw "FAIL: story marker move row missing" }
-    if ($movedRow.after_part_id -ne $markerPartB) { throw "FAIL: story marker move after_part_id" }
-
-    $deletedMarker = Test-PostJson "$Base/api/story/marker/delete" @{
-        project_id = $newId
-        marker_id = $markerId
-    } '"markers"' "POST /api/story/marker/delete"
-    if (@($deletedMarker.markers).Count -ne 1) { throw "FAIL: story marker delete count" }
-    if (@($deletedMarker.marker_slots).Count -ne 2) { throw "FAIL: story marker delete slot count" }
+    if ([math]::Abs($movedRow.timeline_sec - 10) -gt 0.01) { throw "FAIL: story marker move should swap timeline_sec to 10" }
 
     $markerReload = Test-GetJson "$Base/api/story/state?project_id=$([uri]::EscapeDataString($newId))" '"marker_slots"' "GET /api/story/state (markers reload)"
-    if (@($markerReload.marker_slots).Count -ne 2) { throw "FAIL: story marker_slots reload count" }
-    if (@($markerReload.markers).Count -ne 1) { throw "FAIL: story markers reload count" }
+    if (@($markerReload.markers).Count -lt 1) { throw "FAIL: story markers reload count" }
     Write-Host "OK: story markers + slots round-trip (SQLite)"
 
     Test-Get "$Base/plugins/story/plugin.json" 'story.marker.create' "GET story plugin.json (marker actions)"

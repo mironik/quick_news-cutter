@@ -71,6 +71,19 @@
   }
 }
 
+.qnc-story-covers-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1.2fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .qnc-story-covers-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .qnc-story-note {
   margin: 0;
   font-size: 0.9rem;

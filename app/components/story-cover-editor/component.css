@@ -1,0 +1,28 @@
+.qnc-story-cover-editor {
+  flex: 1;
+  min-width: 0;
+}
+
+.qnc-story-cover-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qnc-story-cover-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.qnc-story-cover-field input,
+.qnc-story-cover-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.qnc-story-cover-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+}

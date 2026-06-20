@@ -9,8 +9,9 @@ use serde_json::Value;
 use crate::app_state::AppState;
 
 use super::db::{
-    create_marker, create_part, delete_marker, delete_part, load_state, move_marker, reorder_part,
-    select_marker_slot, select_part, update_part,
+    create_cover, create_marker, create_part, delete_cover, delete_marker, delete_part, load_state,
+    move_marker, reorder_part, select_cover, select_marker_slot, select_part, update_cover,
+    update_part,
 };
 
 #[derive(serde::Deserialize)]
@@ -60,9 +61,14 @@ struct ReorderPartBody {
 struct CreateMarkerBody {
     #[serde(default)]
     project_id: String,
+    timeline_sec: Option<f64>,
+    #[serde(default)]
+    part_id: String,
     #[serde(default)]
     after_part_id: String,
     label: Option<String>,
+    local_sec: Option<f64>,
+    origin_local_sec: Option<f64>,
 }
 
 #[derive(serde::Deserialize)]
@@ -91,6 +97,38 @@ struct SlotIdBody {
     slot_id: String,
 }
 
+#[derive(serde::Deserialize)]
+struct CreateCoverBody {
+    #[serde(default)]
+    project_id: String,
+    #[serde(default)]
+    slot_id: String,
+    clip_id: Option<String>,
+    virtual_shot_id: Option<String>,
+    title: Option<String>,
+    note: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct CoverIdBody {
+    #[serde(default)]
+    project_id: String,
+    #[serde(default)]
+    cover_id: String,
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateCoverBody {
+    #[serde(default)]
+    project_id: String,
+    #[serde(default)]
+    cover_id: String,
+    title: Option<String>,
+    note: Option<String>,
+    clip_id: Option<String>,
+    virtual_shot_id: Option<String>,
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/story/state", get(api_state))
@@ -106,6 +144,10 @@ pub fn router() -> Router<AppState> {
             "/api/story/marker_slot/select",
             post(api_marker_slot_select),
         )
+        .route("/api/story/cover/create", post(api_cover_create))
+        .route("/api/story/cover/update", post(api_cover_update))
+        .route("/api/story/cover/delete", post(api_cover_delete))
+        .route("/api/story/cover/select", post(api_cover_select))
 }
 
 async fn api_state(
@@ -173,8 +215,23 @@ async fn api_marker_create(
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let pid = resolve_project_id(&app, &body.project_id)?;
     let label = body.label.as_deref();
-    let state = create_marker(&app.project.paths, &pid, &body.after_part_id, label)
-        .map_err(map_bad_request)?;
+    let part_id = if !body.part_id.trim().is_empty() {
+        Some(body.part_id.as_str())
+    } else if !body.after_part_id.trim().is_empty() {
+        Some(body.after_part_id.as_str())
+    } else {
+        None
+    };
+    let local_sec = body.local_sec.or(body.origin_local_sec);
+    let state = create_marker(
+        &app.project.paths,
+        &pid,
+        body.timeline_sec,
+        part_id,
+        label,
+        local_sec,
+    )
+    .map_err(map_bad_request)?;
     Ok(Json(state))
 }
 
@@ -205,6 +262,60 @@ async fn api_marker_slot_select(
     let pid = resolve_project_id(&app, &body.project_id)?;
     let state =
         select_marker_slot(&app.project.paths, &pid, &body.slot_id).map_err(map_bad_request)?;
+    Ok(Json(state))
+}
+
+async fn api_cover_create(
+    State(app): State<AppState>,
+    Json(body): Json<CreateCoverBody>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(&app, &body.project_id)?;
+    let state = create_cover(
+        &app.project.paths,
+        &pid,
+        &body.slot_id,
+        body.clip_id.as_deref(),
+        body.virtual_shot_id.as_deref(),
+        body.title.as_deref(),
+        body.note.as_deref(),
+    )
+    .map_err(map_bad_request)?;
+    Ok(Json(state))
+}
+
+async fn api_cover_update(
+    State(app): State<AppState>,
+    Json(body): Json<UpdateCoverBody>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(&app, &body.project_id)?;
+    let state = update_cover(
+        &app.project.paths,
+        &pid,
+        &body.cover_id,
+        body.title.as_deref(),
+        body.note.as_deref(),
+        body.clip_id.as_deref(),
+        body.virtual_shot_id.as_deref(),
+    )
+    .map_err(map_bad_request)?;
+    Ok(Json(state))
+}
+
+async fn api_cover_delete(
+    State(app): State<AppState>,
+    Json(body): Json<CoverIdBody>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(&app, &body.project_id)?;
+    let state = delete_cover(&app.project.paths, &pid, &body.cover_id).map_err(map_bad_request)?;
+    Ok(Json(state))
+}
+
+async fn api_cover_select(
+    State(app): State<AppState>,
+    Json(body): Json<CoverIdBody>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let pid = resolve_project_id(&app, &body.project_id)?;
+    let state = select_cover(&app.project.paths, &pid, &body.cover_id).map_err(map_bad_request)?;
     Ok(Json(state))
 }
 

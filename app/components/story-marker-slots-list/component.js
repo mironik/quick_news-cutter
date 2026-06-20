@@ -65,6 +65,13 @@ window.QNC = window.QNC || {};
       .map((slot) => {
         const id = esc(slot.slot_id);
         const partCount = Array.isArray(slot.part_ids) ? slot.part_ids.length : 0;
+        const start = Number(slot.start_sec);
+        const end = Number(slot.end_sec);
+        const range =
+          (Number.isFinite(start) ? start.toFixed(1) : '?') +
+          '–' +
+          (Number.isFinite(end) ? end.toFixed(1) : '?') +
+          ' s';
         const sel = slot.slot_id === selected ? ' selected' : '';
         return (
           '<li><button type="button" class="qnc-story-marker-slot-row' +
@@ -78,8 +85,9 @@ window.QNC = window.QNC || {};
           (Number(slot.slot_index) + 1) +
           '</span>' +
           '<span class="qnc-story-marker-slot-meta">' +
-          partCount +
-          ' dijelova</span>' +
+          range +
+          (partCount ? ' · ' + partCount + ' dijelova' : '') +
+          '</span>' +
           '</button></li>'
         );
       })

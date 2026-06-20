@@ -32,12 +32,10 @@ window.QNC = window.QNC || {};
       .replace(/"/g, '&quot;');
   }
 
-  function partTitle(parts, partId) {
-    const part = (parts || []).find((p) => p.part_id === partId);
-    if (!part) return partId;
-    const title = String(part.title || '').trim();
-    if (title) return title;
-    return String(part.kind || '').toUpperCase() || partId;
+  function formatSec(sec) {
+    const n = Number(sec);
+    if (!Number.isFinite(n)) return '0';
+    return n.toFixed(3).replace(/\.?0+$/, '');
   }
 
   function bindPanel(panel, pluginId) {
@@ -51,7 +49,10 @@ window.QNC = window.QNC || {};
       if (!busAction) return;
       ev.preventDefault();
       if (raw === 'add-marker') {
-        emit(pluginId, busAction, {});
+        const input = panel.querySelector('[data-qnc-slot="timeline-sec"]');
+        const timelineSec = Number(input?.value);
+        if (!Number.isFinite(timelineSec) || timelineSec < 0) return;
+        emit(pluginId, busAction, { timeline_sec: timelineSec });
         return;
       }
       const markerId = btn.getAttribute('data-marker-id') || '';
@@ -83,10 +84,9 @@ window.QNC = window.QNC || {};
     if (panel.dataset.qncComponentMounted !== '1') mount(panel, options);
     bindPanel(panel, pluginId);
     const busy = !!data?.busy;
-    const parts = Array.isArray(data?.parts) ? data.parts : [];
     const markers = Array.isArray(data?.markers) ? data.markers : [];
-    const hasSelection = !!String(data?.selected_part_id || '').trim();
-    panel.querySelector('[data-action="add-marker"]')?.toggleAttribute('disabled', busy || !hasSelection);
+    panel.querySelector('[data-action="add-marker"]')?.toggleAttribute('disabled', busy);
+    panel.querySelector('[data-qnc-slot="timeline-sec"]')?.toggleAttribute('disabled', busy);
     const list = panel.querySelector('[data-qnc-slot="markers"]');
     const empty = panel.querySelector('[data-qnc-slot="empty"]');
     if (empty) empty.hidden = markers.length > 0;
@@ -94,16 +94,19 @@ window.QNC = window.QNC || {};
     list.innerHTML = markers
       .map((marker, idx) => {
         const id = esc(marker.marker_id);
-        const after = esc(partTitle(parts, marker.after_part_id));
+        const sec = formatSec(marker.timeline_sec);
+        const tc = String(marker.tc || '').trim();
         const label = String(marker.label || '').trim();
-        const labelText = label ? esc(label) : 'Cut after ' + after;
+        const labelText = label ? esc(label) : tc ? esc(tc) : sec + ' s';
         return (
           '<li class="qnc-story-marker-row">' +
           '<span class="qnc-story-marker-label">' +
           (idx + 1) +
           '. ' +
           labelText +
-          '</span>' +
+          ' <span class="muted">@ ' +
+          sec +
+          's</span></span>' +
           '<span class="qnc-story-marker-actions">' +
           '<button type="button" data-action="marker-up" data-marker-id="' +
           id +

@@ -38,6 +38,8 @@ window.QNC = window.QNC || {};
       selected_part_id: db.selected_part_id || '',
       selected_shot_id: db.selected_shot_id || '',
       selected_slot_id: db.selected_slot_id || '',
+      selected_cover_id: db.selected_cover_id || '',
+      covers: Array.isArray(db.covers) ? db.covers : [],
       parts: Array.isArray(db.parts) ? db.parts : [],
       markers: Array.isArray(db.markers) ? db.markers : [],
       marker_slots: Array.isArray(db.marker_slots) ? db.marker_slots : [],
@@ -47,7 +49,7 @@ window.QNC = window.QNC || {};
       committed_at: db.committed_at,
       busy: runtime.busy,
       status_note: open
-        ? 'Story — dijelovi, markeri i slotovi iz SQLite.'
+        ? 'Story — dijelovi, markeri, slotovi i pokrivanja iz SQLite.'
         : 'Prvo otvori projekt na Project tabu.',
     };
   }
@@ -67,6 +69,8 @@ window.QNC = window.QNC || {};
       q('[data-qnc-panel="story-marker-slots-list"]'),
       PLUGIN_CTX
     );
+    comp('story-covers-list')?.mount?.(q('[data-qnc-panel="story-covers-list"]'), PLUGIN_CTX);
+    comp('story-cover-editor')?.mount?.(q('[data-qnc-panel="story-cover-editor"]'), PLUGIN_CTX);
     runtime.mounted = true;
   }
 
@@ -88,6 +92,8 @@ window.QNC = window.QNC || {};
       model,
       PLUGIN_CTX
     );
+    comp('story-covers-list')?.update?.(q('[data-qnc-panel="story-covers-list"]'), model, PLUGIN_CTX);
+    comp('story-cover-editor')?.update?.(q('[data-qnc-panel="story-cover-editor"]'), model, PLUGIN_CTX);
   }
 
   async function runMutation(ctx, actionId, body) {
@@ -165,11 +171,20 @@ window.QNC = window.QNC || {};
         await runMutation(ctx, 'story.part.select', { part_id: partId });
       });
 
-      ctx.on('story.marker.create', async () => {
+      ctx.on('story.marker.create', async (ev) => {
+        const timelineSec = ev.payload?.timeline_sec;
+        if (timelineSec != null && Number.isFinite(Number(timelineSec))) {
+          await runMutation(ctx, 'story.marker.create', { timeline_sec: Number(timelineSec) });
+          return;
+        }
         const db = snap(ctx);
-        const afterPartId = String(db.selected_part_id || '').trim();
-        if (!afterPartId) return;
-        await runMutation(ctx, 'story.marker.create', { after_part_id: afterPartId });
+        const partId = String(ev.payload?.part_id || db.selected_part_id || '').trim();
+        if (!partId) return;
+        const localSec = ev.payload?.local_sec ?? ev.payload?.origin_local_sec ?? 0;
+        await runMutation(ctx, 'story.marker.create', {
+          part_id: partId,
+          local_sec: Number(localSec),
+        });
       });
 
       ctx.on('story.marker.delete', async (ev) => {
@@ -191,7 +206,45 @@ window.QNC = window.QNC || {};
         await runMutation(ctx, 'story.marker_slot.select', { slot_id: slotId });
       });
 
-      QNC.log('[Story] SDK markers + slots spreman', 'ok');
+      ctx.on('story.cover.create', async (ev) => {
+        const db = snap(ctx);
+        const slotId = String(ev.payload?.slot_id || db.selected_slot_id || '').trim();
+        if (!slotId) return;
+        await runMutation(ctx, 'story.cover.create', {
+          slot_id: slotId,
+          title: ev.payload?.title,
+          note: ev.payload?.note,
+          clip_id: ev.payload?.clip_id,
+          virtual_shot_id: ev.payload?.virtual_shot_id,
+        });
+      });
+
+      ctx.on('story.cover.update', async (ev) => {
+        const coverId = String(ev.payload?.cover_id || '').trim();
+        if (!coverId) return;
+        await runMutation(ctx, 'story.cover.update', {
+          cover_id: coverId,
+          title: ev.payload?.title,
+          note: ev.payload?.note,
+          clip_id: ev.payload?.clip_id,
+          virtual_shot_id: ev.payload?.virtual_shot_id,
+        });
+      });
+
+      ctx.on('story.cover.delete', async (ev) => {
+        const db = snap(ctx);
+        const coverId = String(ev.payload?.cover_id || db.selected_cover_id || '').trim();
+        if (!coverId) return;
+        await runMutation(ctx, 'story.cover.delete', { cover_id: coverId });
+      });
+
+      ctx.on('story.cover.select', async (ev) => {
+        const coverId = String(ev.payload?.cover_id || '').trim();
+        if (!coverId) return;
+        await runMutation(ctx, 'story.cover.select', { cover_id: coverId });
+      });
+
+      QNC.log('[Story] SDK markers + slots + covers spreman', 'ok');
     },
 
     async onShow(ctx) {

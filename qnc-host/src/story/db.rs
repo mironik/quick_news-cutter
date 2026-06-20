@@ -3,11 +3,16 @@ use serde_json::{json, Value};
 
 use crate::project::db::{now_str, open_project, ProjectPaths};
 
+use super::covers::{
+    covers_snapshot, create_cover as create_cover_row, delete_cover as delete_cover_row,
+    ensure_cover_schema, select_cover as select_cover_row, update_cover as update_cover_row,
+};
 use super::markers::{
     create_marker as create_marker_row, delete_marker as delete_marker_row,
     delete_markers_for_part, ensure_marker_schema, ensure_materialized_slots,
     finalize_story_mutation, marker_slots_snapshot, markers_snapshot,
-    move_marker as move_marker_row, select_marker_slot as select_marker_slot_row,
+    move_marker as move_marker_row, resolve_marker_timeline_sec,
+    select_marker_slot as select_marker_slot_row, timeline_duration_from_parts,
 };
 
 #[derive(Default)]
@@ -15,6 +20,7 @@ pub(crate) struct StoryRow {
     selected_part_id: String,
     selected_shot_id: String,
     pub(crate) selected_slot_id: String,
+    pub(crate) selected_cover_id: String,
     draft_updated_at: String,
     committed_at: String,
     _updated_at: String,
@@ -31,8 +37,8 @@ pub(crate) struct StoryPartRow {
     virtual_shot_id: String,
     in_tc: String,
     out_tc: String,
-    in_seconds: Option<f64>,
-    out_seconds: Option<f64>,
+    pub(crate) in_seconds: Option<f64>,
+    pub(crate) out_seconds: Option<f64>,
     created_at: String,
     updated_at: String,
 }
@@ -69,6 +75,7 @@ fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
         CREATE INDEX IF NOT EXISTS idx_story_parts_sort ON story_parts(sort_index);",
     )?;
     ensure_marker_schema(conn)?;
+    ensure_cover_schema(conn)?;
     Ok(())
 }
 
@@ -85,8 +92,9 @@ pub(crate) fn read_row(conn: &Connection) -> rusqlite::Result<StoryRow> {
     ensure_row(conn)?;
     conn.query_row(
         "SELECT selected_part_id, selected_shot_id,
-                COALESCE(selected_slot_id, ''), COALESCE(draft_updated_at, ''),
-                COALESCE(committed_at, ''), COALESCE(updated_at, '')
+                COALESCE(selected_slot_id, ''), COALESCE(selected_cover_id, ''),
+                COALESCE(draft_updated_at, ''), COALESCE(committed_at, ''),
+                COALESCE(updated_at, '')
          FROM story_state WHERE id = 1",
         [],
         |r| {
@@ -94,9 +102,10 @@ pub(crate) fn read_row(conn: &Connection) -> rusqlite::Result<StoryRow> {
                 selected_part_id: r.get(0)?,
                 selected_shot_id: r.get(1)?,
                 selected_slot_id: r.get(2)?,
-                draft_updated_at: r.get(3)?,
-                committed_at: r.get(4)?,
-                _updated_at: r.get(5)?,
+                selected_cover_id: r.get(3)?,
+                draft_updated_at: r.get(4)?,
+                committed_at: r.get(5)?,
+                _updated_at: r.get(6)?,
             })
         },
     )
@@ -191,20 +200,22 @@ fn snapshot_json(
     let part_count = parts.len();
     let markers = markers_snapshot(conn)?;
     let marker_slots = marker_slots_snapshot(conn)?;
+    let covers = covers_snapshot(conn)?;
     Ok(json!({
         "project_id": project_id,
         "selected_part_id": row.selected_part_id,
         "selected_shot_id": row.selected_shot_id,
         "selected_slot_id": row.selected_slot_id,
+        "selected_cover_id": row.selected_cover_id,
         "parts": part_values,
         "markers": markers,
         "marker_slots": marker_slots,
-        "covers": [],
+        "covers": covers,
         "draft_updated_at": optional_text(&row.draft_updated_at),
         "committed_at": optional_text(&row.committed_at),
         "summary": {
             "part_count": part_count,
-            "duration_sec": 0,
+            "duration_sec": timeline_duration_from_parts(parts),
         },
     }))
 }
@@ -425,12 +436,22 @@ pub fn select_part(paths: &ProjectPaths, project_id: &str, part_id: &str) -> Res
 pub fn create_marker(
     paths: &ProjectPaths,
     project_id: &str,
-    after_part_id: &str,
+    timeline_sec: Option<f64>,
+    part_id: Option<&str>,
     label: Option<&str>,
+    local_sec: Option<f64>,
 ) -> Result<Value, String> {
     let pid = project_id.trim();
     let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
-    create_marker_row(&conn, after_part_id, label)?;
+    let parts = list_parts(&conn).map_err(|e| e.to_string())?;
+    let (resolved_sec, origin_part_id, origin_local_sec) =
+        resolve_marker_timeline_sec(&parts, timeline_sec, part_id, local_sec)?;
+    let origin_part = if origin_part_id.is_empty() {
+        None
+    } else {
+        Some(origin_part_id.as_str())
+    };
+    create_marker_row(&conn, resolved_sec, label, origin_part, origin_local_sec)?;
     load_snapshot(&conn, pid).map_err(|e| e.to_string())
 }
 
@@ -465,5 +486,58 @@ pub fn select_marker_slot(
     let pid = project_id.trim();
     let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
     select_marker_slot_row(&conn, slot_id)?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn create_cover(
+    paths: &ProjectPaths,
+    project_id: &str,
+    slot_id: &str,
+    clip_id: Option<&str>,
+    virtual_shot_id: Option<&str>,
+    title: Option<&str>,
+    note: Option<&str>,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    ensure_materialized_slots(&conn).map_err(|e| e.to_string())?;
+    create_cover_row(&conn, slot_id, clip_id, virtual_shot_id, title, note)?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn update_cover(
+    paths: &ProjectPaths,
+    project_id: &str,
+    cover_id: &str,
+    title: Option<&str>,
+    note: Option<&str>,
+    clip_id: Option<&str>,
+    virtual_shot_id: Option<&str>,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    update_cover_row(&conn, cover_id, title, note, clip_id, virtual_shot_id)?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn delete_cover(
+    paths: &ProjectPaths,
+    project_id: &str,
+    cover_id: &str,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    delete_cover_row(&conn, cover_id)?;
+    load_snapshot(&conn, pid).map_err(|e| e.to_string())
+}
+
+pub fn select_cover(
+    paths: &ProjectPaths,
+    project_id: &str,
+    cover_id: &str,
+) -> Result<Value, String> {
+    let pid = project_id.trim();
+    let conn = open_project(paths, pid).map_err(|e| e.to_string())?;
+    select_cover_row(&conn, cover_id)?;
     load_snapshot(&conn, pid).map_err(|e| e.to_string())
 }
